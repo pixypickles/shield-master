@@ -33,3 +33,10 @@ PC確認用: WASD/矢印=移動、J=盾、K=攻撃、L=ジャンプ、I=スキ�
 - Spear uses a straight thrust streak instead of a slash arc.
 - Fire/ice magic now spawns from the staff tip.
 - Added a visually narrower route and a translucent objective arrow.
+
+
+## Prototype 04
+- 上向き時の盾レイヤーを調整
+- 右向き時の盾を腕・剣と自然な高さへ移動
+- 左右向きの円盾を横から見た縦長の楕円に変更
+- 左向き時は剣を盾の奥に描画

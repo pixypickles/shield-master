@@ -215,8 +215,22 @@ function drawPlayer(){
  // actual weapon motion
  let wa=a,thrust=0;
  if(player.attacking>0){const t=1-player.attacking/player.attackMax;if(player.weapon===1){wa=player.aim;thrust=Math.sin(t*Math.PI)*20}else if(player.weapon===2){wa=player.aim-1.15+t*2.25}else if(player.weapon>=3){wa=player.aim;thrust=Math.sin(t*Math.PI)*7}else{wa=player.aim-.95+t*1.9}}
- drawWeapon(handR.x,handR.y,wa,thrust);
- drawShield(handL.x+frontX*(player.shield?22:10),handL.y+frontY*(player.shield?22:10),a,player.shield);
+ let sx=handL.x+frontX*(player.shield?22:10), sy=handL.y+frontY*(player.shield?22:10);
+ if(f==='right') sy+=18;
+ if(f==='left') sy+=15;
+ if(f==='up'){sx-=4;sy+=11;}
+ if(f==='left'){
+   drawWeapon(handR.x,handR.y,wa,thrust); // 左向きは剣が盾の奥
+   drawShield(sx,sy,a,player.shield,true);
+ }else{
+   drawWeapon(handR.x,handR.y,wa,thrust);
+   drawShield(sx,sy,a,player.shield,f==='right');
+ }
+ // 上向きは頭を盾より手前に戻し、盾が背中に貼り付いた見え方を避ける
+ if(f==='up'){
+   ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-20,-8);ctx.lineTo(-17,-36);ctx.lineTo(-5,-24);ctx.quadraticCurveTo(0,-28,5,-24);ctx.lineTo(17,-36);ctx.lineTo(20,-8);ctx.quadraticCurveTo(19,8,0,10);ctx.quadraticCurveTo(-19,8,-20,-8);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.fillStyle='#7bdaf1';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-18);ctx.lineTo(-3,-24);ctx.lineTo(2,-20);ctx.lineTo(8,-24);ctx.lineTo(12,-17);ctx.lineTo(0,-13);ctx.closePath();ctx.fill();ctx.stroke();line(-11,-7,11,-7,4,'#74d5ef');
+ }
  if(player.attacking>0&&player.weapon===0)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===2)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===1)drawThrustStreak(player.aim);
@@ -227,10 +241,12 @@ function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translat
  else if(w===1){line(-3,0,62,0,9,'#111');line(-3,0,62,0,4,'#b9783d');ctx.fillStyle='#e8eef2';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(62,-10);ctx.lineTo(82,0);ctx.lineTo(62,10);ctx.closePath();ctx.fill();ctx.stroke()}
  else if(w===2){line(0,0,38,0,11,'#111');line(0,0,38,0,5,'#8b5c3b');roundRect(29,-17,34,34,7,'#9ea6ad','#111',6)}
  else {line(-2,0,45,0,10,'#111');line(-2,0,45,0,5,'#6d3e2a');circle(50,0,11,w===3?'#ff5a4f':'#69c9ff','#111',5);circle(50,0,4,'#fff','#111',2)}ctx.restore()}
-function drawShield(hx,hy,a,raised){
+function drawShield(hx,hy,a,raised,sideView=false){
  ctx.save();ctx.translate(hx,hy);const r=raised?34:27;
- // 円形盾なので向きが変わっても横倒しに見えない。
- circle(0,0,r,'#e5eef3','#111',7);circle(0,0,r*.72,'#d8edf7','#4f90bd',5);circle(0,0,8,'#f0c94d','#111',4);
+ if(sideView){
+   ctx.fillStyle='#e5eef3';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.ellipse(0,0,r*.43,r,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#4f90bd';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,r*.28,r*.72,0,0,Math.PI*2);ctx.stroke();circle(0,0,5,'#f0c94d','#111',3);
+ }else{circle(0,0,r,'#e5eef3','#111',7);circle(0,0,r*.72,'#d8edf7','#4f90bd',5);circle(0,0,8,'#f0c94d','#111',4)}
  ctx.restore();
 }
 function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.save();ctx.rotate(a);ctx.globalAlpha=.62*Math.sin(t*Math.PI);line(38,-5,112,-5,7,'rgba(255,255,255,.75)');line(45,7,100,7,4,'rgba(255,255,255,.45)');ctx.restore()}
