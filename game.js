@@ -208,34 +208,73 @@ function drawPlayer(){
    circle(f==='right'?8:-8,-9,3,'#111','#111',1);ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(f==='right'?10:-10,0,9,7,0,0,7);ctx.fill();ctx.stroke();circle(f==='right'?15:-15,-1,3,'#111','#111',1);
  }
  // arms. character-right always weapon, character-left always shield.
- const handR={x:rightX*23+frontX*5,y:rightY*19+frontY*5+3};
+ const handR={x:rightX*23+frontX*5,y:rightY*19+frontY*5+3+(f==='right'?18:0)};
  const handL={x:-rightX*23+frontX*5,y:-rightY*19+frontY*5+3};
- line(rightX*8,5,handR.x,handR.y,10,'#111');line(rightX*8,5,handR.x,handR.y,5,'#f7fbff');
+ if(f!=='right'&&f!=='up'){line(rightX*8,5,handR.x,handR.y,10,'#111');line(rightX*8,5,handR.x,handR.y,5,'#f7fbff');}
  line(-rightX*8,5,handL.x,handL.y,10,'#111');line(-rightX*8,5,handL.x,handL.y,5,'#f7fbff');
  // actual weapon motion
  let wa=a,thrust=0;
  if(player.attacking>0){const t=1-player.attacking/player.attackMax;if(player.weapon===1){wa=player.aim;thrust=Math.sin(t*Math.PI)*20}else if(player.weapon===2){wa=player.aim-1.15+t*2.25}else if(player.weapon>=3){wa=player.aim;thrust=Math.sin(t*Math.PI)*7}else{wa=player.aim-.95+t*1.9}}
  let sx=handL.x+frontX*(player.shield?22:10), sy=handL.y+frontY*(player.shield?22:10);
  if(f==='right') sy+=18;
- if(f==='left') sy+=15;
+ if(f==='left')  sy+=15;
  if(f==='up'){sx-=4;sy+=11;}
- if(f==='left'){
-   drawWeapon(handR.x,handR.y,wa,thrust); // 左向きは剣が盾の奥
+
+ // 向きごとの前後関係を固定する。
+ // up: 盾(裏面+左手) → 武器 → 身体
+ // right: 武器/右手は身体の奥 → 身体 → 盾
+ // left: 盾 → 身体 → 武器/右手
+ if(f==='up'){
+   drawShieldBack(sx,sy,a,player.shield);
+   drawWeapon(handR.x,handR.y+8,wa,thrust);
+   redrawBodyLayer(f);
+ }else if(f==='right'){
+   drawWeapon(handR.x,handR.y,wa,thrust);
+   redrawBodyLayer(f);
    drawShield(sx,sy,a,player.shield,true);
+ }else if(f==='left'){
+   drawShield(sx,sy,a,player.shield,true);
+   redrawBodyLayer(f);
+   // 右手と武器を一番手前に。剣の高さは低め。
+   const wy=handR.y+11;
+   line(rightX*8,9,handR.x,wy,10,'#111');line(rightX*8,9,handR.x,wy,5,'#f7fbff');
+   drawWeapon(handR.x,wy,wa,thrust);
  }else{
    drawWeapon(handR.x,handR.y,wa,thrust);
-   drawShield(sx,sy,a,player.shield,f==='right');
- }
- // 上向きは頭を盾より手前に戻し、盾が背中に貼り付いた見え方を避ける
- if(f==='up'){
-   ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-20,-8);ctx.lineTo(-17,-36);ctx.lineTo(-5,-24);ctx.quadraticCurveTo(0,-28,5,-24);ctx.lineTo(17,-36);ctx.lineTo(20,-8);ctx.quadraticCurveTo(19,8,0,10);ctx.quadraticCurveTo(-19,8,-20,-8);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.fillStyle='#7bdaf1';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-18);ctx.lineTo(-3,-24);ctx.lineTo(2,-20);ctx.lineTo(8,-24);ctx.lineTo(12,-17);ctx.lineTo(0,-13);ctx.closePath();ctx.fill();ctx.stroke();line(-11,-7,11,-7,4,'#74d5ef');
- }
- if(player.attacking>0&&player.weapon===0)drawAttackArc(player.aim);
+   drawShield(sx,sy,a,player.shield,false);
+ } if(player.attacking>0&&player.weapon===0)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===2)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===1)drawThrustStreak(player.aim);
  if(player.charging){ctx.strokeStyle='#ffe551';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,-5,43,0,Math.PI*2);ctx.stroke()}
  ctx.restore();
+}
+
+function redrawBodyLayer(f){
+ // 装備の前後関係を成立させるため、胴体と頭を手前に描き直す。
+ roundRect(-18,-1,36,27,10,'#2d78c4','#111',6);
+ ctx.fillStyle='#f1c84b';ctx.strokeStyle='#111';ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(-18,15);ctx.lineTo(18,15);ctx.lineTo(14,25);ctx.lineTo(-14,25);ctx.closePath();ctx.fill();ctx.stroke();
+ line(-14,12,14,12,5,'#6e432b');circle(0,12,4,'#f2c14e','#111',2);
+ ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=6;
+ ctx.beginPath();ctx.moveTo(-20,-8);ctx.lineTo(-17,-36);ctx.lineTo(-5,-24);ctx.quadraticCurveTo(0,-28,5,-24);ctx.lineTo(17,-36);ctx.lineTo(20,-8);ctx.quadraticCurveTo(19,8,0,10);ctx.quadraticCurveTo(-19,8,-20,-8);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.fillStyle='#7bdaf1';ctx.strokeStyle='#111';ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(-10,-18);ctx.lineTo(-3,-24);ctx.lineTo(2,-20);ctx.lineTo(8,-24);ctx.lineTo(12,-17);ctx.lineTo(0,-13);ctx.closePath();ctx.fill();ctx.stroke();
+ if(f==='up') line(-11,-7,11,-7,4,'#74d5ef');
+ else if(f==='right'||f==='left'){
+   circle(f==='right'?8:-8,-9,3,'#111','#111',1);
+   ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(f==='right'?10:-10,0,9,7,0,0,7);ctx.fill();ctx.stroke();circle(f==='right'?15:-15,-1,3,'#111','#111',1);
+ }
+}
+function drawShieldBack(hx,hy,a,raised){
+ ctx.save();ctx.translate(hx,hy);const r=raised?34:27;
+ circle(0,0,r,'#9aa6ad','#111',7);
+ circle(0,0,r*.72,'#7f8b92','#59636a',4);
+ // 裏面のベルトと、左手で握っているのが見える。
+ ctx.save();ctx.rotate(a);
+ roundRect(-19,-7,38,14,7,'#6e432b','#111',4);
+ line(-12,-18,-12,18,7,'#111');line(-12,-15,-12,15,3,'#b47a49');
+ circle(-7,0,7,'#f7fbff','#111',4);
+ ctx.restore();ctx.restore();
 }
 function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,'#eef5fa');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,'#d8a93d')}
  else if(w===1){line(-3,0,62,0,9,'#111');line(-3,0,62,0,4,'#b9783d');ctx.fillStyle='#e8eef2';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(62,-10);ctx.lineTo(82,0);ctx.lineTo(62,10);ctx.closePath();ctx.fill();ctx.stroke()}
