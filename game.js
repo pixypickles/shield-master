@@ -229,18 +229,24 @@ function drawPlayer(){
    drawWeapon(handR.x,handR.y+8,wa,thrust);
    redrawBodyLayer(f);
  }else if(f==='right'){
-   // 右向き：盾が最奥 → 武器/右手 → 身体。盾は身体にかなり隠れる。
-   const rsx=sx-13, rsy=sy+2;
+   // 右向き：盾は最奥で、身体の後ろから縁だけ微かに見える。
+   const rsx=sx-8, rsy=sy-5;
    drawShield(rsx,rsy,a,player.shield,true);
-   drawWeapon(handR.x,handR.y,wa,thrust);
+   // 剣を持つ右腕を少し上げる。手そのものは身体に半分隠す。
+   const rwy=handR.y-8;
+   line(rightX*7,4,handR.x,rwy,10,'#111');line(rightX*7,4,handR.x,rwy,5,'#f7fbff');
+   drawWeapon(handR.x,rwy,wa,thrust);
    redrawBodyLayer(f);
  }else if(f==='left'){
-   // 左向き：武器/右手が最奥 → 身体 → 盾が最前面。
-   // 剣と手は身体・盾に大きく隠れる。
+   // 左向き：剣/右手が最奥 → 身体 → 左腕 → 盾が最前面。
    const wy=handR.y+11;
    drawWeapon(handR.x,wy,wa,thrust);
    redrawBodyLayer(f);
-   const lsx=sx+10, lsy=sy;
+   // 盾を持つ左腕を身体から前へ伸ばす。
+   const lsx=sx+13, lsy=sy-12;
+   line(-8,5,lsx+7,lsy+2,12,'#111');line(-8,5,lsx+7,lsy+2,6,'#f7fbff');
+   circle(lsx+5,lsy+2,6,'#f7fbff','#111',4);
+   // 盾は前かつ少し上へ。
    drawShield(lsx,lsy,a,player.shield,true);
  }else{
    drawWeapon(handR.x,handR.y,wa,thrust);
