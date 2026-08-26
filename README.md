@@ -26,3 +26,10 @@
 - チェンジ: 剣 → 槍 → ハンマー → 赤杖 → 青杖
 
 PC確認用: WASD/矢印=移動、J=盾、K=攻撃、L=ジャンプ、I=スキル、Q=武器チェンジ
+
+## Prototype 03 changes
+- Fox fur is now mainly white with light-blue accents.
+- Shield is circular and pushed forward in the facing direction.
+- Spear uses a straight thrust streak instead of a slash arc.
+- Fire/ice magic now spawns from the staff tip.
+- Added a visually narrower route and a translucent objective arrow.

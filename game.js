@@ -75,9 +75,13 @@ function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of e
 
 function fireMagic(w,charged,base){
  const speed=charged?560:470, damage=charged?3:2, radius=charged?16:11;
- const start=38;
- projectiles.push({x:player.x+Math.cos(base)*start,y:player.y+Math.sin(base)*start,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged,hit:false});
- particle(player.x+Math.cos(base)*42,player.y+Math.sin(base)*42,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
+ // 魔法は杖の先端から発射。右手の位置→杖先までを描画と同じ計算にする。
+ const fa=faceAngle(player.face), rx=Math.cos(fa+Math.PI/2), ry=Math.sin(fa+Math.PI/2), fx=Math.cos(fa), fy=Math.sin(fa);
+ const hx=player.x+rx*23+fx*5, hy=player.y+ry*19+fy*5+3;
+ const tip=62;
+ const sx=hx+Math.cos(base)*tip, sy=hy+Math.sin(base)*tip;
+ projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged,hit:false});
+ particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
 
 function doAttack(charged=false){
@@ -134,6 +138,9 @@ function roundRect(x,y,w,h,r,fill,stroke='#111',lw=5){ctx.fillStyle=fill;ctx.str
 
 function drawWorld(){
  ctx.fillStyle='#98d483';ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(-camera.x,-camera.y);
+ // 少し狭めの「進む場所」が読める道。広場は残しつつ迷いにくくする。
+ ctx.strokeStyle='#b8e3a2';ctx.lineWidth=250;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
+ ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=190;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  // ground patches
  ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
  // water
@@ -146,9 +153,21 @@ function drawWorld(){
  for(const pr of projectiles)drawProjectile(pr);
  for(const e of enemies)if(!e.dead)drawEnemy(e);
  drawPlayer();
+ drawObjectiveArrow();
  for(const p of particles)if(p.life>0){ctx.save();ctx.globalAlpha=Math.min(1,p.life/.18);ctx.fillStyle=p.color;ctx.font=`900 ${p.size}px system-ui`;ctx.textAlign='center';ctx.strokeStyle='white';ctx.lineWidth=4;ctx.strokeText(p.text,p.x,p.y-(1-p.life/p.max)*25);ctx.fillText(p.text,p.x,p.y-(1-p.life/p.max)*25);ctx.restore()}
  ctx.restore();
 }
+
+function drawObjectiveArrow(){
+ // 今はスイッチを仮目的地に。後でクエスト目的地へ差し替えられる。
+ const target=props.switches.find(s=>!s.on) || props.rocks.find(r=>!r.dead) || {x:800,y:300};
+ const a=Math.atan2(target.y-player.y,target.x-player.x), d=dist(player.x,player.y,target.x,target.y);
+ if(d<150)return;
+ const x=player.x+Math.cos(a)*92, y=player.y+Math.sin(a)*92-58;
+ ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha=.38;ctx.fillStyle='#fff';ctx.strokeStyle='#245a72';ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(25,0);ctx.lineTo(-10,-15);ctx.lineTo(-4,-5);ctx.lineTo(-28,-5);ctx.lineTo(-28,5);ctx.lineTo(-4,5);ctx.lineTo(-10,15);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+}
+
 function drawProjectile(pr){ctx.save();ctx.translate(pr.x,pr.y);const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);ctx.globalAlpha=.28;circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':'#b8ecff','transparent',0);ctx.globalAlpha=1;circle(0,0,pr.r,pr.kind==='fire'?'#ff6247':'#63d7ff','#111',4);line(-pr.r-12,0,-pr.r+1,0,7,pr.kind==='fire'?'#ffcf58':'#eafcff');ctx.restore()}
 function drawEnemy(e){ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;circle(0,0,e.r,e.type==='brute'?'#e7685d':'#e991d1','#111',6);circle(-8,-4,3,'#111','#111',1);circle(8,-4,3,'#111','#111',1);line(-9,9,9,9,4,'#111');ctx.restore()}
 
@@ -174,29 +193,33 @@ function drawPlayer(){
  roundRect(-18,-1,36,27,10,'#2d78c4','#111',6);
  ctx.fillStyle='#f1c84b';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,15);ctx.lineTo(18,15);ctx.lineTo(14,25);ctx.lineTo(-14,25);ctx.closePath();ctx.fill();ctx.stroke();
  line(-14,12,14,12,5,'#6e432b');circle(0,12,4,'#f2c14e','#111',2);
- // head and ears, light-blue fur + white muzzle/cheeks
- ctx.fillStyle='#82dcf4';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-20,-8);ctx.lineTo(-17,-36);ctx.lineTo(-5,-24);ctx.quadraticCurveTo(0,-28,5,-24);ctx.lineTo(17,-36);ctx.lineTo(20,-8);ctx.quadraticCurveTo(19,8,0,10);ctx.quadraticCurveTo(-19,8,-20,-8);ctx.closePath();ctx.fill();ctx.stroke();
+ // head and ears: 白をメイン、水色はアクセント
+ ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-20,-8);ctx.lineTo(-17,-36);ctx.lineTo(-5,-24);ctx.quadraticCurveTo(0,-28,5,-24);ctx.lineTo(17,-36);ctx.lineTo(20,-8);ctx.quadraticCurveTo(19,8,0,10);ctx.quadraticCurveTo(-19,8,-20,-8);ctx.closePath();ctx.fill();ctx.stroke();
+ // 水色の前髪アクセント
+ ctx.fillStyle='#7bdaf1';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-18);ctx.lineTo(-3,-24);ctx.lineTo(2,-20);ctx.lineTo(8,-24);ctx.lineTo(12,-17);ctx.lineTo(0,-13);ctx.closePath();ctx.fill();ctx.stroke();
  // ear inner color
  ctx.fillStyle='#f3a9b7';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-14,-30);ctx.lineTo(-8,-22);ctx.lineTo(-15,-18);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(14,-30);ctx.lineTo(8,-22);ctx.lineTo(15,-18);ctx.closePath();ctx.fill();ctx.stroke();
  if(f==='down'){
    circle(-8,-9,3,'#111','#111',1);circle(8,-9,3,'#111','#111',1);
    ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,1,12,9,0,0,7);ctx.fill();ctx.stroke();circle(0,-2,3.5,'#111','#111',1);
  }else if(f==='up'){
-   line(-11,-7,11,-7,4,'#4ca5bf');
+   line(-11,-7,11,-7,4,'#74d5ef');
  }else{
    circle(f==='right'?8:-8,-9,3,'#111','#111',1);ctx.fillStyle='#f7fbff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(f==='right'?10:-10,0,9,7,0,0,7);ctx.fill();ctx.stroke();circle(f==='right'?15:-15,-1,3,'#111','#111',1);
  }
  // arms. character-right always weapon, character-left always shield.
  const handR={x:rightX*23+frontX*5,y:rightY*19+frontY*5+3};
  const handL={x:-rightX*23+frontX*5,y:-rightY*19+frontY*5+3};
- line(rightX*8,5,handR.x,handR.y,10,'#111');line(rightX*8,5,handR.x,handR.y,5,'#82dcf4');
- line(-rightX*8,5,handL.x,handL.y,10,'#111');line(-rightX*8,5,handL.x,handL.y,5,'#82dcf4');
+ line(rightX*8,5,handR.x,handR.y,10,'#111');line(rightX*8,5,handR.x,handR.y,5,'#f7fbff');
+ line(-rightX*8,5,handL.x,handL.y,10,'#111');line(-rightX*8,5,handL.x,handL.y,5,'#f7fbff');
  // actual weapon motion
  let wa=a,thrust=0;
  if(player.attacking>0){const t=1-player.attacking/player.attackMax;if(player.weapon===1){wa=player.aim;thrust=Math.sin(t*Math.PI)*20}else if(player.weapon===2){wa=player.aim-1.15+t*2.25}else if(player.weapon>=3){wa=player.aim;thrust=Math.sin(t*Math.PI)*7}else{wa=player.aim-.95+t*1.9}}
  drawWeapon(handR.x,handR.y,wa,thrust);
- drawShield(handL.x,handL.y,a,player.shield);
- if(player.attacking>0&&player.weapon<3)drawAttackArc(player.aim);
+ drawShield(handL.x+frontX*(player.shield?22:10),handL.y+frontY*(player.shield?22:10),a,player.shield);
+ if(player.attacking>0&&player.weapon===0)drawAttackArc(player.aim);
+ if(player.attacking>0&&player.weapon===2)drawAttackArc(player.aim);
+ if(player.attacking>0&&player.weapon===1)drawThrustStreak(player.aim);
  if(player.charging){ctx.strokeStyle='#ffe551';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,-5,43,0,Math.PI*2);ctx.stroke()}
  ctx.restore();
 }
@@ -204,7 +227,13 @@ function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translat
  else if(w===1){line(-3,0,62,0,9,'#111');line(-3,0,62,0,4,'#b9783d');ctx.fillStyle='#e8eef2';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(62,-10);ctx.lineTo(82,0);ctx.lineTo(62,10);ctx.closePath();ctx.fill();ctx.stroke()}
  else if(w===2){line(0,0,38,0,11,'#111');line(0,0,38,0,5,'#8b5c3b');roundRect(29,-17,34,34,7,'#9ea6ad','#111',6)}
  else {line(-2,0,45,0,10,'#111');line(-2,0,45,0,5,'#6d3e2a');circle(50,0,11,w===3?'#ff5a4f':'#69c9ff','#111',5);circle(50,0,4,'#fff','#111',2)}ctx.restore()}
-function drawShield(hx,hy,a,raised){ctx.save();ctx.translate(hx,hy);ctx.rotate(a);const x=raised?26:10,sz=raised?1:0.78;ctx.scale(sz,sz);ctx.fillStyle='#d7e3ea';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(x,-31);ctx.quadraticCurveTo(x+31,-28,x+31,0);ctx.quadraticCurveTo(x+27,30,x,39);ctx.quadraticCurveTo(x-27,30,x-31,0);ctx.quadraticCurveTo(x-31,-28,x,-31);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#4f90bd';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,-22);ctx.quadraticCurveTo(x+21,-18,x+21,0);ctx.quadraticCurveTo(x+17,20,x,28);ctx.quadraticCurveTo(x-17,20,x-21,0);ctx.quadraticCurveTo(x-21,-18,x,-22);ctx.stroke();circle(x,0,7,'#f0c94d','#111',4);ctx.restore()}
+function drawShield(hx,hy,a,raised){
+ ctx.save();ctx.translate(hx,hy);const r=raised?34:27;
+ // 円形盾なので向きが変わっても横倒しに見えない。
+ circle(0,0,r,'#e5eef3','#111',7);circle(0,0,r*.72,'#d8edf7','#4f90bd',5);circle(0,0,8,'#f0c94d','#111',4);
+ ctx.restore();
+}
+function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.save();ctx.rotate(a);ctx.globalAlpha=.62*Math.sin(t*Math.PI);line(38,-5,112,-5,7,'rgba(255,255,255,.75)');line(45,7,100,7,4,'rgba(255,255,255,.45)');ctx.restore()}
 function drawAttackArc(a){const w=player.weapon,r=weapons[w].range;ctx.save();ctx.rotate(a);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=w===2?19:11;ctx.lineCap='round';ctx.beginPath();const span=w===1?.45:1.15;ctx.arc(0,0,r*.76,-span/2,span/2);ctx.stroke();ctx.restore()}
 
 let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();requestAnimationFrame(loop)}requestAnimationFrame(loop);
