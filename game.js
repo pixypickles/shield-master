@@ -23,7 +23,7 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
 
 const enemies=[];
 function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,dead:false})}
@@ -103,6 +103,34 @@ function doAttack(charged=false){
 function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);const facing=faceAngle(player.face);return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
+ // 剣チャージ回転斬り
+ if(player.spin){
+   player.spinT += dt;
+   const seq=['down','left','up','right'];
+   player.facing=seq[Math.floor((player.spinT/0.52)*8)%4];
+   player.aim = ({down:Math.PI/2,left:Math.PI,up:-Math.PI/2,right:0})[player.facing];
+   if(player.spinT>=0.52){
+     player.spin=0; player.spinT=0;
+   }
+ }
+ // 回転斬りの全周攻撃判定
+ if(player.spin){
+   for(const e of enemies){
+     if(e.dead) continue;
+     const dx=e.x-player.x, dy=e.y-player.y;
+     if(dx*dx+dy*dy < 82*82){
+       if(!e.spinHit){
+         e.hp-=2;
+         e.spinHit=true;
+         e.hitFlash=.12;
+       }
+     }
+   }
+ }else{
+   for(const e of enemies) e.spinHit=false;
+ }
+
+
  player.attackCooldown=Math.max(0,player.attackCooldown-dt);player.attacking=Math.max(0,player.attacking-dt);player.skillT=Math.max(0,player.skillT-dt);player.inv=Math.max(0,player.inv-dt);if(props.water.frozen>0)props.water.frozen=Math.max(0,props.water.frozen-dt);
  let mx=stick.x+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),my=stick.y+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
  player.moveMag=m; if(m>.16){player.face=faceFromVec(mx,my);if(!player.shield)player.aim=Math.atan2(my,mx);player.walkPhase+=dt*(9+Math.min(1,m)*4)}
@@ -298,6 +326,29 @@ function drawShield(hx,hy,a,raised,sideView=false){
  ctx.restore();
 }
 function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.save();ctx.rotate(a);ctx.globalAlpha=.62*Math.sin(t*Math.PI);line(38,-5,112,-5,7,'rgba(255,255,255,.75)');line(45,7,100,7,4,'rgba(255,255,255,.45)');ctx.restore()}
+
+function drawSpinSlash(){
+ if(!player.spin || player.weapon!==0) return;
+ const t=player.spinT||0;
+ const prog=Math.min(1,t/0.52);
+ ctx.save();
+ ctx.translate(player.x-cam.x,player.y-cam.y-player.jumpZ);
+ // 円形残像
+ ctx.globalAlpha=0.58*(1-prog*0.25);
+ ctx.strokeStyle='#f5fbff';
+ ctx.lineWidth=18;
+ ctx.beginPath();
+ ctx.arc(0,0,58,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
+ ctx.stroke();
+ ctx.globalAlpha=0.8*(1-prog*0.15);
+ ctx.strokeStyle='#9fe8ff';
+ ctx.lineWidth=8;
+ ctx.beginPath();
+ ctx.arc(0,0,58,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
+ ctx.stroke();
+ ctx.restore();
+}
+
 function drawAttackArc(a){const w=player.weapon,r=weapons[w].range;ctx.save();ctx.rotate(a);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=w===2?19:11;ctx.lineCap='round';ctx.beginPath();const span=w===1?.45:1.15;ctx.arc(0,0,r*.76,-span/2,span/2);ctx.stroke();ctx.restore()}
 
 let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();requestAnimationFrame(loop)}requestAnimationFrame(loop);
