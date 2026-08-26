@@ -229,16 +229,19 @@ function drawPlayer(){
    drawWeapon(handR.x,handR.y+8,wa,thrust);
    redrawBodyLayer(f);
  }else if(f==='right'){
+   // 右向き：盾が最奥 → 武器/右手 → 身体。盾は身体にかなり隠れる。
+   const rsx=sx-13, rsy=sy+2;
+   drawShield(rsx,rsy,a,player.shield,true);
    drawWeapon(handR.x,handR.y,wa,thrust);
    redrawBodyLayer(f);
-   drawShield(sx,sy,a,player.shield,true);
  }else if(f==='left'){
-   drawShield(sx,sy,a,player.shield,true);
-   redrawBodyLayer(f);
-   // 右手と武器を一番手前に。剣の高さは低め。
+   // 左向き：武器/右手が最奥 → 身体 → 盾が最前面。
+   // 剣と手は身体・盾に大きく隠れる。
    const wy=handR.y+11;
-   line(rightX*8,9,handR.x,wy,10,'#111');line(rightX*8,9,handR.x,wy,5,'#f7fbff');
    drawWeapon(handR.x,wy,wa,thrust);
+   redrawBodyLayer(f);
+   const lsx=sx+10, lsy=sy;
+   drawShield(lsx,lsy,a,player.shield,true);
  }else{
    drawWeapon(handR.x,handR.y,wa,thrust);
    drawShield(sx,sy,a,player.shield,false);
