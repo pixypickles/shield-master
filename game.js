@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 33: 最初の浮遊草原ステージ
+// Prototype 34: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -704,8 +704,29 @@ function update(dt){
  player.iceTrail=player.iceTrail.filter(f=>f.life>0);
  // magic projectiles
  for(const pr of projectiles){
-   if(pr.hit)continue;pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
+   if(pr.hit)continue;
+   pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
    if(pr.life<=0||pr.x<0||pr.y<0||pr.x>world.w||pr.y>world.h){pr.hit=true;continue}
+
+   // 敵が撃った種・花粉弾は、プレイヤー専用の当たり判定。
+   // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
+   if(pr.enemyShot){
+     if(dist(pr.x,pr.y,player.x,player.y)<pr.r+player.r){
+       if(player.jumpT>0){
+         particle(player.x,player.y-45,'スカッ','#333',.3,13);
+       }else if(shieldBlocks({x:pr.x,y:pr.y})){
+         particle(pr.x,pr.y,pr.kind==='seed'?'カン！':'ポフン！','#111',.35,14);
+       }else if(player.inv<=0){
+         player.hp=Math.max(1,player.hp-pr.damage);
+         player.inv=.45;
+         particle(player.x,player.y-35,`-${pr.damage}`,'#c11',.45,16);
+       }
+       pr.hit=true;
+     }
+     // 敵弾はここで処理終了。ボス自身への衝突判定へ進ませない。
+     continue;
+   }
+
    if(pr.kind==='fire'){
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
    }else{
@@ -1044,7 +1065,25 @@ function drawObjectiveArrow(){
  ctx.restore();
 }
 
-function drawProjectile(pr){ctx.save();ctx.translate(pr.x,pr.y);const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);ctx.globalAlpha=.28;circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':pr.kind==='seed'?'#b8d46a':'#b8ecff','transparent',0);ctx.globalAlpha=1;circle(0,0,pr.r,pr.kind==='fire'?'#ff6247':pr.kind==='ice'?'#63d7ff':pr.kind==='seed'?'#708f35':'#63d7ff','#111',4);line(-pr.r-12,0,-pr.r+1,0,7,pr.kind==='fire'?'#ffcf58':'#eafcff');ctx.restore()}
+function drawProjectile(pr){
+ ctx.save();ctx.translate(pr.x,pr.y);
+ const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);
+ if(pr.kind==='seed'){
+   ctx.globalAlpha=.24;circle(0,0,pr.r+8,'#c9df78','transparent',0);
+   ctx.globalAlpha=1;
+   // 種らしい楕円形
+   ctx.fillStyle='#718f39';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.ellipse(0,0,pr.r+3,pr.r*.65,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+   line(-pr.r-10,0,-pr.r+2,0,5,'#a8c35e');
+ }else{
+   ctx.globalAlpha=.28;
+   circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':'#b8ecff','transparent',0);
+   ctx.globalAlpha=1;
+   circle(0,0,pr.r,pr.kind==='fire'?'#ff6247':'#63d7ff','#111',4);
+   line(-pr.r-12,0,-pr.r+1,0,7,pr.kind==='fire'?'#ffcf58':'#eafcff');
+ }
+ ctx.restore();
+}
 function drawEnemy(e){
  ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
  if(e.type==='grass'){
