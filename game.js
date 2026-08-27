@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 57: 最初の浮遊草原ステージ
+// Prototype 58: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -436,14 +436,15 @@ function skill(){
    // 槍：風車のように回して周囲を攻撃→最後に一歩踏み込み突き。
    player.skillKind='spear';
    player.skillT=.72;
+   player.spiral=0;
    particle(player.x,player.y,'風車突き！','#2f6db0',.4,18);
 
  }else if(player.weapon===2){
-   // ハンマー：ダッシュ→身体を一本軸にしてクルッ→横振り抜き
+   // ハンマー：剣の回転斬りのように、その場で明確に3回転。
    player.skillKind='hammer';
-   player.skillT=.70;
+   player.skillT=.90;
    player.skillSide=player.skillSide>0?-1:1;
-   particle(player.x,player.y,'旋回！','#7e20a6',.5,18);
+   particle(player.x,player.y,'三回転！','#7e20a6',.45,18);
 
  }else if(player.weapon===3){
    // 赤杖：炎の輪をまとってダッシュ
@@ -955,7 +956,9 @@ function update(dt){
      player.aim=sa;player.face=faceFromVec(Math.cos(sa),Math.sin(sa));player.skillZ=0;
      if(t<.46){
        mx=0;my=0;speed=0;
-       player.spiral=.10;player.spiralA=sa+t*18;
+       // 回転スキルではチャージ槍用の巨大な空気スパイラルを出さない。
+       // 見えるのは中央持ちで回っている槍そのものだけ。
+       player.spiral=0;
        // 回転中は周囲に当たり判定。敵ごとに短い間隔で最大2ヒット。
        const tick=Math.floor(t/.20);
        const key='p'+tick;
@@ -977,12 +980,12 @@ function update(dt){
      }
 
    }else if(player.skillKind==='hammer'){
-     // ハンマー：その場で剣の回転斬りのように3回転。
+     // ハンマー：スキル開始から終了まで、見た目にもきっちり3回転。
      mx=0;my=0;speed=0;player.skillZ=0;
-     const p=Math.min(1,t/.78);
+     const p=Math.min(1,t/.90);
      player.hammerSpin=p*Math.PI*6*player.skillSide;
      // 1回転ごとに1回ずつ当たり判定。
-     const spin=Math.min(2,Math.floor(p*3));
+     const spin=Math.min(2,Math.floor(Math.min(.999,p)*3));
      const key='hammerSpin'+spin;
      if(!player.skillHit.has(key)){
        player.skillHit.add(key);
@@ -2081,7 +2084,18 @@ function drawPlayer(){
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
  ctx.save();ctx.translate(player.x,player.y-lift-bounce);
- if(player.skillKind==='hammer'&&player.skillT>0&&player.skillElapsed>=.24){ctx.rotate(player.hammerSpin||0);}
+ if(player.skillKind==='hammer'&&player.skillT>0){ctx.rotate(player.hammerSpin||0);}
+ if(player.skillKind==='hammer'&&player.skillT>0){
+   ctx.save();
+   ctx.globalAlpha=.28;
+   ctx.strokeStyle='rgba(255,255,255,.9)';
+   ctx.lineWidth=8;
+   ctx.lineCap='round';
+   ctx.beginPath();
+   ctx.arc(0,0,70,-1.0,.35);
+   ctx.stroke();
+   ctx.restore();
+ }
  // shadow stays on the ground
  ctx.save();ctx.translate(0,lift+bounce);ctx.globalAlpha=.20;ctx.fillStyle='#111';ctx.beginPath();ctx.ellipse(0,37,28*(1-lift/235),11*(1-lift/235),0,0,7);ctx.fill();ctx.restore();
  const f=player.face,a=faceAngle(f),rightX=Math.cos(a+Math.PI/2),rightY=Math.sin(a+Math.PI/2),frontX=Math.cos(a),frontY=Math.sin(a);
