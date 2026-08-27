@@ -23,7 +23,7 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
 
 const enemies=[];
 function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,stagger:0,dead:false})}
@@ -72,40 +72,83 @@ function jump(){if(player.jumpT<=0){player.jumpT=player.jumpDur;player.shield=fa
 function skill(){
  if(player.skillT>0||player.jumpT>0)return;
  player.shield=false;
- const a=autoAim(faceAngle(player.face),Math.PI*.65,300);
+ const a=autoAim(faceAngle(player.face),Math.PI*.65,320);
  player.aim=a;
  player.skillBase=a;
  player.skillElapsed=0;
  player.skillHit=new Set();
+ player.skillPhase=0;
+ player.skillZ=0;
+ player.hammerSpin=0;
 
  if(player.weapon===0){
-   // 剣：敵へ直進 → 45度カクンと逸れる → 平行に斬り抜ける。
+   // 剣：直進→45度に折れる→ラリアット斬り
+   player.skillKind='sword';
    player.skillT=.46;
-   // 左右どちらへ逸れるかを交互にして、毎回同じ見た目になりすぎない。
    player.skillSide=player.skillSide>0?-1:1;
    particle(player.x,player.y,'斬り抜け！','#7e20a6',.5,18);
+
+ }else if(player.weapon===1){
+   // 槍：ダッシュ→ジャンプ→槍を下へ向けて着地
+   player.skillKind='spear';
+   player.skillT=.78;
+   particle(player.x,player.y,'飛槍！','#2f6db0',.5,18);
+
+ }else if(player.weapon===2){
+   // ハンマー：ダッシュ→身体を一本軸にしてクルッ→横振り抜き
+   player.skillKind='hammer';
+   player.skillT=.70;
+   player.skillSide=player.skillSide>0?-1:1;
+   particle(player.x,player.y,'旋回！','#7e20a6',.5,18);
+
+ }else if(player.weapon===3){
+   // 赤杖：炎の輪をまとってダッシュ
+   player.skillKind='fire';
+   player.skillT=.62;
+   particle(player.x,player.y,'炎輪！','#e34a24',.5,18);
+
  }else{
-   player.skillT=.28;
-   particle(player.x,player.y,'スキル！','#7e20a6',.5,18);
+   // 青杖：氷の板に乗ってサーフィン直進
+   player.skillKind='ice';
+   player.skillT=.68;
+   particle(player.x,player.y,'アイスサーフ！','#268bc1',.5,18);
  }
 }
 
 function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
 
 function fireMagic(w,charged,base){
- const speed=charged?560:470, damage=charged?3:2, radius=charged?16:11;
- // 魔法は杖の先端から発射。右手の位置→杖先までを描画と同じ計算にする。
+ // 杖チャージ：単発大弾ではなく、扇状の炎/吹雪を噴射する。
+ if(charged){
+   const kind=w===3?'fire':'ice';
+   const count=11;
+   for(let i=0;i<count;i++){
+     const spread=(i-(count-1)/2)/(count-1);
+     const a=base+spread*.72;
+     const speed=350+Math.random()*90;
+     const r=10+Math.random()*4;
+     projectiles.push({
+       x:player.x+Math.cos(a)*48,
+       y:player.y+Math.sin(a)*48,
+       vx:Math.cos(a)*speed,
+       vy:Math.sin(a)*speed,
+       r,life:.48+Math.random()*.18,kind,damage:1,charged:true,hit:false,spray:true
+     });
+   }
+   particle(player.x+Math.cos(base)*48,player.y+Math.sin(base)*48,w===3?'ゴォッ！':'ブワァ！',w===3?'#e43':'#268bc1',.35,17);
+   return;
+ }
+
+ const speed=470,damage=2,radius=11;
  const fa=faceAngle(player.face), rx=Math.cos(fa+Math.PI/2), ry=Math.sin(fa+Math.PI/2), fx=Math.cos(fa), fy=Math.sin(fa);
- let hx=player.x+rx*23+fx*5, hy=player.y+ry*19+fy*5+3;
- // 描画側の左右向き武器位置に合わせる。
+ let hx=player.x+rx*23+fx*5,hy=player.y+ry*19+fy*5+3;
  if(player.face==='right'){hx=player.x+20;hy=player.y+13;}
  else if(player.face==='left'){hx=player.x-18;hy=player.y+12;}
  const tip=56;
- const sx=hx+Math.cos(base)*tip, sy=hy+Math.sin(base)*tip;
- projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged,hit:false});
+ const sx=hx+Math.cos(base)*tip,sy=hy+Math.sin(base)*tip;
+ projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged:false,hit:false});
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
-
 function doAttack(charged=false){
  if(player.attackCooldown>0)return;
  const w=player.weapon, wp=weapons[w];
@@ -236,24 +279,21 @@ function update(dt){
  }
 
 
- player.attackCooldown=Math.max(0,player.attackCooldown-dt);player.attacking=Math.max(0,player.attacking-dt);player.skillT=Math.max(0,player.skillT-dt);player.inv=Math.max(0,player.inv-dt);if(props.water.frozen>0)props.water.frozen=Math.max(0,props.water.frozen-dt);
+ player.attackCooldown=Math.max(0,player.attackCooldown-dt);player.attacking=Math.max(0,player.attacking-dt);player.skillT=Math.max(0,player.skillT-dt);if(player.skillT<=0){player.skillZ=0;player.hammerSpin=0;player.skillKind='';}player.inv=Math.max(0,player.inv-dt);if(props.water.frozen>0)props.water.frozen=Math.max(0,props.water.frozen-dt);
  let mx=stick.x+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),my=stick.y+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
  player.moveMag=m; if(m>.16){player.face=faceFromVec(mx,my);if(!player.shield)player.aim=Math.atan2(my,mx);player.walkPhase+=dt*(9+Math.min(1,m)*4)}
  let speed=player.speed*(player.shield?.42:1);
  if(player.skillT>0){
-   if(player.weapon===0){
-     player.skillElapsed+=dt;
-     const t=player.skillElapsed;
+   player.skillElapsed+=dt;
+   const t=player.skillElapsed;
+
+   if(player.skillKind==='sword'){
      let sa=player.skillBase;
-     // 0〜0.14秒: 敵へ真っ直ぐ
-     // 0.14〜0.27秒: 45度カクンと逸れる
-     // 0.27秒〜: 元の方向と平行に斬り抜ける
-     if(t>=.14 && t<.27) sa=player.skillBase+player.skillSide*Math.PI/4;
-     else if(t>=.27) sa=player.skillBase;
+     if(t>=.14&&t<.27)sa=player.skillBase+player.skillSide*Math.PI/4;
+     else if(t>=.27)sa=player.skillBase;
      player.aim=sa;
      mx=Math.cos(sa)*2.6;my=Math.sin(sa)*2.6;speed=350;
      player.face=faceFromVec(mx,my);
-
      for(const e of enemies){
        if(e.dead||player.skillHit.has(e))continue;
        if(dist(player.x,player.y,e.x,e.y)<68){
@@ -262,10 +302,75 @@ function update(dt){
          if(e.hp<=0)e.dead=true;
        }
      }
-   }else{
-     mx=Math.cos(player.aim)*2.5;my=Math.sin(player.aim)*2.5;speed=330;
+
+   }else if(player.skillKind==='spear'){
+     // 0-.22 ダッシュ、.22-.58 ジャンプ、最後に槍着地。
+     mx=Math.cos(player.skillBase)*2.45;my=Math.sin(player.skillBase)*2.45;speed=315;
+     player.face=faceFromVec(mx,my);
+     if(t<.22){
+       player.skillZ=0;
+     }else{
+       const p=Math.min(1,(t-.22)/.48);
+       player.skillZ=Math.sin(p*Math.PI)*100;
+       if(p>.88&&!player.skillPhase){
+         player.skillPhase=1;
+         particle(player.x,player.y,'ズドッ！','#2f6db0',.45,20);
+         for(const e of enemies){
+           if(e.dead)continue;
+           if(dist(player.x,player.y,e.x,e.y)<74){
+             e.hp-=4;e.flash=.16;particle(e.x,e.y-20,'-4','#b31313',.45,16);
+             if(e.hp<=0)e.dead=true;
+           }
+         }
+       }
+     }
+
+   }else if(player.skillKind==='hammer'){
+     // 最初に短くダッシュ、その後その場で一本軸のスピン→横振り。
+     if(t<.24){
+       mx=Math.cos(player.skillBase)*2.35;my=Math.sin(player.skillBase)*2.35;speed=315;
+     }else{
+       mx=0;my=0;speed=0;
+       const p=Math.min(1,(t-.24)/.34);
+       player.hammerSpin=p*Math.PI*2.2*player.skillSide;
+       if(p>.72&&!player.skillPhase){
+         player.skillPhase=1;
+         particle(player.x,player.y,'ブォン！','#7e20a6',.45,20);
+         for(const e of enemies){
+           if(e.dead)continue;
+           if(dist(player.x,player.y,e.x,e.y)<105){
+             e.hp-=4;e.flash=.16;particle(e.x,e.y-20,'-4','#b31313',.45,16);
+             if(e.hp<=0)e.dead=true;
+           }
+         }
+       }
+     }
+
+   }else if(player.skillKind==='fire'){
+     mx=Math.cos(player.skillBase)*2.55;my=Math.sin(player.skillBase)*2.55;speed=340;
+     player.face=faceFromVec(mx,my);
+     // 地面に短時間残る火を置く。
+     if(!player.fireTrail.length || dist(player.x,player.y,player.fireTrail[player.fireTrail.length-1].x,player.fireTrail[player.fireTrail.length-1].y)>34){
+       player.fireTrail.push({x:player.x,y:player.y,life:1.6});
+     }
      for(const e of enemies){
-       if(!e.dead&&dist(player.x,player.y,e.x,e.y)<62){e.hp-=2;e.flash=.12;if(e.hp<=0)e.dead=true}
+       if(e.dead||player.skillHit.has(e))continue;
+       if(dist(player.x,player.y,e.x,e.y)<70){
+         e.hp-=3;e.flash=.15;player.skillHit.add(e);particle(e.x,e.y-20,'炎！','#e43',.4,15);
+         if(e.hp<=0)e.dead=true;
+       }
+     }
+
+   }else if(player.skillKind==='ice'){
+     mx=Math.cos(player.skillBase)*2.75;my=Math.sin(player.skillBase)*2.75;speed=355;
+     player.face=faceFromVec(mx,my);
+     for(const e of enemies){
+       if(e.dead||player.skillHit.has(e))continue;
+       if(dist(player.x,player.y,e.x,e.y)<72){
+         e.hp-=3;e.flash=.15;e.stagger=Math.max(e.stagger||0,.55);player.skillHit.add(e);
+         particle(e.x,e.y-20,'ガツン！','#268bc1',.4,15);
+         if(e.hp<=0)e.dead=true;
+       }
      }
    }
  }
@@ -273,6 +378,22 @@ function update(dt){
  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
  if(player.shield&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+6*dt)}
 
+
+ // 赤杖スキルの火の跡
+ for(const f of player.fireTrail){
+   f.life-=dt;
+   for(const e of enemies){
+     if(e.dead||f.life<=0)continue;
+     if(dist(f.x,f.y,e.x,e.y)<30){
+       e.fireTick=(e.fireTick||0)-dt;
+       if(e.fireTick<=0){
+         e.fireTick=.35;e.hp-=1;e.flash=.1;
+         if(e.hp<=0)e.dead=true;
+       }
+     }
+   }
+ }
+ player.fireTrail=player.fireTrail.filter(f=>f.life>0);
  // magic projectiles
  for(const pr of projectiles){
    if(pr.hit)continue;pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
@@ -315,6 +436,7 @@ function drawWorld(){
  for(const e of enemies)if(!e.dead)drawEnemy(e);
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
+ drawStaffSkillEffects();
  drawSwordSkillEffect();
  drawChargeEffects();
  drawSpinSlash();
@@ -340,11 +462,12 @@ function drawPlayer(){
  const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
  const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight:0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
- const lift=Math.max(normalLift,player.jumpZ||0);
+ const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
  const moving=player.moveMag>.16&&player.jumpT<=0;
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
  ctx.save();ctx.translate(player.x,player.y-lift-bounce);
+ if(player.skillKind==='hammer'&&player.skillT>0&&player.skillElapsed>=.24){ctx.rotate(player.hammerSpin||0);}
  // shadow stays on the ground
  ctx.save();ctx.translate(0,lift+bounce);ctx.globalAlpha=.20;ctx.fillStyle='#111';ctx.beginPath();ctx.ellipse(0,37,28*(1-lift/235),11*(1-lift/235),0,0,7);ctx.fill();ctx.restore();
  const f=player.face,a=faceAngle(f),rightX=Math.cos(a+Math.PI/2),rightY=Math.sin(a+Math.PI/2),frontX=Math.cos(a),frontY=Math.sin(a);
@@ -388,7 +511,12 @@ function drawPlayer(){
  if(player.weapon===0 && player.skillT>0 && player.skillElapsed>=.14){
    wa=player.aim + player.skillSide*Math.PI/2;
  }
- // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
+ 
+ if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed>=.22){
+   wa=Math.PI/2;
+   thrust=8;
+ }
+// 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
  if(player.attacking>0 && !player.spin){
    const t=1-Math.max(0,Math.min(1,player.attacking/player.attackMax));
 
@@ -524,6 +652,53 @@ function drawShield(hx,hy,a,raised,sideView=false){
 function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.save();ctx.rotate(a);ctx.globalAlpha=.62*Math.sin(t*Math.PI);line(38,-5,112,-5,7,'rgba(255,255,255,.75)');line(45,7,100,7,4,'rgba(255,255,255,.45)');ctx.restore()}
 
 
+
+
+function drawStaffSkillEffects(){
+ if(player.skillT<=0)return;
+ ctx.save();
+ ctx.translate(player.x,player.y-(player.skillZ||0));
+
+ if(player.skillKind==='fire'){
+   const t=performance.now()*.018;
+   ctx.globalAlpha=.8;
+   ctx.strokeStyle='rgba(255,110,30,.95)';
+   ctx.lineWidth=12;
+   ctx.beginPath();ctx.arc(0,0,42,0,Math.PI*2);ctx.stroke();
+   ctx.strokeStyle='rgba(255,220,90,.9)';
+   ctx.lineWidth=5;
+   for(let i=0;i<5;i++){
+     const a=t+i*Math.PI*2/5;
+     ctx.beginPath();
+     ctx.arc(Math.cos(a)*35,Math.sin(a)*35,9,0,Math.PI*2);
+     ctx.stroke();
+   }
+ }else if(player.skillKind==='ice'){
+   // サーフィン用の板状の氷
+   ctx.rotate(player.skillBase);
+   ctx.globalAlpha=.9;
+   ctx.fillStyle='rgba(190,240,255,.9)';
+   ctx.strokeStyle='#157fa8';ctx.lineWidth=5;
+   ctx.beginPath();
+   ctx.moveTo(-28,-15);ctx.lineTo(42,-9);ctx.lineTo(55,0);ctx.lineTo(42,9);ctx.lineTo(-28,15);ctx.closePath();
+   ctx.fill();ctx.stroke();
+   ctx.globalAlpha=.35;
+   ctx.strokeStyle='rgba(235,255,255,.95)';ctx.lineWidth=10;
+   ctx.beginPath();ctx.moveTo(-65,0);ctx.lineTo(-18,0);ctx.stroke();
+ }
+ ctx.restore();
+
+ // 地面の火跡
+ if(player.fireTrail.length){
+   for(const f of player.fireTrail){
+     ctx.save();ctx.globalAlpha=Math.min(.7,f.life);
+     ctx.fillStyle='rgba(255,85,20,.8)';
+     ctx.beginPath();ctx.arc(f.x,f.y,18,0,Math.PI*2);ctx.fill();
+     ctx.strokeStyle='rgba(255,210,60,.9)';ctx.lineWidth=4;ctx.stroke();
+     ctx.restore();
+   }
+ }
+}
 
 function drawSwordSkillEffect(){
  if(player.weapon!==0 || player.skillT<=0 || player.skillElapsed<.14)return;
