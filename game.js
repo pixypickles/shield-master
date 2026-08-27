@@ -23,9 +23,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 26: 最初の浮遊草原ステージ
+// Prototype 28: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -34,7 +34,7 @@ const stage={
  bossStarted:false,
  bossHp:18,
  bossMaxHp:18,
- checkpoint:{x:220,y:560},
+ checkpoint:{x:230,y:545},
  messageStep:0
 };
 
@@ -52,13 +52,16 @@ const unlockedShields=[true,false,false,false,false];
 
 
 const enemies=[];
-function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,stagger:0,dead:false})}
-[[500,560],[760,520],[960,650],[1110,490]].forEach((p,i)=>spawnEnemy(...p,i===3?'brute':'blob'));
+function spawnEnemy(x,y,type='grass'){
+ const flower=type==='flower';
+ enemies.push({x,y,r:flower?24:22,hp:flower?4:3,maxHp:flower?4:3,speed:flower?58:74,type,hit:0,attackCd:Math.random()*.8+.3,flash:0,stagger:0,dead:false});
+}
+[[520,520],[760,470],[980,610],[1190,500],[1290,625]].forEach((p,i)=>spawnEnemy(...p,i===1||i===3?'flower':'grass'));
 
 
 const boss={
- x:1330,y:610,r:42,hp:18,maxHp:18,active:false,dead:false,
- speed:64,attackCd:1.2,flash:0,phase:0
+ x:1540,y:590,r:48,hp:20,maxHp:20,active:false,dead:false,
+ speed:46,attackCd:1.05,flash:0,phase:0
 };
 
 const props={
@@ -69,18 +72,36 @@ const props={
 };
 
 const stageGeo={
- // 一本道すぎないが迷いにくい、少し細めの浮遊草原。
+ // 最初の島は基本広め。島のつなぎだけ少し細くする。
  path:[
-   {x:120,y:430,w:390,h:260},
-   {x:430,y:455,w:300,h:210},
-   {x:700,y:420,w:320,h:260},
-   {x:980,y:455,w:280,h:220},
-   {x:1230,y:500,w:250,h:220}
+   {x:70,y:330,w:500,h:390},
+   {x:500,y:385,w:360,h:285},
+   {x:800,y:325,w:430,h:400},
+   {x:1160,y:390,w:360,h:310},
+   {x:1450,y:430,w:300,h:300}
  ],
- bossArena:{x:1190,y:465,w:300,h:290},
- nextIsland:{x:1580,y:500,w:280,h:250},
- bridge:{x1:1465,y:610,x2:1585,y2:610}
+ bossArena:{x:1370,y:370,w:390,h:370},
+ nextIsland:{x:1850,y:470,w:320,h:280},
+ bridge:{x1:1740,y1:590,x2:1860,y2:590}
 };
+
+const stage2Geo={
+ path:[
+  {x:2050,y:360,w:480,h:390},
+  {x:2460,y:410,w:350,h:290},
+  {x:2750,y:340,w:470,h:410},
+  {x:3140,y:390,w:390,h:330},
+  {x:3460,y:350,w:500,h:420}
+ ],
+ arena:{x:3460,y:350,w:500,h:420}
+};
+const stage2Enemies=[];
+function spawnStage2Enemy(x,y,type='acorn'){
+ stage2Enemies.push({x,y,type,r:type==='walnut'?30:23,hp:type==='walnut'?7:4,maxHp:type==='walnut'?7:4,
+ speed:type==='walnut'?45:68,attackCd:.5+Math.random(),flash:0,dead:false,open:0});
+}
+[[2250,530,'acorn'],[2520,510,'flower'],[2880,570,'walnut'],[3090,470,'acorn'],[3310,560,'walnut'],[3650,520,'walnut']].forEach(v=>spawnStage2Enemy(...v));
+
 
 
 
@@ -136,7 +157,11 @@ function renderEquipPanel(){
      const b=document.createElement('button');
      b.className='equipItem'+(!unlockedWeapons[i]?' locked':'')+(player.weapon===i?' selected':'');
      b.textContent=unlockedWeapons[i]?w.name:'？？？';
-     if(unlockedWeapons[i])b.onclick=()=>{player.weapon=i;weaponNameEl.textContent=w.name;renderEquipPanel()};
+     if(unlockedWeapons[i])b.onclick=()=>{
+       player.weapon=i;weaponNameEl.textContent=w.name;
+       shortcut={type:'weapon',index:i,returnType:'weapon',returnIndex:i};
+       updateShortcutLabel();renderEquipPanel()
+     };
      equipItems.appendChild(b);
    });
  }else{
@@ -144,7 +169,11 @@ function renderEquipPanel(){
      const b=document.createElement('button');
      b.className='equipItem'+(!unlockedShields[i]?' locked':'')+(player.shieldType===i?' selected':'');
      b.textContent=unlockedShields[i]?sh.name:'？？？';
-     if(unlockedShields[i])b.onclick=()=>{player.shieldType=i;say(`${sh.name} を装備`);renderEquipPanel()};
+     if(unlockedShields[i])b.onclick=()=>{
+       player.shieldType=i;
+       shortcut={type:'shield',index:i,returnType:'shield',returnIndex:i};
+       updateShortcutLabel();say(`${sh.name} を装備／SHORT登録`);renderEquipPanel()
+     };
      equipItems.appendChild(b);
    });
  }
@@ -152,6 +181,32 @@ function renderEquipPanel(){
 document.getElementById('equipWeaponTab').onclick=()=>{equipMode='weapon';renderEquipPanel()};
 document.getElementById('equipShieldTab').onclick=()=>{equipMode='shield';renderEquipPanel()};
 document.getElementById('equipClose').onclick=closeEquipPanel;
+
+
+const shortcutBtn=document.getElementById('shortcutBtn');
+const shortcutLabel=document.getElementById('shortcutLabel');
+function updateShortcutLabel(){
+ if(shortcut.index<0){shortcutLabel.textContent='なし';return}
+ shortcutLabel.textContent=shortcut.type==='weapon'?weapons[shortcut.index].name:shields[shortcut.index].name;
+}
+shortcutBtn.addEventListener('pointerdown',(ev)=>{
+ ev.preventDefault();
+ if(shortcut.index<0){say('装備画面でSHORTに登録');return}
+ if(shortcut.type==='weapon'){
+   if(player.weapon!==shortcut.index){
+     shortcut.returnType='weapon';shortcut.returnIndex=player.weapon;
+     player.weapon=shortcut.index;weaponNameEl.textContent=weapons[player.weapon].name;
+   }else if(shortcut.returnType==='weapon'&&shortcut.returnIndex>=0&&unlockedWeapons[shortcut.returnIndex]){
+     const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;player.weapon=back;weaponNameEl.textContent=weapons[player.weapon].name;
+   }
+ }else{
+   if(player.shieldType!==shortcut.index){
+     shortcut.returnType='shield';shortcut.returnIndex=player.shieldType;player.shieldType=shortcut.index;
+   }else if(shortcut.returnType==='shield'&&shortcut.returnIndex>=0&&unlockedShields[shortcut.returnIndex]){
+     const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;player.shieldType=back;
+   }
+ }
+});
 
 function jump(){if(player.jumpT<=0){player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
@@ -245,6 +300,28 @@ function fireMagic(w,charged,base){
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
 
+
+function hitStage2(damage,range,base,cone,weapon,charged=false){
+ if(!stage2Started)return;
+ for(const e of stage2Enemies){
+  if(e.dead)continue;
+  const d=dist(player.x,player.y,e.x,e.y);
+  const a=Math.atan2(e.y-player.y,e.x-player.x);
+  if(d>range+e.r||Math.abs(angleDiff(a,base))>cone/2)continue;
+
+  let dmg=damage;
+  if(e.type==='walnut'){
+    // 剣は殻に弾かれる。ハンマーは特効。槍は細い隙間を突くイメージ。
+    if(weapon===0){dmg=0;particle(e.x,e.y-25,'カキン！','#111',.4,16)}
+    else if(weapon===2){dmg=charged?7:4}
+    else if(weapon===1){dmg=charged?4:2}
+    else dmg=1;
+  }
+  if(dmg>0){e.hp-=dmg;e.flash=.14;particle(e.x,e.y-25,`-${dmg}`,'#b31313',.4,15)}
+  if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15)}
+ }
+}
+
 function hitBoss(damage,range,base,cone=Math.PI*2){
  if(!boss.active||boss.dead)return;
  const d=dist(player.x,player.y,boss.x,boss.y);
@@ -267,7 +344,7 @@ function doAttack(charged=false){
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
    for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;e.flash=.14;particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
-   hitBoss(3,range+38,base,Math.PI*2);
+   hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2,w,true);
    return;
  }
 
@@ -287,7 +364,7 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,230,base,.55);
+   hitBoss(4,230,base,.55);hitStage2(4,230,base,.55,w,true);
    for(const r of props.rocks){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
@@ -313,6 +390,7 @@ function doAttack(charged=false){
  let cone=w===1?.34:1.05;
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?3:1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
  hitBoss(w===2?3:1,range,base,cone);
+ hitStage2(w===2?3:1,range,base,cone,w,false);
  if(w===0){for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}}
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
  if(w===1){for(const sw of props.switches){if(!sw.on&&dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
@@ -357,6 +435,7 @@ function update(dt){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
      }
      if(boss.active&&!boss.dead&&dist(player.x,player.y,boss.x,boss.y)<145){boss.hp-=dist(player.x,player.y,boss.x,boss.y)<62?5:1;boss.flash=.16;}
+     for(const e of stage2Enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<110){let dd=e.type==='walnut'?7:4;e.hp-=dd;e.flash=.16;if(e.hp<=0)e.dead=true}}
      for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<92){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.5,17)}}
    }
    if(player.hammerSmash<=0){
@@ -514,6 +593,7 @@ function update(dt){
    const by=stageGeo.bridge.y1;
    if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<55)safe=true;
    if(onRect(stageGeo.nextIsland))safe=true;
+   if(stage2Geo.path.some(onRect))safe=true;
  }
  if(!safe){
    player.hp=Math.max(1,player.hp-15);
@@ -561,13 +641,13 @@ function update(dt){
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
- for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='brute'?1.35:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='brute'?24:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='brute'?18:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
+ for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='flower'?1.15:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='flower'?18:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='flower'?8:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
 
  // 最初の島のボス：奥の広場へ入ると戦闘開始。
- if(!stage.bossDefeated && !boss.active && player.x>1180){
+ if(!stage.bossDefeated && !boss.active && player.x>1360){
    boss.active=true;
    stage.bossStarted=true;
-   say('草原の守護者！');
+   say('花の守護者！');
  }
  if(boss.active&&!boss.dead){
    boss.flash=Math.max(0,boss.flash-dt);
@@ -584,6 +664,26 @@ function update(dt){
      boss.dead=true;boss.active=false;stage.bossDefeated=true;stage.bridgeOpen=true;
      particle(boss.x,boss.y,'撃破！','#fff',.8,26);
      say('虹の橋が現れた！');
+   }
+ }
+
+
+ if(stage.bridgeOpen && player.x>2030 && !stage2Started){
+   stage2Started=true;currentStage=2;unlockedWeapons[1]=true;
+   stage.checkpoint={x:2150,y:550};
+   say('第2島！ 槍を手に入れた！');
+ }
+
+ if(stage2Started){
+   for(const e of stage2Enemies){
+     if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);
+     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+     if(d>62){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+     else if(e.attackCd<=0){
+       e.attackCd=1;
+       if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){player.hp=Math.max(1,player.hp-10);player.inv=.6;particle(player.x,player.y-35,'-10','#c11',.4,16)}
+       else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
+     }
    }
  }
 
@@ -611,6 +711,18 @@ function drawWorld(){
    ctx.beginPath();ctx.moveTo(r.x+25,r.y+r.h);ctx.lineTo(r.x+r.w-25,r.y+r.h);ctx.lineTo(r.x+r.w-70,r.y+r.h+55);ctx.lineTo(r.x+70,r.y+r.h+55);ctx.closePath();ctx.fill();
    ctx.globalAlpha=1;
  }
+
+ // 第2島：少し濃い草と木の実が多い草原
+ if(stage.bridgeOpen){
+   for(const r of stage2Geo.path){
+     ctx.fillStyle='#69b85f';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
+     ctx.fillStyle='#73523a';ctx.globalAlpha=.9;
+     ctx.beginPath();ctx.moveTo(r.x+30,r.y+r.h);ctx.lineTo(r.x+r.w-30,r.y+r.h);ctx.lineTo(r.x+r.w-80,r.y+r.h+58);ctx.lineTo(r.x+80,r.y+r.h+58);ctx.closePath();ctx.fill();
+     ctx.globalAlpha=1;
+   }
+ }
+
  // ボス後に現れる虹の橋
  if(stage.bridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
@@ -625,8 +737,8 @@ function drawWorld(){
  }
 
  // 少し狭めの「進む場所」が読める道。広場は残しつつ迷いにくくする。
- ctx.strokeStyle='#b8e3a2';ctx.lineWidth=250;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
- ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=190;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
+ ctx.strokeStyle='#b8e3a2';ctx.lineWidth=320;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
+ ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=245;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  // ground patches
  ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
  // water
@@ -639,23 +751,43 @@ function drawWorld(){
  for(const pr of projectiles)drawProjectile(pr);
  for(const e of enemies)if(!e.dead)drawEnemy(e);
 
- if(!boss.dead && boss.active){
-   ctx.save();ctx.translate(boss.x,boss.y);
-   if(boss.flash>0)ctx.globalAlpha=.55;
-   circle(0,0,boss.r,'#d95f4e','#111',8);
-   circle(-14,-7,5,'#111','#111',1);circle(14,-7,5,'#111','#111',1);
-   line(-15,15,15,15,6,'#111');
-   // 角
-   ctx.fillStyle='#f0d36a';ctx.strokeStyle='#111';ctx.lineWidth=5;
-   ctx.beginPath();ctx.moveTo(-28,-25);ctx.lineTo(-45,-52);ctx.lineTo(-16,-36);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.beginPath();ctx.moveTo(28,-25);ctx.lineTo(45,-52);ctx.lineTo(16,-36);ctx.closePath();ctx.fill();ctx.stroke();
+ if(stage.bridgeOpen){
+  for(const e of stage2Enemies){
+   if(e.dead)continue;
+   ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+   if(e.type==='walnut'){
+     // 硬いクルミ。わずかな顔の隙間。
+     ctx.fillStyle='#9b6637';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.ellipse(0,0,29,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+     line(0,-29,0,29,5,'#5d351f');
+     ctx.fillStyle='#18120e';ctx.fillRect(-5,-10,10,20);
+     circle(-1,-4,2.5,'#fff','#111',1);
+   }else if(e.type==='acorn'){
+     circle(0,2,21,'#a86a36','#111',6);
+     ctx.fillStyle='#6c4828';ctx.strokeStyle='#111';ctx.lineWidth=5;
+     ctx.beginPath();ctx.arc(0,-8,22,Math.PI,Math.PI*2);ctx.lineTo(20,-6);ctx.lineTo(-20,-6);ctx.closePath();ctx.fill();ctx.stroke();
+     line(-7,18,-10,30,7,'#111');line(7,18,10,30,7,'#111');
+     circle(-6,1,3,'#111','#111',1);circle(6,1,3,'#111','#111',1);
+   }else{
+     // stage1 flower reuse-ish
+     for(let i=0;i<8;i++){const aa=i*Math.PI/4;ctx.save();ctx.translate(Math.cos(aa)*18,Math.sin(aa)*18-8);ctx.rotate(aa);ctx.fillStyle='#f49ad0';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,9,15,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+     circle(0,-8,15,'#ffd85a','#111',5);line(0,6,0,28,8,'#111');line(0,6,0,28,4,'#4fae52');
+   }
    ctx.restore();
-   // boss hp
-   ctx.fillStyle='#111';ctx.fillRect(boss.x-80,boss.y-72,160,14);
-   ctx.fillStyle='#e84a3a';ctx.fillRect(boss.x-76,boss.y-68,152*Math.max(0,boss.hp/boss.maxHp),6);
+  }
  }
 
- // 氷板・炎輪など移動スキルの土台を先に描く。
+
+ if(!boss.dead && boss.active){
+   ctx.save();ctx.translate(boss.x,boss.y);if(boss.flash>0)ctx.globalAlpha=.55;
+   line(0,15,0,55,18,'#111');line(0,15,0,55,10,'#4e9e49');
+   line(-4,48,-28,68,12,'#111');line(-4,48,-28,68,6,'#765038');
+   line(4,48,28,68,12,'#111');line(4,48,28,68,6,'#765038');
+   for(let i=0;i<10;i++){const aa=i*Math.PI/5;ctx.save();ctx.translate(Math.cos(aa)*39,Math.sin(aa)*39-15);ctx.rotate(aa);ctx.fillStyle=i%2?'#f092ce':'#ef70bd';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,0,15,28,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+   circle(0,-15,34,'#ffd552','#111',7);circle(-11,-20,5,'#111','#111',1);circle(11,-20,5,'#111','#111',1);line(-13,-1,13,-1,6,'#111');
+   ctx.restore();
+   ctx.fillStyle='#111';ctx.fillRect(boss.x-90,boss.y-95,180,16);ctx.fillStyle='#e84a3a';ctx.fillRect(boss.x-86,boss.y-91,172*Math.max(0,boss.hp/boss.maxHp),8);
+ }
  drawStaffSkillEffects();
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
@@ -670,7 +802,8 @@ function drawWorld(){
 function drawObjectiveArrow(){
  let tx,ty;
  if(!stage.bossDefeated){tx=boss.x;ty=boss.y;}
- else{tx=stageGeo.nextIsland.x+80;ty=stageGeo.nextIsland.y+110;}
+ else if(!stage2Started){tx=stage2Geo.path[0].x+120;ty=stage2Geo.path[0].y+150;}
+ else{tx=stage2Geo.path[stage2Geo.path.length-1].x+220;ty=stage2Geo.path[stage2Geo.path.length-1].y+190;}
 
  const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
  if(d<220)return;
@@ -683,7 +816,22 @@ function drawObjectiveArrow(){
 }
 
 function drawProjectile(pr){ctx.save();ctx.translate(pr.x,pr.y);const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);ctx.globalAlpha=.28;circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':'#b8ecff','transparent',0);ctx.globalAlpha=1;circle(0,0,pr.r,pr.kind==='fire'?'#ff6247':'#63d7ff','#111',4);line(-pr.r-12,0,-pr.r+1,0,7,pr.kind==='fire'?'#ffcf58':'#eafcff');ctx.restore()}
-function drawEnemy(e){ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;circle(0,0,e.r,e.type==='brute'?'#e7685d':'#e991d1','#111',6);circle(-8,-4,3,'#111','#111',1);circle(8,-4,3,'#111','#111',1);line(-9,9,9,9,4,'#111');ctx.restore()}
+function drawEnemy(e){
+ ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+ if(e.type==='grass'){
+   line(-7,12,-10,27,9,'#111');line(-7,12,-10,27,5,'#765038');
+   line(7,12,10,27,9,'#111');line(7,12,10,27,5,'#765038');
+   for(let i=-2;i<=2;i++){ctx.save();ctx.rotate(i*.27);ctx.fillStyle='#42b84e';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,-6,9,27,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+   circle(-7,-3,3,'#111','#111',1);circle(7,-3,3,'#111','#111',1);line(-7,8,7,8,4,'#111');
+ }else{
+   line(0,5,0,24,10,'#111');line(0,5,0,24,5,'#4fae52');
+   line(-2,21,-12,31,8,'#111');line(-2,21,-12,31,4,'#765038');
+   line(2,21,12,31,8,'#111');line(2,21,12,31,4,'#765038');
+   for(let i=0;i<8;i++){const aa=i*Math.PI/4;ctx.save();ctx.translate(Math.cos(aa)*18,Math.sin(aa)*18-8);ctx.rotate(aa);ctx.fillStyle='#f49ad0';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,9,15,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+   circle(0,-8,15,'#ffd85a','#111',5);circle(-5,-11,2.5,'#111','#111',1);circle(5,-11,2.5,'#111','#111',1);line(-6,-2,6,-2,3,'#111');
+ }
+ ctx.restore();
+}
 
 function drawPlayer(){
  const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
@@ -1092,4 +1240,9 @@ let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);
 // keyboard fallback
 addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='j')player.shield=true;if(k==='k')doAttack(false);if(k==='l')jump();if(k==='i')skill();if(k==='q')openEquipPanel()});
 addEventListener('keyup',e=>{if(e.key.toLowerCase()==='j')player.shield=false});
-})();
+})();let shortcut={type:null,index:-1,returnType:null,returnIndex:-1};
+let currentStage=1;
+let stage2Started=false;
+let stage2BossDefeated=false;
+
+
