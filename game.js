@@ -23,9 +23,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashDir:0,dashAttack:false,dashShieldHit:new Set()};
 
-// Prototype 38: 最初の浮遊草原ステージ
+// Prototype 39: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -195,10 +195,24 @@ function faceAngle(f){return ({right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2
 
 let stick={x:0,y:0,id:null};
 const zone=document.getElementById('stickZone'), knob=document.getElementById('stickKnob');
-function setStick(clientX,clientY){const r=zone.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=clientX-cx,dy=clientY-cy;const m=Math.hypot(dx,dy),max=44;if(m>max){dx=dx/m*max;dy=dy/m*max}stick.x=dx/max;stick.y=dy/max;knob.style.transform=`translate(${dx}px,${dy}px)`}
+let lastFlickTime=0,lastFlickDir=null,stickWasNeutral=true;
+function setStick(clientX,clientY){
+ const r=zone.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=clientX-cx,dy=clientY-cy;
+ const m=Math.hypot(dx,dy),max=44;if(m>max){dx=dx/m*max;dy=dy/m*max}
+ stick.x=dx/max;stick.y=dy/max;knob.style.transform=`translate(${dx}px,${dy}px)`;
+ const mag=Math.hypot(stick.x,stick.y);
+ if(mag>.72&&stickWasNeutral){
+  const a=Math.atan2(stick.y,stick.x),dir=Math.round(a/(Math.PI/2)),now=performance.now();
+  if(lastFlickDir===dir&&now-lastFlickTime<330&&player.skillT<=0){
+   player.dashT=.26;player.dashDir=a;player.dashAttack=false;player.dashShieldHit=new Set();
+   particle(player.x,player.y+20,'シュッ！','#fff',.25,14);lastFlickTime=0;lastFlickDir=null;
+  }else{lastFlickTime=now;lastFlickDir=dir}
+  stickWasNeutral=false;
+ }else if(mag<.22)stickWasNeutral=true;
+}
 zone.addEventListener('pointerdown',e=>{stick.id=e.pointerId;zone.setPointerCapture(e.pointerId);setStick(e.clientX,e.clientY)});
 zone.addEventListener('pointermove',e=>{if(e.pointerId===stick.id)setStick(e.clientX,e.clientY)});
-function stickEnd(e){if(e.pointerId!==stick.id)return;stick.id=null;stick.x=stick.y=0;knob.style.transform='translate(0,0)'}
+function stickEnd(e){if(e.pointerId!==stick.id)return;stick.id=null;stick.x=stick.y=0;stickWasNeutral=true;knob.style.transform='translate(0,0)'}
 zone.addEventListener('pointerup',stickEnd);zone.addEventListener('pointercancel',stickEnd);
 
 const shieldBtn=document.getElementById('shieldBtn'), attackBtn=document.getElementById('attackBtn');
@@ -495,6 +509,8 @@ function hitBoss(damage,range,base,cone=Math.PI*2){
 
 function doAttack(charged=false){
  if(player.attackCooldown>0)return;
+ const wasDash=player.dashT>0;
+ if(wasDash)player.dashAttack=true;
  const w=player.weapon, wp=weapons[w];
  const jumpStrike=player.jumpT>0&&!charged;
  let range=wp.range*(charged?1.45:1);
@@ -552,9 +568,9 @@ function doAttack(charged=false){
  if(w>=3){fireMagic(w,charged,base);return;}
 
  let cone=w===1?.34:1.05;
- for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(w===2?4:3);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
- hitBoss(jumpStrike?5:(w===2?4:3),range,base,cone);
- hitStage2(jumpStrike?5:(w===2?4:3),range,base,cone);hitStage3(jumpStrike?5:(w===2?4:3),range,base,cone,w,false);hitStage45(jumpStrike?5:(w===2?4:3),range,base,cone,w);
+ for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
+ hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
+ hitStage2(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitStage3(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w,false);hitStage45(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w);
  if(w===0){
   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
@@ -640,7 +656,12 @@ function update(dt){
 
 
  player.attackCooldown=Math.max(0,player.attackCooldown-dt);player.attacking=Math.max(0,player.attacking-dt);player.skillT=Math.max(0,player.skillT-dt);if(player.skillT<=0){player.skillZ=0;player.hammerSpin=0;player.skillKind='';}player.inv=Math.max(0,player.inv-dt);if(props.water.frozen>0)props.water.frozen=Math.max(0,props.water.frozen-dt);
- let mx=stick.x+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),my=stick.y+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
+ let mx=stick.x+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),my=stick.y+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);
+ if(player.dashT>0&&player.skillT<=0){
+   player.dashT=Math.max(0,player.dashT-dt);
+   mx=Math.cos(player.dashDir)*1.55;my=Math.sin(player.dashDir)*1.55;
+   player.face=faceFromVec(mx,my);
+ }let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
  player.moveMag=m; if(m>.16){player.face=faceFromVec(mx,my);if(!player.shield)player.aim=Math.atan2(my,mx);player.walkPhase+=dt*(9+Math.min(1,m)*4)}
  let speed=player.speed*(player.shield?.42:1)*shields[player.shieldType].move;
  if(player.skillT>0){
@@ -701,6 +722,8 @@ function update(dt){
          hitStage2(7,90,player.skillBase,Math.PI*.9);hitStage3(7,90,player.skillBase,Math.PI*.9,1,true);hitStage45(7,90,player.skillBase,Math.PI*.9,1);
        }
      }else{
+       // 一度目の着地で跳ね返る瞬間は自動で盾を構える。
+       player.shield=true;shieldBtn.classList.add('active');
        const p=Math.min(1,(t-.48)/.30);
        player.skillZ=Math.sin(p*Math.PI)*55;
        if(p>.86&&player.skillPhase===1){
@@ -786,7 +809,20 @@ function update(dt){
  for(const tr of props.smallTrees){
   if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
  }
- for(const g of guardRails){
+ 
+ if(player.dashT>0&&player.shield){
+   const bashList=[...enemies,...stage2Enemies,...stage3Enemies,...stage4Enemies];
+   for(const e of bashList){
+    if(e.dead||player.dashShieldHit.has(e))continue;
+    if(dist(player.x,player.y,e.x,e.y)<player.r+e.r+20){
+      player.dashShieldHit.add(e);
+      const dx=e.x-player.x,dy=e.y-player.y,dd=Math.hypot(dx,dy)||1;
+      e.x+=dx/dd*125;e.y+=dy/dd*125;e.flash=.2;e.stagger=.55;
+      particle(e.x,e.y-18,'ドン！','#fff',.35,17);
+    }
+   }
+ }
+for(const g of guardRails){
    const px=clamp(player.x,g.x,g.x+g.w),py=clamp(player.y,g.y,g.y+g.h);
    if((player.x-px)**2+(player.y-py)**2<28*28){player.x=prevX;player.y=prevY;break}
  }
@@ -1038,9 +1074,12 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
     if(d>64){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
     else if(e.attackCd<=0){
      e.attackCd=e.type==='thorn'?1.15:.9;
-     if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){
-      const dmg=e.type==='thorn'?8:6;const got=takeDamage(dmg);player.inv=.6;
-      particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+     if(player.jumpT<=0&&!shieldBlocks(e)){
+      if(e.type==='thorn'&&player.inv<=0){
+       const got=takeDamage(6);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+      }else{
+       const dx=player.x-e.x,dy=player.y-e.y,dd=Math.hypot(dx,dy)||1;player.x+=dx/dd*7;player.y+=dy/dd*7;
+      }
      }else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
     }
    }
@@ -1123,6 +1162,22 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
  for(let i=healDrops.length-1;i>=0;i--)if(healDrops[i].life<=0)healDrops.splice(i,1);
+
+
+ function enemyOnGround(e){
+  const grounds=[...stageGeo.path];
+  if(stage.bridgeOpen)grounds.push(...stage2Geo.path);
+  if(stage2BridgeOpen)grounds.push(...stage3Geo.path);
+  if(stage3BridgeOpen)grounds.push(...stage4Geo.path);
+  if(stage4BridgeOpen)grounds.push(...stage5Geo.path);
+  return grounds.some(r=>e.x>=r.x-8&&e.x<=r.x+r.w+8&&e.y>=r.y-8&&e.y<=r.y+r.h+8);
+ }
+ for(const e of [...enemies,...stage2Enemies,...stage3Enemies,...stage4Enemies]){
+  if(!e.dead&&!enemyOnGround(e)){
+   e.dead=true;particle(e.x,e.y,'ヒュー…','#555',.5,15);
+   killDrop(e,.25);
+  }
+ }
 
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;
