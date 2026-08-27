@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 61: 最初の浮遊草原ステージ
+// Prototype 65: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -80,10 +80,10 @@ const props={
  rocks:[{x:1110,y:655,dead:false},{x:1165,y:670,dead:false}],
  water:{x:260,y:590,w:300,h:105,frozen:0},
  // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
- shallowWater:{x:650,y:565,w:300,h:82,flowX:32,flowY:0},
+ shallowWater:{x:650,y:565,w:1100,h:82,flowX:34,flowY:0},
  // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
  upperPond:{x:980,y:365,w:250,h:105,flowX:0,flowY:0},
- waterfall:{x:1170,y:455,w:72,h:190,flowX:0,flowY:52},
+ waterfall:{x:1158,y:425,w:72,h:390,flowX:0,flowY:58},
  smallTrees:[
   // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
@@ -1171,7 +1171,14 @@ function update(dt){
    if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<105)safe=true;
  }
  // 浮遊大陸の縁では、まずアニメのように踏ん張る。
+ const inWaterfall=player.x>props.waterfall.x&&player.x<props.waterfall.x+props.waterfall.w&&player.y>props.waterfall.y;
  if(safe){player.ledgeT=0;}
+ else if(inWaterfall&&player.y>stageGeo.path[0].y+stageGeo.path[0].h-20){
+   // 滝の流れに任せた時だけは崖で粘らず、そのまま落下。
+   if(floatLeafStock>0){floatLeafStock--;particle(player.x,player.y-35,'ふわっ！','#7edb72',.55,18);say(`羽の葉っぱで助かった！ 残り${floatLeafStock}`)}
+   else{const got=takeDamage(3);particle(player.x,player.y-35,`落下 -${got}`,'#c11',.55,17)}
+   player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;player.inv=.65;player.ledgeT=0;
+ }
  else{
    const grounds=visibleGroundRects();let best=null,bestD=1e9;
    for(const r of grounds){const rx=clamp(player.x,r.x+8,r.x+r.w-8),ry=clamp(player.y,r.y+8,r.y+r.h-8),dd=(rx-player.x)**2+(ry-player.y)**2;if(dd<bestD){bestD=dd;best={x:rx,y:ry}}}
@@ -1849,13 +1856,13 @@ function drawWorld(){
  const sw=props.shallowWater;
  ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(sw.x,sw.y,sw.w,sw.h,24);ctx.fill();ctx.stroke();
  for(let x=sw.x+18;x<sw.x+sw.w-10;x+=48){line(x,sw.y+22,x+24,sw.y+22,3,'rgba(255,255,255,.75)');line(x+10,sw.y+52,x+35,sw.y+52,3,'rgba(255,255,255,.6)')}
- const up=props.upperPond;
- // 高台の土台
+ const up=props.upperPond,wf=props.waterfall;
+ // 滝を先に描き、池を上から重ねる。池→滝が一続きで、横にはみ出して見えない。
+ ctx.fillStyle='rgba(137,221,246,.86)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y,wf.w,wf.h,18);ctx.fill();ctx.stroke();
+ for(let x=wf.x+14;x<wf.x+wf.w;x+=20)line(x,wf.y+8,x,wf.y+wf.h-8,3,'rgba(255,255,255,.72)');
  ctx.fillStyle='#6f9e55';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(up.x-22,up.y-24,up.w+44,up.h+46,28);ctx.fill();ctx.stroke();
  ctx.fillStyle='#a8e9f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(up.x,up.y,up.w,up.h,28);ctx.fill();ctx.stroke();
- const wf=props.waterfall;
- ctx.fillStyle='rgba(137,221,246,.82)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y,wf.w,wf.h,18);ctx.fill();ctx.stroke();
- for(let x=wf.x+14;x<wf.x+wf.w;x+=20)line(x,wf.y+8,x,wf.y+wf.h-8,3,'rgba(255,255,255,.72)');
+ ctx.fillStyle='#a8e9f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y-4,wf.w,48,14);ctx.fill();ctx.stroke();
 
 
  // 崖際の自然なガードレール。全部は囲わず、落ちられる場所も残す。
