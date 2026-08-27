@@ -269,7 +269,7 @@ function drawPlayer(){
      // 剣
      if(f==='left'){
        // 左向き：左上 → 左下への振り下ろし
-       wa=-Math.PI*0.78 + t*Math.PI*0.62;
+       wa=-Math.PI*0.75 - t*Math.PI*0.50;
      }else{
        // その他：狙い方向を中心に薙ぐ
        wa=player.aim-.95+t*1.9;
@@ -284,7 +284,7 @@ function drawPlayer(){
      // ハンマー
      if(f==='left'){
        // 左向き：左上 → 左下への振り下ろし
-       wa=-Math.PI*0.82 + t*Math.PI*0.68;
+       wa=-Math.PI*0.72 - t*Math.PI*0.58;
      }else{
        wa=player.aim-1.15+t*2.25;
      }
