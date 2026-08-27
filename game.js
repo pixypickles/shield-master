@@ -10,7 +10,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={w:9700,h:1100};
+const world={w:11800,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
 
-// Prototype 50: 最初の浮遊草原ステージ
+// Prototype 51: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -176,6 +176,38 @@ const stage6Enemies=[
  {x:8950,y:470,r:27,hp:2,maxHp:2,type:'fanleaf',attackCd:.7,flash:0,dead:false},
  {x:9180,y:610,r:27,hp:2,maxHp:2,type:'fanleaf',attackCd:1.1,flash:0,dead:false}
 ];
+
+// ステージ7：岩だらけの分かれ道。
+// 左右どちらからでも奥へ進めるが、岩が多くて槍だけでは回り道気味。
+// 奥でハンマーを入手し、その直後に岩＆クルミボス戦。
+const stage7Geo={
+ path:[
+  {x:9580,y:300,w:620,h:480},          // 分岐入口
+  {x:10120,y:300,w:500,h:190},         // 上ルート
+  {x:10120,y:590,w:500,h:190},         // 下ルート
+  {x:10530,y:300,w:560,h:480},         // 合流エリア
+  {x:11010,y:330,w:700,h:430}          // ボス広場
+ ],
+ bridge:{x1:9435,y1:545,x2:9580,y2:545}
+};
+
+const stage7Rocks=[
+ {x:9880,y:405,r:34,dead:false},{x:9970,y:485,r:34,dead:false},
+ {x:10040,y:640,r:34,dead:false},{x:10190,y:390,r:34,dead:false},
+ {x:10350,y:675,r:34,dead:false},{x:10680,y:465,r:38,dead:false},
+ {x:10780,y:610,r:38,dead:false}
+];
+
+let hammerPickup={x:10860,y:540,taken:false};
+
+const rockBoss={
+ x:11420,y:545,r:82,hp:44,maxHp:44,active:false,dead:false,
+ attackCd:1.15,spawnCd:2.8,flash:0,phase:0
+};
+
+const rollingRocks=[];
+const bossWalnuts=[];
+
 
 
 
@@ -424,6 +456,8 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
  if(boss.active&&!boss.dead)candidates.push(boss);
  if(seedBoss.active&&!seedBoss.dead)candidates.push(seedBoss);
  if(grassFinalBoss.active&&!grassFinalBoss.dead)candidates.push(grassFinalBoss);
+ if(rockBoss.active&&!rockBoss.dead)candidates.push(rockBoss);
+ for(const e of bossWalnuts)if(!e.dead)candidates.push(e);
 
  let best=null,bestScore=1e9,bestA=base;
  for(const e of candidates){
@@ -546,7 +580,7 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
   if(e.type==='walnut'){
     // 剣は殻に弾かれる。ハンマーは特効。槍は細い隙間を突くイメージ。
     if(weapon===0){dmg=0;particle(e.x,e.y-25,'カキン！','#111',.4,16)}
-    else if(weapon===2){dmg=charged?7:4}
+    else if(weapon===2){dmg=99}
     else if(weapon===1){dmg=charged?4:2}
     else dmg=1;
   }
@@ -580,6 +614,15 @@ function hitStage45(damage,range,base,cone,weapon){
     particle(e.x,e.y-24,`-${damage}`,'#b31313',.4,15);
     if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パァッ！','#fff',.45,15);killDrop(e,.55)}
    }
+  }
+ }
+ if(stage7Started&&rockBoss.active&&!rockBoss.dead){
+  const d=dist(player.x,player.y,rockBoss.x,rockBoss.y);
+  const a=Math.atan2(rockBoss.y-player.y,rockBoss.x-player.x);
+  if(d<=range+rockBoss.r&&Math.abs(angleDiff(a,base))<=cone/2){
+   const bossDmg=weapon===2?Math.max(8,damage):damage;
+   rockBoss.hp-=bossDmg;rockBoss.flash=.18;
+   particle(rockBoss.x,rockBoss.y-55,`-${bossDmg}`,'#b31313',.4,17);
   }
  }
  if(stage5Started&&grassFinalBoss.active&&!grassFinalBoss.dead){
@@ -690,6 +733,23 @@ function doAttack(charged=false){
   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
  }
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
+ if(w===2&&stage7Started){
+  for(const r of stage7Rocks){
+   if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+55){
+    r.dead=true;particle(r.x,r.y,'粉砕！','#444',.45,17);
+   }
+  }
+  for(const e of bossWalnuts){
+   if(!e.dead&&dist(player.x,player.y,e.x,e.y)<range+e.r+20){
+    e.dead=true;particle(e.x,e.y,'パカン！','#9b6637',.45,17);killDrop(e,.5);
+   }
+  }
+  for(const r of rollingRocks){
+   if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+r.r+20){
+    r.dead=true;particle(r.x,r.y,'ガシャッ！','#666',.4,16);
+   }
+  }
+ }
  if(w===1){for(const sw of props.switches){if(!sw.on&&dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
 }
 function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
@@ -725,6 +785,23 @@ function update(dt){
      player.jumpZ=0;
      player.smashHit=true;
      particle(player.x,player.y,'ドゴォン！','#111',.55,24);
+     if(stage7Started){
+       for(const r of stage7Rocks){
+         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<155){
+           r.dead=true;particle(r.x,r.y,'粉砕！','#444',.45,17);
+         }
+       }
+       for(const e of bossWalnuts){
+         if(!e.dead&&dist(player.x,player.y,e.x,e.y)<165){
+           e.dead=true;particle(e.x,e.y,'パカン！','#9b6637',.45,17);killDrop(e,.55);
+         }
+       }
+       for(const r of rollingRocks){
+         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<165){
+           r.dead=true;particle(r.x,r.y,'ガシャッ！','#666',.4,16);
+         }
+       }
+     }
      for(const e of enemies){
        if(e.dead)continue;
        const d=dist(player.x,player.y,e.x,e.y);
@@ -974,6 +1051,15 @@ function update(dt){
  for(const tr of props.smallTrees){
   if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
  }
+ // 岩の分かれ道の大岩。壊すまでは通れない。
+ if(stage7Started){
+   for(const r of stage7Rocks){
+     if(!r.dead&&dist(player.x,player.y,r.x,r.y)<player.r+r.r-4){
+       player.x=prevX;player.y=prevY;break;
+     }
+   }
+ }
+
  
  if((player.dashT>0||player.dashAuto||player.shieldStepT>0)&&player.shield){
    const bashList=[...enemies,...stage2Enemies,...stage3Enemies,...stage4Enemies];
@@ -1386,6 +1472,101 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
 
+ // 風の庭園の奥から岩の分かれ道へ
+ if(stage6Started&&player.x>9390&&!stage7Started){
+   stage7Started=true;currentStage=7;stage.checkpoint={x:9690,y:545};
+   say('岩の分かれ道');
+ }
+
+ // ハンマー取得
+ if(stage7Started&&!hammerPickup.taken&&dist(player.x,player.y,hammerPickup.x,hammerPickup.y)<62){
+   hammerPickup.taken=true;
+   unlockedWeapons[2]=true;
+   player.weapon=2;
+   weaponNameEl.textContent=weapons[2].name;
+   particle(hammerPickup.x,hammerPickup.y-30,'ハンマー GET！','#fff',.8,22);
+   say('ハンマーを手に入れた！ 岩もクルミも一撃！');
+ }
+
+ // ボス起動
+ if(stage7Started&&hammerPickup.taken&&!rockBoss.dead&&!rockBoss.active&&player.x>11040){
+   rockBoss.active=true;
+   say('岩喰いグルミ！');
+ }
+
+ if(rockBoss.active&&!rockBoss.dead){
+   rockBoss.flash=Math.max(0,rockBoss.flash-dt);
+   rockBoss.attackCd-=dt;
+   rockBoss.spawnCd-=dt;
+
+   // 岩をプレイヤー方向へ転がす
+   if(rockBoss.attackCd<=0){
+     rockBoss.attackCd=1.2;
+     const a=Math.atan2(player.y-rockBoss.y,player.x-rockBoss.x);
+     rollingRocks.push({
+       x:rockBoss.x-55,y:rockBoss.y+10,
+       vx:Math.cos(a)*260,vy:Math.sin(a)*260,
+       r:25,life:3.2,dead:false
+     });
+     particle(rockBoss.x-40,rockBoss.y,'ゴロゴロ！','#555',.35,16);
+   }
+
+   // クルミを定期的に生み出す
+   if(rockBoss.spawnCd<=0){
+     rockBoss.spawnCd=3.0;
+     const a=Math.random()*Math.PI*2;
+     bossWalnuts.push({
+       x:rockBoss.x+Math.cos(a)*90,y:rockBoss.y+Math.sin(a)*70,
+       r:28,hp:4,maxHp:4,dead:false,flash:0,attackCd:.7
+     });
+     particle(rockBoss.x,rockBoss.y-70,'ポン！','#9b6637',.35,16);
+   }
+
+   if(rockBoss.hp<=0){
+     rockBoss.dead=true;rockBoss.active=false;rockBossDefeated=true;
+     particle(rockBoss.x,rockBoss.y,'粉砕！','#fff',.9,26);
+     say('岩喰いグルミ撃破！');
+   }
+ }
+
+ // 転がる岩
+ for(const r of rollingRocks){
+   if(r.dead)continue;
+   r.life-=dt;
+   r.x+=r.vx*dt;r.y+=r.vy*dt;
+   if(r.life<=0){r.dead=true;continue}
+   if(dist(player.x,player.y,r.x,r.y)<player.r+r.r){
+     if(player.jumpT>0){
+       particle(player.x,player.y-40,'スカッ','#333',.25,13);
+     }else if(shieldBlocks(r)){
+       particle(r.x,r.y,'ガァン！','#111',.35,16);
+       r.vx*=-.35;r.vy*=-.35;
+     }else if(player.inv<=0){
+       const got=takeDamage(7);player.inv=.55;
+       particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+       r.dead=true;
+     }
+   }
+ }
+
+ // ボスが生むクルミ
+ for(const e of bossWalnuts){
+   if(e.dead)continue;
+   e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+   if(d>64){e.x+=dx/d*52*dt;e.y+=dy/d*52*dt}
+   else if(e.attackCd<=0){
+     e.attackCd=1.0;
+     if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){
+       const got=takeDamage(5);player.inv=.5;
+       particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+     }else if(shieldBlocks(e)){
+       particle(player.x,player.y-25,'ガキン！','#111',.3,15);
+     }
+   }
+ }
+
+
  powerFruitT=Math.max(0,powerFruitT-dt);
  guardFruitT=Math.max(0,guardFruitT-dt);
  for(const d of buffDrops){
@@ -1502,6 +1683,17 @@ function drawWorld(){
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1,stage4Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(6190,530+i*6,stage4Geo.bridge.x2,stage4Geo.bridge.y2+i*9-23);ctx.stroke()});
  }
+
+ if(stage6Started){
+   // 風の庭園から岩の分かれ道への橋
+   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
+   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=16;ctx.beginPath();ctx.moveTo(stage7Geo.bridge.x1,stage7Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(9505,505+i*6,stage7Geo.bridge.x2,stage7Geo.bridge.y2+i*9-23);ctx.stroke()});
+   for(const r of stage7Geo.path){
+     ctx.fillStyle='#89bf68';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
+   }
+ }
+
  if(grassAreaClear){
   // 次エリアへの虹の橋
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
@@ -1709,6 +1901,55 @@ function drawWorld(){
    ctx.restore();
   }
  }
+
+ if(stage7Started){
+   for(const r of stage7Rocks){
+     if(r.dead)continue;
+     ctx.fillStyle='#8c8f88';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+     line(r.x-r.r*.4,r.y-5,r.x+r.r*.25,r.y-15,4,'#666');
+   }
+
+   if(!hammerPickup.taken){
+     ctx.save();ctx.translate(hammerPickup.x,hammerPickup.y);
+     ctx.rotate(-.35);
+     line(0,30,0,-25,12,'#111');line(0,30,0,-25,6,'#8b5c3b');
+     roundRect(-22,-48,44,28,7,'#aaa','#111',6);
+     ctx.restore();
+     particle(hammerPickup.x,hammerPickup.y-70,'！','#ffe15a',.12,18);
+   }
+
+   for(const r of rollingRocks){
+     if(r.dead)continue;
+     circle(r.x,r.y,r.r,'#858781','#111',6);
+     line(r.x-10,r.y-6,r.x+9,r.y-13,4,'#666');
+   }
+
+   for(const e of bossWalnuts){
+     if(e.dead)continue;
+     ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+     ctx.fillStyle='#9b6637';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.ellipse(0,0,28,33,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+     line(0,-28,0,28,5,'#5d351f');circle(-6,-5,3,'#111','#111',1);circle(6,-5,3,'#111','#111',1);
+     ctx.restore();
+   }
+
+   if(!rockBoss.dead){
+     ctx.save();ctx.translate(rockBoss.x,rockBoss.y);if(rockBoss.flash>0)ctx.globalAlpha=.55;
+     // 岩殻＋クルミ顔の大型ボス
+     circle(0,0,68,'#7f817b','#111',8);
+     circle(0,-5,48,'#9b6637','#111',7);
+     line(0,-45,0,35,6,'#5d351f');
+     circle(-17,-12,6,'#111','#111',1);circle(17,-12,6,'#111','#111',1);
+     line(-20,17,20,17,7,'#111');
+     ctx.restore();
+     if(rockBoss.active){
+       ctx.fillStyle='#111';ctx.fillRect(rockBoss.x-112,rockBoss.y-115,224,16);
+       ctx.fillStyle='#e84a3a';ctx.fillRect(rockBoss.x-108,rockBoss.y-111,216*Math.max(0,rockBoss.hp/rockBoss.maxHp),8);
+     }
+   }
+ }
+
  if(!boss.dead){
    ctx.save();ctx.translate(boss.x,boss.y);if(boss.flash>0)ctx.globalAlpha=.55;
    line(0,15,0,55,18,'#111');line(0,15,0,55,10,'#4e9e49');
@@ -1742,6 +1983,9 @@ function drawObjectiveArrow(){
  else if(!stage4Cleared){tx=stage4Geo.path[stage4Geo.path.length-1].x+180;ty=540;}
  else if(!stage5Started){tx=stage5Geo.path[0].x+130;ty=540;}
  else if(!grassAreaClear){tx=grassFinalBoss.x;ty=grassFinalBoss.y;}
+ else if(!stage7Started){tx=stage7Geo.path[0].x+120;ty=550;}
+ else if(!hammerPickup.taken){tx=hammerPickup.x;ty=hammerPickup.y;}
+ else if(!rockBossDefeated){tx=rockBoss.x;ty=rockBoss.y;}
  else return;
 
  const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
@@ -2243,6 +2487,8 @@ let stage4BridgeOpen=false;
 let stage5Started=false;
 let grassAreaClear=false;
 let stage6Started=false;
+let stage7Started=false;
+let rockBossDefeated=false;
 let spearPickup={x:3605,y:545,taken:false};
 
 
