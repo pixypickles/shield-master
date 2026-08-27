@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashDir:0,dashAttack:false,dashShieldHit:new Set()};
 
-// Prototype 39: 最初の浮遊草原ステージ
+// Prototype 40: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -67,9 +67,9 @@ const boss={
 
 const props={
  grass:[{x:470,y:350,dead:false},{x:525,y:365,dead:false},{x:575,y:340,dead:false},{x:1240,y:390,dead:false}],
- rocks:[{x:1110,y:845,dead:false},{x:1165,y:860,dead:false}],
+ rocks:[{x:1110,y:655,dead:false},{x:1165,y:670,dead:false}],
  switches:[{x:1310,y:630,on:false}],
- water:{x:250,y:820,w:320,h:150,frozen:0},
+ water:{x:260,y:590,w:300,h:105,frozen:0},
  smallTrees:[
   {x:850,y:390,dead:false},{x:850,y:455,dead:false},{x:850,y:520,dead:false},
   {x:850,y:585,dead:false},{x:850,y:650,dead:false}
@@ -186,6 +186,23 @@ const projectiles=[];
 function particle(x,y,text,color='#111',life=.55,size=20){particles.push({x,y,text,color,life,max:life,size})}
 function say(t){messageEl.textContent=t;messageEl.style.opacity=1;clearTimeout(say.t);say.t=setTimeout(()=>messageEl.style.opacity=.0,1800)}
 setTimeout(()=>messageEl.style.opacity=.0,2500);
+
+
+function visibleGroundRects(){
+ const grounds=[...stageGeo.path];
+ if(stage.bridgeOpen){grounds.push(stageGeo.nextIsland,...stage2Geo.path)}
+ if(stage2BridgeOpen)grounds.push(...stage3Geo.path);
+ if(stage3BridgeOpen)grounds.push(...stage4Geo.path);
+ if(stage4BridgeOpen)grounds.push(...stage5Geo.path);
+ return grounds;
+}
+function pointSupportedByGround(x,y,pad=24){
+ return visibleGroundRects().some(r=>{
+   const cx=clamp(x,r.x,r.x+r.w),cy=clamp(y,r.y,r.y+r.h);
+   const dx=x-cx,dy=y-cy;
+   return dx*dx+dy*dy<=pad*pad;
+ });
+}
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
@@ -837,16 +854,12 @@ for(const g of guardRails){
    const dx=player.x-cx,dy=player.y-cy;
    return dx*dx+dy*dy<=groundSupport*groundSupport;
  };
- let safe=stageGeo.path.some(onRect);
+ // 地面の見た目に使う矩形と、落下判定に使う矩形を同じ定義から取る。
+ let safe=pointSupportedByGround(player.x,player.y,groundSupport);
  if(stage.bridgeOpen){
    const bx1=Math.min(stageGeo.bridge.x1,stageGeo.bridge.x2)-25,bx2=Math.max(stageGeo.bridge.x1,stageGeo.bridge.x2)+25;
    const by=stageGeo.bridge.y1;
    if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<100)safe=true;
-   if(onRect(stageGeo.nextIsland))safe=true;
-   if(stage2Geo.path.some(onRect))safe=true;
-   if(stage2BridgeOpen&&stage3Geo.path.some(onRect))safe=true;
-   if(stage3BridgeOpen&&stage4Geo.path.some(onRect))safe=true;
-   if(stage4BridgeOpen&&stage5Geo.path.some(onRect))safe=true;
    if(stage2BridgeOpen){
      const b2x1=Math.min(stage2Geo.bridge.x1,stage2Geo.bridge.x2)-25,b2x2=Math.max(stage2Geo.bridge.x1,stage2Geo.bridge.x2)+25;
      if(player.x>=b2x1&&player.x<=b2x2&&Math.abs(player.y-stage2Geo.bridge.y1)<100)safe=true;
@@ -860,11 +873,7 @@ for(const g of guardRails){
    particle(player.x,player.y,'-5','#b31313',.45,18);
    // 大きく巻き戻さず、落ちた場所のすぐ近くへ戻す。
    let best=null,bestD=1e9;
-   const allGround=[...stageGeo.path];
-   if(stage.bridgeOpen)allGround.push(...stage2Geo.path);
-   if(stage2BridgeOpen)allGround.push(...stage3Geo.path);
-   if(stage3BridgeOpen)allGround.push(...stage4Geo.path);
-   if(stage4BridgeOpen)allGround.push(...stage5Geo.path);
+   const allGround=visibleGroundRects();
    for(const r of allGround){
      const rx=clamp(player.x,r.x+34,r.x+r.w-34),ry=clamp(player.y,r.y+34,r.y+r.h-34);
      const dd=(rx-player.x)**2+(ry-player.y)**2;
@@ -1165,12 +1174,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
 
  function enemyOnGround(e){
-  const grounds=[...stageGeo.path];
-  if(stage.bridgeOpen)grounds.push(...stage2Geo.path);
-  if(stage2BridgeOpen)grounds.push(...stage3Geo.path);
-  if(stage3BridgeOpen)grounds.push(...stage4Geo.path);
-  if(stage4BridgeOpen)grounds.push(...stage5Geo.path);
-  return grounds.some(r=>e.x>=r.x-8&&e.x<=r.x+r.w+8&&e.y>=r.y-8&&e.y<=r.y+r.h+8);
+  return pointSupportedByGround(e.x,e.y,8);
  }
  for(const e of [...enemies,...stage2Enemies,...stage3Enemies,...stage4Enemies]){
   if(!e.dead&&!enemyOnGround(e)){
@@ -1258,18 +1262,25 @@ function drawWorld(){
  if(stage.bridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
    cols.forEach((c,i)=>{
-     ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();
-     ctx.moveTo(stageGeo.bridge.x1,stageGeo.bridge.y1+i*6-15);
-     ctx.quadraticCurveTo(1525,555+i*6,stageGeo.bridge.x2,stageGeo.bridge.y2+i*6-15);
+     ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();
+     ctx.moveTo(stageGeo.bridge.x1,stageGeo.bridge.y1+i*9-23);
+     ctx.quadraticCurveTo(1820,530+i*7,stageGeo.bridge.x2,stageGeo.bridge.y2+i*9-23);
      ctx.stroke();
    });
    ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
    const ni=stageGeo.nextIsland;ctx.beginPath();ctx.roundRect(ni.x,ni.y,ni.w,ni.h,45);ctx.fill();ctx.stroke();
  }
 
- // 少し狭めの「進む場所」が読める道。広場は残しつつ迷いにくくする。
- ctx.strokeStyle='#b8e3a2';ctx.lineWidth=320;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
+ // 明るい草の道は「実際の地面」の内側だけに描く。
+ // 島の輪郭でクリップして、空の上に緑が続いて見えないようにする。
+ ctx.save();
+ ctx.beginPath();ctx.roundRect(s1.x,s1.y,s1.w,s1.h,58);ctx.clip();
+ ctx.strokeStyle='#b8e3a2';ctx.lineWidth=250;ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,610);ctx.lineTo(1580,565);ctx.stroke();
+ ctx.restore();
+ ctx.save();ctx.beginPath();ctx.roundRect(s1.x,s1.y,s1.w,s1.h,58);ctx.clip();
  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=245;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
+ ctx.restore();
  // ground patches
  ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
  // water
