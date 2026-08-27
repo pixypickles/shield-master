@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set()};
 
-// Prototype 42: 最初の浮遊草原ステージ
+// Prototype 43: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -61,7 +61,7 @@ function spawnEnemy(x,y,type='grass'){
 
 
 const boss={
- x:1540,y:590,r:48,hp:26,maxHp:26,active:false,dead:false,
+ x:1540,y:590,r:72,hp:26,maxHp:26,active:false,dead:false,
  speed:46,attackCd:1.05,flash:0,phase:0
 };
 
@@ -108,7 +108,7 @@ function spawnStage2Enemy(x,y,type='seedpod'){
 [[2100,520,'seedpod'],[2390,505,'seedflower'],[2710,600,'seedpod'],[2820,455,'seedflower']].forEach(v=>spawnStage2Enemy(...v));
 
 const seedBoss={
- x:3180,y:555,r:52,hp:24,maxHp:24,active:false,dead:false,
+ x:3180,y:555,r:72,hp:24,maxHp:24,active:false,dead:false,
  attackCd:.8,flash:0,phase:0
 };
 
@@ -156,7 +156,7 @@ const stage5Geo={
  arena:{x:7140,y:300,w:650,h:470}
 };
 const grassFinalBoss={
- x:7530,y:545,r:62,hp:40,maxHp:40,active:false,dead:false,
+ x:7530,y:545,r:88,hp:40,maxHp:40,active:false,dead:false,
  attackCd:.8,flash:0,phase:0
 };
 
@@ -517,6 +517,26 @@ function hitStage45(damage,range,base,cone,weapon){
  }
 }
 
+
+function swordSkillTouches(x,y,r,sa){
+ const fx=Math.cos(sa),fy=Math.sin(sa);
+ const sx=-fy,sy=fx;
+ const cx=player.x+fx*24,cy=player.y+fy*24;
+ const dx=x-cx,dy=y-cy;
+ const forward=dx*fx+dy*fy;
+ const side=Math.abs(dx*sx+dy*sy);
+ return forward>-30&&forward<82&&side<66+r*.55;
+}
+function swordSkillHitTarget(target,damage=7){
+ if(!target||target.dead||player.skillHit.has(target))return false;
+ if(!swordSkillTouches(target.x,target.y,target.r||24,player.skillBase))return false;
+ target.hp-=damage;
+ target.flash=.2;
+ player.skillHit.add(target);
+ particle(target.x,target.y-24,`-${damage}`,'#b31313',.42,17);
+ return true;
+}
+
 function hitBoss(damage,range,base,cone=Math.PI*2){
  if(!boss.active||boss.dead)return;
  const d=dist(player.x,player.y,boss.x,boss.y);
@@ -703,39 +723,59 @@ function update(dt){
    const t=player.skillElapsed;
 
    if(player.skillKind==='sword'){
-     // 一直線に走りながら、横に構えた剣そのものを攻撃判定にする。
-     // 走行中ずっと有効。ただし同じ敵には1回だけヒット。
+     // 横に構えた剣で一直線に斬り抜ける。
+     // 走っている間ずっと剣の帯に当たり判定。同じ相手には1回だけ。
      const sa=player.skillBase;
      player.aim=sa;
      player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
      mx=Math.cos(sa)*1.32;my=Math.sin(sa)*1.32;speed=335;
 
-     const fx=Math.cos(sa),fy=Math.sin(sa);
-     const sx=-fy,sy=fx; // 横方向
-     const cx=player.x+fx*24;
-     const cy=player.y+fy*24;
-
      for(const e of enemies){
-       if(e.dead||player.skillHit.has(e))continue;
-       const dx=e.x-cx,dy=e.y-cy;
-       const forward=dx*fx+dy*fy;
-       const side=Math.abs(dx*sx+dy*sy);
-       // 横に構えた剣の帯に触れたら斬る。
-       if(forward>-24&&forward<72&&side<62+e.r*.45){
-         e.hp-=7;enemyHitReact(e,86);player.skillHit.add(e);
-         particle(e.x,e.y-22,'-7','#b31313',.42,17);
+       if(swordSkillHitTarget(e,7)){
+         enemyHitReact(e,86);
          if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.6)}
        }
      }
-
-     // 他ステージの敵/ボスも、走行中に前方へ触れた瞬間だけ1回判定。
-     if(player.skillPhase===0){
-       player.skillPhase=1;
+     for(const e of stage2Enemies){
+       if(swordSkillHitTarget(e,7)&&e.hp<=0){e.dead=true;particle(e.x,e.y,'パサッ','#fff',.4,15);killDrop(e,.5)}
      }
-     hitBoss(7,76,sa,1.45);
-     hitStage2(7,76,sa,1.45);
-     hitStage3(7,76,sa,1.45,0,false);
-     hitStage45(7,76,sa,1.45,0);
+     for(const e of stage3Enemies){
+       if(e.type==='walnut'){
+         // クルミは剣スキルでも殻に弾かれる。
+         if(!e.dead&&!player.skillHit.has(e)&&swordSkillTouches(e.x,e.y,e.r,sa)){
+           player.skillHit.add(e);particle(e.x,e.y-24,'カキン！','#111',.35,15);
+         }
+       }else if(swordSkillHitTarget(e,7)){
+         enemyHitReact(e,86);
+         if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15);killDrop(e,.5)}
+       }
+     }
+     for(const e of stage4Enemies){
+       if(swordSkillHitTarget(e,7)){
+         enemyHitReact(e,86);
+         if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.4,15);killDrop(e,.55)}
+       }
+     }
+
+     // 小木も走りながらそのまま斬れる。
+     for(const tr of props.smallTrees){
+       if(tr.dead||player.skillHit.has(tr))continue;
+       if(swordSkillTouches(tr.x,tr.y,30,sa)){
+         tr.dead=true;player.skillHit.add(tr);
+         particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16);
+       }
+     }
+     for(const g of props.grass){
+       if(g.dead||player.skillHit.has(g))continue;
+       if(swordSkillTouches(g.x,g.y,18,sa)){
+         g.dead=true;player.skillHit.add(g);particle(g.x,g.y,'ザシュ','#267524',.35,14);
+       }
+     }
+
+     // ボスも見た目サイズの当たり判定で1回だけヒット。
+     if(boss.active&&!boss.dead&&swordSkillHitTarget(boss,7)){}
+     if(seedBoss.active&&!seedBoss.dead&&swordSkillHitTarget(seedBoss,7)){}
+     if(grassFinalBoss.active&&!grassFinalBoss.dead&&swordSkillHitTarget(grassFinalBoss,7)){}
 
    }else if(player.skillKind==='spear'){
      // ダッシュ→大ジャンプ→斜め前へ一度だけ着地。
@@ -979,7 +1019,54 @@ function update(dt){
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
- for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58&&e.hitReact<=0){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='flower'?1.15:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='flower'?18:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='flower'?8:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
+ for(const e of enemies){
+   if(e.dead)continue;
+   e.attackCd-=dt;
+   e.flash=Math.max(0,e.flash-dt);
+   e.hitReact=Math.max(0,(e.hitReact||0)-dt);
+   e.attackWind=Math.max(0,(e.attackWind||0)-dt);
+   e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);
+
+   const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+
+   // 攻撃中でなければ近づく。ただ触れただけではダメージなし。
+   if(d>64&&e.hitReact<=0&&e.attackWind<=0){
+     e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);
+     e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1);
+   }
+
+   // 近距離で一度構えてから葉っぱを振る。
+   if(d<=76&&e.attackCd<=0&&e.attackWind<=0){
+     e.attackWind=.28;
+     e.attackCd=e.type==='flower'?1.25:1.0;
+     particle(e.x,e.y-28,'…！','#555',.24,12);
+   }
+
+   if(e.attackWind>0&&e.attackWind<=.06&&!e.windHit){
+     e.windHit=true;e.attackAnim=.18;
+     particle((player.x+e.x)/2,(player.y+e.y)/2,'ブン！','#3a8d3f',.26,14);
+     const nowD=dist(player.x,player.y,e.x,e.y);
+     if(nowD<88){
+       if(player.jumpT>0){
+         particle(player.x,player.y-45,'スカッ','#333',.3,13);
+       }else if(shieldBlocks(e)){
+         particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.35,17);
+         e.x-=dx/d*15;e.y-=dy/d*15;
+       }else if(player.inv<=0){
+         const dmg=e.type==='flower'?5:4;
+         const got=takeDamage(dmg);player.inv=.5;
+         particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+       }
+     }
+   }
+   if(e.attackWind<=0)e.windHit=false;
+
+   // 体が重なった時は押し合うだけ。
+   if(d<52){
+     player.x+=dx/d*3;player.y+=dy/d*3;
+     e.x-=dx/d*2;e.y-=dy/d*2;
+   }
+ }
 
  // 最初の島のボス：奥の広場へ入ると戦闘開始。
  if(!stage.bossDefeated && !boss.active && player.x>1260){
@@ -996,7 +1083,7 @@ function update(dt){
      boss.attackCd=.95;
      if(player.jumpT>0){particle(player.x,player.y-45,'スカッ','#333',.35,14)}
      else if(shieldBlocks(boss)){particle((player.x+boss.x)/2,(player.y+boss.y)/2,'ガギィン！','#111',.5,24)}
-     else if(player.inv<=0){player.hp=Math.max(0,player.hp-18);player.inv=.7;particle(player.x,player.y-35,'-18','#b31313',.45,18)}
+     else if(player.inv<=0){const got=takeDamage(8);player.inv=.7;particle(player.x,player.y-35,`-${got}`,'#b31313',.45,18)}
    }
    if(boss.hp<=0){
      boss.dead=true;boss.active=false;stage.bossDefeated=true;stage.bridgeOpen=true;
@@ -1083,12 +1170,22 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    for(const e of stage3Enemies){
      if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);
      const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
-     if(d>62&&e.hitReact<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
-     else if(e.attackCd<=0){
-       e.attackCd=1;
-       if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){const got=takeDamage(6);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}
-       else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
+     e.attackWind=Math.max(0,(e.attackWind||0)-dt);e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);
+     if(d>66&&e.hitReact<=0&&e.attackWind<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+     if(d<=78&&e.attackCd<=0&&e.attackWind<=0){
+       e.attackCd=1.05;e.attackWind=.30;particle(e.x,e.y-28,'…！','#555',.22,12);
      }
+     if(e.attackWind>0&&e.attackWind<=.06&&!e.windHit){
+       e.windHit=true;e.attackAnim=.18;
+       particle((player.x+e.x)/2,(player.y+e.y)/2,'ブン！','#6a8b33',.25,14);
+       if(dist(player.x,player.y,e.x,e.y)<90){
+         if(player.jumpT>0)particle(player.x,player.y-45,'スカッ','#333',.3,13);
+         else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
+         else if(player.inv<=0){const got=takeDamage(e.type==='walnut'?6:4);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}
+       }
+     }
+     if(e.attackWind<=0)e.windHit=false;
+     if(d<54){player.x+=dx/d*3;player.y+=dy/d*3;}
    }
  }
 
@@ -1108,17 +1205,27 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    for(const e of stage4Enemies){
     if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);
     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
-    if(d>64){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
-    else if(e.attackCd<=0){
-     e.attackCd=e.type==='thorn'?1.15:.9;
-     if(player.jumpT<=0&&!shieldBlocks(e)){
-      if(e.type==='thorn'&&player.inv<=0){
-       const got=takeDamage(6);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
-      }else{
-       const dx=player.x-e.x,dy=player.y-e.y,dd=Math.hypot(dx,dy)||1;player.x+=dx/dd*7;player.y+=dy/dd*7;
+    e.attackWind=Math.max(0,(e.attackWind||0)-dt);e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);
+    if(d>66&&e.attackWind<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+
+    if(e.type==='thorn'){
+      // トゲは見た目通り、接触そのものが危険。
+      if(d<58&&player.jumpT<=0&&player.inv<=0&&!shieldBlocks(e)){
+        const got=takeDamage(5);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
       }
-     }else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
+    }else{
+      // ツルは触れるだけでは無害。葉っぱ攻撃だけダメージ。
+      if(d<=80&&e.attackCd<=0&&e.attackWind<=0){e.attackCd=1.0;e.attackWind=.3;particle(e.x,e.y-30,'…！','#555',.22,12)}
+      if(e.attackWind>0&&e.attackWind<=.06&&!e.windHit){
+        e.windHit=true;e.attackAnim=.18;particle((player.x+e.x)/2,(player.y+e.y)/2,'ビシッ！','#3a8d3f',.25,14);
+        if(dist(player.x,player.y,e.x,e.y)<92){
+          if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
+          else if(player.jumpT<=0&&player.inv<=0){const got=takeDamage(5);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}
+        }
+      }
+      if(e.attackWind<=0)e.windHit=false;
     }
+    if(d<54&&e.type!=='thorn'){player.x+=dx/d*3;player.y+=dy/d*3;}
    }
    if(player.x>5980){
     stage4Cleared=true;stage4BridgeOpen=true;say('ステージ5への虹の橋！');
@@ -1531,6 +1638,12 @@ function drawEnemy(e){
    line(2,21,12,31,8,'#111');line(2,21,12,31,4,'#765038');
    for(let i=0;i<8;i++){const aa=i*Math.PI/4;ctx.save();ctx.translate(Math.cos(aa)*18,Math.sin(aa)*18-8);ctx.rotate(aa);ctx.fillStyle='#f49ad0';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,9,15,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
    circle(0,-8,15,'#ffd85a','#111',5);circle(-5,-11,2.5,'#111','#111',1);circle(5,-11,2.5,'#111','#111',1);line(-6,-2,6,-2,3,'#111');
+ }
+ if(e.attackAnim>0){
+   ctx.save();ctx.globalAlpha=Math.min(1,e.attackAnim/.12);
+   ctx.strokeStyle='#43a84d';ctx.lineWidth=8;ctx.lineCap='round';
+   ctx.beginPath();ctx.arc(0,-2,35,-.8,.8);ctx.stroke();
+   ctx.restore();
  }
  ctx.restore();
 }
