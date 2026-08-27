@@ -1843,11 +1843,17 @@ function drawWorld(){
  ctx.save();ctx.beginPath();ctx.roundRect(s1.x,s1.y,s1.w,s1.h,58);ctx.clip();
  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=245;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  ctx.restore();
- // 丸い模様：地面では草色、空ではごく薄い青系にして主張を弱くする。
+ // 丸い模様：緑丸は外枠の黒線より内側に完全に収まる場合だけ描く。
+ // 中心だけ地面判定にすると崖から半分はみ出すため、円周8方向も確認する。
  for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
-   const px=x+(y%3)*8,py=y;
-   ctx.fillStyle=pointSupportedByGround(px,py,0)?'#a9df92':'rgba(203,235,239,.16)';
-   ctx.beginPath();ctx.arc(px,py,34,0,Math.PI*2);ctx.fill();
+   const px=x+(y%3)*8,py=y,r=34;
+   let fullyOnGround=pointSupportedByGround(px,py,0);
+   for(let i=0;i<8&&fullyOnGround;i++){
+     const a=i*Math.PI/4;
+     if(!pointSupportedByGround(px+Math.cos(a)*(r+8),py+Math.sin(a)*(r+8),0))fullyOnGround=false;
+   }
+   ctx.fillStyle=fullyOnGround?'#a9df92':'rgba(203,235,239,.12)';
+   ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
  }
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
@@ -2368,13 +2374,15 @@ function drawActiveWeapon(wx,wy,wa,thrust){
  if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed<.46){
    ctx.save();ctx.translate(wx,wy);ctx.rotate(wa);
    const half=68;
-   // 中央の握り
+   // 回転中も通常時と同じ金属柄。白い棒にはしない。
    line(-half,0,half,0,11,'#111');
-   line(-half+5,0,half-13,0,5,'#d9e7ef');
-   // 穂先は片側だけ。反対側は石突。
-   ctx.fillStyle='#eef6fb';ctx.strokeStyle='#111';ctx.lineWidth=4;
-   ctx.beginPath();ctx.moveTo(half+16,0);ctx.lineTo(half-2,-11);ctx.lineTo(half-2,11);ctx.closePath();ctx.fill();ctx.stroke();
-   circle(-half,0,6,'#7a4b2b','#111',3);
+   line(-half+4,0,half-12,0,5,'#8d9aa3');
+   line(-half+8,-1,half-16,-1,2,'#dbe4e9');
+   // 穂先は細長い菱形。反対側は小さな金属製の石突。
+   ctx.fillStyle='#aebbc4';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(half-5,0);ctx.lineTo(half+5,-10);ctx.lineTo(half+24,0);ctx.lineTo(half+5,10);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#edf4f7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(half+2,-4);ctx.lineTo(half+18,0);ctx.lineTo(half+2,3);ctx.stroke();
+   ctx.fillStyle='#7f8d96';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-half-9,0);ctx.lineTo(-half+1,-6);ctx.lineTo(-half+1,6);ctx.closePath();ctx.fill();ctx.stroke();
    // 手が中央を握っているのを強調
    circle(0,0,7,'#f7fbff','#111',4);
    ctx.restore();
@@ -2421,7 +2429,13 @@ function drawShieldBack(hx,hy,a,raised){
  ctx.restore();ctx.restore();
 }
 function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,'#eef5fa');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,'#d8a93d')}
- else if(w===1){line(-3,0,62,0,9,'#111');line(-3,0,62,0,4,'#b9783d');ctx.fillStyle='#e8eef2';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(62,-10);ctx.lineTo(82,0);ctx.lineTo(62,10);ctx.closePath();ctx.fill();ctx.stroke()}
+ else if(w===1){
+   // 槍は金属柄。穂先は単純な三角ではなく、細長い菱形の槍身。
+   line(-3,0,62,0,10,'#111');line(-3,0,62,0,5,'#8d9aa3');line(1,-1,58,-1,2,'#dbe4e9');
+   ctx.fillStyle='#aebbc4';ctx.strokeStyle='#111';ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(58,0);ctx.lineTo(68,-9);ctx.lineTo(88,0);ctx.lineTo(68,9);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#edf4f7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(65,-4);ctx.lineTo(82,0);ctx.lineTo(65,2);ctx.stroke();
+ }
  else if(w===2){line(0,0,38,0,11,'#111');line(0,0,38,0,5,'#8b5c3b');roundRect(29,-17,34,34,7,'#9ea6ad','#111',6)}
  else {line(-2,0,45,0,10,'#111');line(-2,0,45,0,5,'#6d3e2a');circle(50,0,11,w===3?'#ff5a4f':'#69c9ff','#111',5);circle(50,0,4,'#fff','#111',2)}ctx.restore()}
 function drawShield(hx,hy,a,raised,sideView=false){
