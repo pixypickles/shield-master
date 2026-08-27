@@ -23,7 +23,7 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
 
 const enemies=[];
 function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,dead:false})}
@@ -71,7 +71,7 @@ document.getElementById('changeBtn').addEventListener('pointerdown',()=>{player.
 function jump(){if(player.jumpT<=0){player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 function skill(){if(player.skillT>0||player.jumpT>0)return;player.skillT=.28;player.shield=false;const a=autoAim(faceAngle(player.face),Math.PI*.65,260);player.aim=a;particle(player.x,player.y,'スキル！','#7e20a6',.5,18)}
 
-function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
+function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;if(e.stagger>0)e.stagger=Math.max(0,e.stagger-dt);const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
 
 function fireMagic(w,charged,base){
  const speed=charged?560:470, damage=charged?3:2, radius=charged?16:11;
@@ -94,25 +94,55 @@ function doAttack(charged=false){
  let base=autoAim(faceAngle(player.face),Math.PI*.58,w>=3?440:range+90);
  player.aim=base;
 
- // 剣チャージは通常なぎ払いとは別物：360度回転斬り。
+ // 剣チャージ：360度回転斬り（既存）
  if(w===0 && charged){
-   player.spin=1; player.spinT=0; player.attackMax=.56; player.attacking=.56; player.attackCooldown=.72;
+   player.spin=1;player.spinT=0;player.attackMax=.56;player.attacking=.56;player.attackCooldown=.72;
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
-   for(const e of enemies){
-     if(e.dead)continue;
-     if(dist(player.x,player.y,e.x,e.y)<=range+38){
-       e.hp-=3;e.flash=.14;particle(e.x,e.y-22,'-3','#b31313',.45,16);
-       if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
-     }
-   }
+   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;e.flash=.14;particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    return;
  }
+
+ // 槍チャージ：スパイラル貫通突き。長射程・敵を貫通・岩も破壊。
+ if(w===1 && charged){
+   player.attackMax=.48;player.attacking=.48;player.attackCooldown=.72;
+   player.spiral=.48;player.spiralA=base;
+   particle(player.x,player.y-48,'スパイラル！','#fff',.45,15);
+   const reach=230, width=34;
+   const fx=Math.cos(base),fy=Math.sin(base);
+   for(const e of enemies){
+     if(e.dead)continue;
+     const dx=e.x-player.x,dy=e.y-player.y;
+     const along=dx*fx+dy*fy, side=Math.abs(dx*fy-dy*fx);
+     if(along>0&&along<reach&&side<width+e.r*.45){
+       e.hp-=4;e.flash=.18;particle(e.x,e.y-22,'-4','#b31313',.45,16);
+       if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
+     }
+   }
+   for(const r of props.rocks){
+     if(r.dead)continue;
+     const dx=r.x-player.x,dy=r.y-player.y;
+     const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+     if(along>0&&along<reach&&side<48){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.55,18)}
+   }
+   return;
+ }
+
+ // ハンマーチャージ：高く跳んで叩きつけ。直撃大ダメージ＋周囲をよろけさせる。
+ if(w===2 && charged){
+   player.hammerSmash=.72;player.hammerSmashT=0;player.attackMax=.72;player.attacking=.72;player.attackCooldown=.92;
+   player.jumpZ=Math.max(player.jumpZ||0,1);
+   particle(player.x,player.y-50,'大叩き！','#fff',.4,15);
+   return;
+ }
+
+ // 杖チャージ：通常弾より大きく強い魔法弾。
  player.attackMax=charged?.38:.24;player.attacking=player.attackMax;player.attackCooldown=charged?.55:.30;
- if(charged) particle(player.x,player.y-50,'チャージ！','#fff',.45,15);
+ if(charged)particle(player.x,player.y-50,'チャージ！','#fff',.45,15);
  if(w>=3){fireMagic(w,charged,base);return;}
- let cone=w===1?.34:charged?1.65:1.05;
- for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?(charged?5:3):1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
+
+ let cone=w===1?.34:1.05;
+ for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?3:1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
  if(w===0){for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}}
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
  if(w===1){for(const sw of props.switches){if(!sw.on&&dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
@@ -120,6 +150,28 @@ function doAttack(charged=false){
 function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);const facing=faceAngle(player.face);return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
+ // P16 チャージ攻撃の時間処理
+ if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
+ if(player.hammerSmash>0){
+   player.hammerSmash-=dt;player.hammerSmashT+=dt;
+   const p=Math.min(1,player.hammerSmashT/.72);
+   // 大きく跳び上がり、後半で急降下。
+   player.jumpZ=Math.sin(p*Math.PI)*105;
+   if(p>=.78&&!player.smashHit){
+     player.smashHit=true;
+     particle(player.x,player.y,'ドゴォン！','#111',.55,24);
+     for(const e of enemies){
+       if(e.dead)continue;
+       const d=dist(player.x,player.y,e.x,e.y);
+       if(d<62){e.hp-=5;e.flash=.2;particle(e.x,e.y-22,'-5','#b31313',.5,17)}
+       else if(d<145){e.hp-=1;e.flash=.14;e.stagger=.75;particle(e.x,e.y-20,'よろっ','#555',.45,14)}
+       if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
+     }
+     for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<92){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.5,17)}}
+   }
+   if(player.hammerSmash<=0){player.hammerSmash=0;player.hammerSmashT=0;player.smashHit=false;player.jumpZ=0}
+ }
+
  // 剣チャージ回転斬り
  if(player.spin){
    player.spinT += dt;
@@ -171,7 +223,7 @@ function update(dt){
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
- for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}else if(e.attackCd<=0){e.attackCd=e.type==='brute'?1.35:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='brute'?24:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='brute'?18:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
+ for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='brute'?1.35:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='brute'?24:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='brute'?18:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;
  camera.x=clamp(player.x-W/2,0,Math.max(0,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
@@ -386,6 +438,34 @@ function drawShield(hx,hy,a,raised,sideView=false){
  ctx.restore();
 }
 function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.save();ctx.rotate(a);ctx.globalAlpha=.62*Math.sin(t*Math.PI);line(38,-5,112,-5,7,'rgba(255,255,255,.75)');line(45,7,100,7,4,'rgba(255,255,255,.45)');ctx.restore()}
+
+
+function drawChargeEffects(){
+ const px=player.x-cam.x,py=player.y-cam.y-(player.jumpZ||0);
+ if(player.spiral>0){
+   ctx.save();ctx.translate(px,py);ctx.rotate(player.spiralA);
+   const life=player.spiral/.48;
+   for(let i=0;i<4;i++){
+     ctx.strokeStyle=i%2?'rgba(255,255,255,.75)':'rgba(120,220,255,.8)';
+     ctx.lineWidth=5;
+     ctx.beginPath();
+     for(let x=20;x<220;x+=8){
+       const y=Math.sin(x*.12+i*Math.PI/2+performance.now()*.025)*13*life;
+       if(x===20)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+     }
+     ctx.stroke();
+   }
+   ctx.restore();
+ }
+ if(player.hammerSmash>0 && player.hammerSmashT>.54){
+   const p=Math.min(1,(player.hammerSmashT-.54)/.18);
+   ctx.save();ctx.translate(player.x-cam.x,player.y-cam.y);
+   ctx.globalAlpha=.6*(1-p);
+   ctx.strokeStyle='#fff';ctx.lineWidth=9;
+   ctx.beginPath();ctx.arc(0,0,30+p*120,0,Math.PI*2);ctx.stroke();
+   ctx.restore();
+ }
+}
 
 function drawSpinSlash(){
  if(!player.spin || player.weapon!==0) return;
