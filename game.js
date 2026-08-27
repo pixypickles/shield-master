@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 58: 最初の浮遊草原ステージ
+// Prototype 60: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -114,7 +114,7 @@ const seedBoss={
 };
 
 const stage3Geo={
- // 第3島：木の実が増え、ここで槍を入手。
+ // 第3島：回転花が登場し、ここで槍を入手。
  path:[
   {x:3480,y:360,w:470,h:390},
   {x:3890,y:410,w:350,h:290},
@@ -125,10 +125,14 @@ const stage3Geo={
 };
 const stage3Enemies=[];
 function spawnStage3Enemy(x,y,type='acorn'){
- stage3Enemies.push({x,y,type,r:type==='walnut'?30:23,hp:type==='walnut'?4:1,maxHp:type==='walnut'?4:1,
- speed:type==='walnut'?45:68,attackCd:.5+Math.random(),flash:0,dead:false,open:0});
+ const spinner=type==='spinnerflower';
+ stage3Enemies.push({
+  x,y,type,r:spinner?32:23,hp:1,maxHp:1,
+  speed:spinner?0:68,attackCd:.5+Math.random(),flash:0,dead:false,open:0,
+  petalA:Math.random()*Math.PI*2
+ });
 }
-[[3670,530,'acorn'],[3980,510,'flower'],[4250,570,'walnut'],[4510,500,'acorn'],[4630,610,'walnut']].forEach(v=>spawnStage3Enemy(...v));
+[[3670,530,'acorn'],[3980,510,'flower'],[4250,570,'spinnerflower'],[4510,500,'acorn'],[4630,610,'spinnerflower']].forEach(v=>spawnStage3Enemy(...v));
 
 
 const stage4Geo={
@@ -591,16 +595,34 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
   const a=Math.atan2(e.y-player.y,e.x-player.x);
   if(d>range+e.r||Math.abs(angleDiff(a,base))>cone/2)continue;
 
-  let dmg=damage;
-  if(e.type==='walnut'){
-    // 剣は殻に弾かれる。ハンマーは特効。槍は細い隙間を突くイメージ。
-    if(weapon===0){dmg=0;particle(e.x,e.y-25,'カキン！','#111',.4,16)}
-    else if(weapon===2){dmg=99}
-    else if(weapon===1){dmg=charged?4:2}
-    else dmg=1;
+  if(e.type==='spinnerflower'){
+    // 花びらが常時回っているため、横から叩く武器は弾かれる。
+    // 槍だけは中心へ細く突き込めば一撃。
+    if(weapon===1){
+      // 槍の細い中心判定。向きが合っていれば一撃。
+      const fx=Math.cos(base),fy=Math.sin(base);
+      const dx=e.x-player.x,dy=e.y-player.y;
+      const along=dx*fx+dy*fy;
+      const side=Math.abs(dx*fy-dy*fx);
+      if(along>0&&along<range+e.r+18&&side<22){
+        e.hp=0;e.flash=.2;
+        particle(e.x,e.y-25,'中心！','#fff',.38,16);
+      }else{
+        particle(e.x,e.y-25,'スカッ','#555',.28,13);
+      }
+    }else{
+      particle(e.x,e.y-25,'キン！','#111',.32,15);
+    }
+  }else{
+    e.hp-=damage;enemyHitReact(e,22);
+    particle(e.x,e.y-25,`-${damage}`,'#b31313',.4,15);
   }
-  if(dmg>0){e.hp-=dmg;enemyHitReact(e,22);particle(e.x,e.y-25,`-${dmg}`,'#b31313',.4,15)}
-  if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15);killDrop(e,.55)}
+
+  if(e.hp<=0){
+    e.dead=true;
+    particle(e.x,e.y,e.type==='spinnerflower'?'パァン！':'ポン！','#fff',.4,15);
+    killDrop(e,.55);
+  }
  }
 }
 
@@ -738,11 +760,12 @@ function doAttack(charged=false){
      }
    }
    hitBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(8,230,base,.55,w);
+   // この序盤岩は槍では壊れない。ハンマー入手後のバックトラック用。
    for(const r of props.rocks){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
      const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-     if(along>0&&along<reach&&side<48){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.55,18)}
+     if(along>0&&along<reach&&side<48){particle(r.x,r.y,'ガキン！','#555',.35,15)}
    }
    return;
  }
@@ -845,7 +868,11 @@ function update(dt){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
      }
      if(boss.active&&!boss.dead&&dist(player.x,player.y,boss.x,boss.y)<145){boss.hp-=dist(player.x,player.y,boss.x,boss.y)<62?5:1;boss.flash=.16;}
-     for(const e of stage3Enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<110){let dd=e.type==='walnut'?7:4;e.hp-=dd;e.flash=.16;if(e.hp<=0)e.dead=true}}
+     for(const e of stage3Enemies){
+       if(e.dead||dist(player.x,player.y,e.x,e.y)>=110)continue;
+       if(e.type==='spinnerflower'){particle(e.x,e.y-25,'キン！','#111',.3,14);continue}
+       e.hp-=4;e.flash=.16;if(e.hp<=0)e.dead=true;
+     }
      for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<92){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.5,17)}}
    }
    if(player.hammerSmash<=0){
@@ -1060,6 +1087,21 @@ function update(dt){
  for(const tr of props.smallTrees){
   if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
  }
+ // 序盤の水場は最初は越えられない。青杖で凍らせた時だけ通れる。
+ const earlyWater=props.water;
+ if(earlyWater.w>0&&earlyWater.h>0&&earlyWater.frozen<=0){
+   const wp=player.r*.55;
+   if(player.x>earlyWater.x-wp&&player.x<earlyWater.x+earlyWater.w+wp&&
+      player.y>earlyWater.y-wp&&player.y<earlyWater.y+earlyWater.h+wp){
+     player.x=prevX;player.y=prevY;
+   }
+ }
+ // 序盤の岩も最初は越えられない。ハンマー入手後に戻れば壊せる。
+ for(const r of props.rocks){
+   if(!r.dead&&dist(player.x,player.y,r.x,r.y)<player.r+31){
+     player.x=prevX;player.y=prevY;break;
+   }
+ }
  // 岩の分かれ道の大岩。壊すまでは通れない。
  if(stage7Started){
    for(const r of stage7Rocks){
@@ -1152,7 +1194,11 @@ function update(dt){
      // 着地点中心の魔法柱/氷トゲ
      const rad=82,dmg=5;
      const hit=(e)=>{if(!e||e.dead)return;if(dist(m.x,m.y,e.x,e.y)<rad+(e.r||20)){e.hp-=dmg;e.flash=.2;particle(e.x,e.y-25,`-${dmg}`,m.kind==='fire'?'#e43':'#268bc1',.4,16);if(e.hp<=0)e.dead=true}};
-     for(const e of enemies)hit(e);for(const e of stage2Enemies)hit(e);for(const e of stage3Enemies)hit(e);for(const e of stage4Enemies)hit(e);for(const e of stage6Enemies)hit(e);for(const e of bossWalnuts)hit(e);
+     for(const e of enemies)hit(e);for(const e of stage2Enemies)hit(e);
+     for(const e of stage3Enemies){
+       if(e.type==='spinnerflower'&&dist(m.x,m.y,e.x,e.y)<rad+e.r)particle(e.x,e.y-25,'キン！','#111',.3,14);
+       else hit(e);
+     }for(const e of stage4Enemies)hit(e);for(const e of stage6Enemies)hit(e);for(const e of bossWalnuts)hit(e);
      hit(boss);hit(seedBoss);hit(grassFinalBoss);hit(rockBoss);
      if(m.kind==='fire'){for(const g of props.grass){if(!g.dead&&dist(m.x,m.y,g.x,g.y)<95){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}}}
      else {const wa=props.water;if(m.x>wa.x-80&&m.x<wa.x+wa.w+80&&m.y>wa.y-80&&m.y<wa.y+wa.h+80)wa.frozen=5}
@@ -1372,6 +1418,11 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  if(stage3Started){
    for(const e of stage3Enemies){
      if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);
+     if(e.type==='spinnerflower'){
+       e.petalA=(e.petalA||0)+dt*5.2;
+       // 防御ギミックなので移動・通常近接攻撃はしない。
+       continue;
+     }
      const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
      e.attackWind=Math.max(0,(e.attackWind||0)-dt);e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);
      if(d>66&&e.hitReact<=0&&e.attackWind<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
@@ -1384,7 +1435,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
        if(dist(player.x,player.y,e.x,e.y)<90){
          if(player.jumpT>0)particle(player.x,player.y-45,'スカッ','#333',.3,13);
          else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
-         else if(player.inv<=0){const got=takeDamage(e.type==='walnut'?6:4);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}
+         else if(player.inv<=0){const got=takeDamage(e.type==='spinnerflower'?4:4);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}
        }
      }
      if(e.attackWind<=0)e.windHit=false;
@@ -1863,13 +1914,21 @@ function drawWorld(){
    if(e.dead)continue;
    ctx.save();ctx.translate(e.x,e.y);
    if(e.flash>0){ctx.fillStyle='rgba(255,70,70,.48)';ctx.beginPath();ctx.arc(0,0,e.r+9,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.7;}
-   if(e.type==='walnut'){
-     // 硬いクルミ。わずかな顔の隙間。
-     ctx.fillStyle='#9b6637';ctx.strokeStyle='#111';ctx.lineWidth=7;
-     ctx.beginPath();ctx.ellipse(0,0,29,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-     line(0,-29,0,29,5,'#5d351f');
-     ctx.fillStyle='#18120e';ctx.fillRect(-5,-10,10,20);
-     circle(-1,-4,2.5,'#fff','#111',1);
+   if(e.type==='spinnerflower'){
+     // 花びらそのものが常時回転。中心だけ槍で狙える。
+     ctx.save();ctx.rotate(e.petalA||0);
+     for(let i=0;i<8;i++){
+       const aa=i*Math.PI/4;
+       ctx.save();ctx.rotate(aa);ctx.translate(27,0);
+       ctx.fillStyle=i%2?'#f08acb':'#ffb0dc';ctx.strokeStyle='#111';ctx.lineWidth=5;
+       ctx.beginPath();ctx.ellipse(0,0,17,9,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+       ctx.restore();
+     }
+     ctx.restore();
+     // 小さめの中心。ここを槍で突く。
+     circle(0,0,13,'#ffd85a','#111',5);
+     circle(-4,-2,2.3,'#111','#111',1);circle(4,-2,2.3,'#111','#111',1);
+     line(0,12,0,31,8,'#111');line(0,12,0,31,4,'#4fae52');
    }else if(e.type==='acorn'){
      circle(0,2,21,'#a86a36','#111',6);
      ctx.fillStyle='#6c4828';ctx.strokeStyle='#111';ctx.lineWidth=5;
