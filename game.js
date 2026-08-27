@@ -77,8 +77,11 @@ function fireMagic(w,charged,base){
  const speed=charged?560:470, damage=charged?3:2, radius=charged?16:11;
  // 魔法は杖の先端から発射。右手の位置→杖先までを描画と同じ計算にする。
  const fa=faceAngle(player.face), rx=Math.cos(fa+Math.PI/2), ry=Math.sin(fa+Math.PI/2), fx=Math.cos(fa), fy=Math.sin(fa);
- const hx=player.x+rx*23+fx*5, hy=player.y+ry*19+fy*5+3;
- const tip=62;
+ let hx=player.x+rx*23+fx*5, hy=player.y+ry*19+fy*5+3;
+ // 描画側の左右向き武器位置に合わせる。
+ if(player.face==='right'){hx=player.x+20;hy=player.y+13;}
+ else if(player.face==='left'){hx=player.x-18;hy=player.y+12;}
+ const tip=56;
  const sx=hx+Math.cos(base)*tip, sy=hy+Math.sin(base)*tip;
  projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged,hit:false});
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
@@ -89,27 +92,41 @@ function doAttack(charged=false){
  const w=player.weapon, wp=weapons[w];
  let range=wp.range*(charged?1.45:1);
  let base=autoAim(faceAngle(player.face),Math.PI*.58,w>=3?440:range+90);
- player.aim=base;player.attackMax=charged?.38:.24;player.attacking=player.attackMax;player.attackCooldown=charged?.55:.30;
+ player.aim=base;
+
+ // 剣チャージは通常なぎ払いとは別物：360度回転斬り。
+ if(w===0 && charged){
+   player.spin=1; player.spinT=0; player.attackMax=.56; player.attacking=.56; player.attackCooldown=.72;
+   particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
+   for(const e of enemies){
+     if(e.dead)continue;
+     if(dist(player.x,player.y,e.x,e.y)<=range+38){
+       e.hp-=3;e.flash=.14;particle(e.x,e.y-22,'-3','#b31313',.45,16);
+       if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
+     }
+   }
+   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
+   return;
+ }
+ player.attackMax=charged?.38:.24;player.attacking=player.attackMax;player.attackCooldown=charged?.55:.30;
  if(charged) particle(player.x,player.y-50,'チャージ！','#fff',.45,15);
- // 杖は完全な遠隔武器。近接判定は出さない。
  if(w>=3){fireMagic(w,charged,base);return;}
  let cone=w===1?.34:charged?1.65:1.05;
- for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const a=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r && Math.abs(angleDiff(a,base))<=cone/2){let dmg=w===2?(charged?5:3):(charged?3:1);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
- if(w===0){for(const g of props.grass){if(!g.dead && dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}}
- if(w===2){for(const r of props.rocks){if(!r.dead && dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
- if(w===1){for(const sw of props.switches){if(!sw.on && dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
+ for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?(charged?5:3):1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
+ if(w===0){for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}}
+ if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
+ if(w===1){for(const sw of props.switches){if(!sw.on&&dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
 }
-
 function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);const facing=faceAngle(player.face);return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
  // 剣チャージ回転斬り
  if(player.spin){
    player.spinT += dt;
-   const seq=['down','left','up','right'];
-   player.facing=seq[Math.floor((player.spinT/0.52)*8)%4];
+   const seq=['down','left','up','right','down','left','up','right'];
+   player.facing=seq[Math.floor((player.spinT/0.56)*8)%8];
    player.aim = ({down:Math.PI/2,left:Math.PI,up:-Math.PI/2,right:0})[player.facing];
-   if(player.spinT>=0.52){
+   if(player.spinT>=0.56){
      player.spin=0; player.spinT=0;
    }
  }
@@ -242,12 +259,12 @@ function drawPlayer(){
  line(-rightX*8,5,handL.x,handL.y,10,'#111');line(-rightX*8,5,handL.x,handL.y,5,'#f7fbff');
  // actual weapon motion
  let wa=a,thrust=0;
-
- // P10: 左向きの剣は上から下へ振り下ろす。
- if(f==='left' && player.weapon===0 && player.attacking>0){
-   const swingP=1-Math.max(0,Math.min(1,player.attacking/.24));
-   wa=Math.PI + (-0.95 + swingP*1.9);
+ // P11 左向き：剣とハンマーは必ず上から下へ振る。
+ if(f==='left' && (player.weapon===0||player.weapon===2) && player.attacking>0 && !player.spin){
+   const p=1-Math.max(0,Math.min(1,player.attacking/player.attackMax));
+   wa=-Math.PI*0.72 + p*Math.PI*1.15;
  }
+
  if(player.attacking>0){const t=1-player.attacking/player.attackMax;if(player.weapon===1){wa=player.aim;thrust=Math.sin(t*Math.PI)*20}else if(player.weapon===2){wa=player.aim-1.15+t*2.25}else if(player.weapon>=3){wa=player.aim;thrust=Math.sin(t*Math.PI)*7}else{wa=player.aim-.95+t*1.9}}
  let sx=handL.x+frontX*(player.shield?22:10), sy=handL.y+frontY*(player.shield?22:10);
  if(f==='right') sy+=18;
@@ -344,7 +361,7 @@ function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.sav
 function drawSpinSlash(){
  if(!player.spin || player.weapon!==0) return;
  const t=player.spinT||0;
- const prog=Math.min(1,t/0.52);
+ const prog=Math.min(1,t/0.56);
  ctx.save();
  ctx.translate(player.x-cam.x,player.y-cam.y-player.jumpZ);
  // 円形残像
