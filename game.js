@@ -183,10 +183,10 @@ function update(dt){
    // 高く跳び、最後の約25%で一気に落下。
    if(p<.72){
      const q=p/.72;
-     player.jumpZ=Math.sin(q*Math.PI*.78)*112;
+     player.jumpZ=Math.sin(q*Math.PI*.78)*132;
    }else{
      const q=(p-.72)/.28;
-     player.jumpZ=112*(1-q);
+     player.jumpZ=132*(1-q);
    }
 
    // 着地した瞬間にハンマーも地面へ到達し、ここで衝撃判定。
@@ -314,6 +314,10 @@ function drawWorld(){
  for(const pr of projectiles)drawProjectile(pr);
  for(const e of enemies)if(!e.dead)drawEnemy(e);
  drawPlayer();
+ // 攻撃エフェクトはキャラと同じワールド座標系で描画。
+ drawSwordSkillEffect();
+ drawChargeEffects();
+ drawSpinSlash();
  drawObjectiveArrow();
  for(const p of particles)if(p.life>0){ctx.save();ctx.globalAlpha=Math.min(1,p.life/.18);ctx.fillStyle=p.color;ctx.font=`900 ${p.size}px system-ui`;ctx.textAlign='center';ctx.strokeStyle='white';ctx.lineWidth=4;ctx.strokeText(p.text,p.x,p.y-(1-p.life/p.max)*25);ctx.fillText(p.text,p.x,p.y-(1-p.life/p.max)*25);ctx.restore()}
  ctx.restore();
@@ -334,7 +338,9 @@ function drawEnemy(e){ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalA
 
 function drawPlayer(){
  const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
- const lift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight:0;
+ const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight:0;
+ // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
+ const lift=Math.max(normalLift,player.jumpZ||0);
  const moving=player.moveMag>.16&&player.jumpT<=0;
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
@@ -377,6 +383,10 @@ function drawPlayer(){
  let wa=player.aim;
  let thrust=0;
 
+ // 剣スキル中、曲がった後は剣先を走行方向へ固定。
+ if(player.weapon===0 && player.skillT>0 && player.skillElapsed>=.14){
+   wa=player.aim;
+ }
  // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
  if(player.attacking>0 && !player.spin){
    const t=1-Math.max(0,Math.min(1,player.attacking/player.attackMax));
@@ -513,39 +523,110 @@ function drawShield(hx,hy,a,raised,sideView=false){
 function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.save();ctx.rotate(a);ctx.globalAlpha=.62*Math.sin(t*Math.PI);line(38,-5,112,-5,7,'rgba(255,255,255,.75)');line(45,7,100,7,4,'rgba(255,255,255,.45)');ctx.restore()}
 
 
+
+function drawSwordSkillEffect(){
+ if(player.weapon!==0 || player.skillT<=0 || player.skillElapsed<.14)return;
+
+ const a=player.aim;
+ const fx=Math.cos(a),fy=Math.sin(a);
+ const rx=Math.cos(a+Math.PI/2),ry=Math.sin(a+Math.PI/2);
+
+ ctx.save();ctx.translate(player.x,player.y);
+
+ // カクンと曲がった後は剣を前へ出したまま走る。
+ ctx.globalAlpha=.95;
+ ctx.strokeStyle='#111';ctx.lineWidth=11;ctx.lineCap='round';
+ ctx.beginPath();
+ ctx.moveTo(fx*14+rx*8,fy*14+ry*8);
+ ctx.lineTo(fx*72+rx*8,fy*72+ry*8);
+ ctx.stroke();
+ ctx.strokeStyle='#eef5fa';ctx.lineWidth=5;
+ ctx.beginPath();
+ ctx.moveTo(fx*14+rx*8,fy*14+ry*8);
+ ctx.lineTo(fx*72+rx*8,fy*72+ry*8);
+ ctx.stroke();
+
+ // 走った軌道に剣の薄い残像。
+ for(let i=0;i<3;i++){
+   const back=18+i*18;
+   ctx.globalAlpha=.32-i*.08;
+   ctx.strokeStyle='rgba(205,245,255,.95)';
+   ctx.lineWidth=10-i*2;
+   ctx.beginPath();
+   ctx.moveTo(-fx*back+rx*(10-i*6),-fy*back+ry*(10-i*6));
+   ctx.lineTo(fx*(42-back*.12)+rx*(10-i*6),fy*(42-back*.12)+ry*(10-i*6));
+   ctx.stroke();
+ }
+ ctx.restore();
+}
+
 function drawChargeEffects(){
- const px=player.x-cam.x,py=player.y-cam.y-(player.jumpZ||0);
+ // drawWorld() のカメラ変換内で呼ぶためワールド座標をそのまま使う。
+ const px=player.x,py=player.y-(player.jumpZ||0);
+
  if(player.spiral>0){
    ctx.save();ctx.translate(px,py);ctx.rotate(player.spiralA);
    const life=player.spiral/.48;
+   const tm=performance.now()*.018;
+
+   // 槍そのものの周囲を巻く螺旋。
    for(let i=0;i<4;i++){
-     ctx.strokeStyle=i%2?'rgba(255,255,255,.75)':'rgba(120,220,255,.8)';
-     ctx.lineWidth=5;
+     ctx.globalAlpha=.78*life;
+     ctx.strokeStyle=i%2?'rgba(255,255,255,.95)':'rgba(125,220,255,.95)';
+     ctx.lineWidth=i%2?5:7;
      ctx.beginPath();
-     for(let x=20;x<220;x+=8){
-       const y=Math.sin(x*.12+i*Math.PI/2+performance.now()*.025)*13*life;
-       if(x===20)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+     for(let x=18;x<225;x+=7){
+       const spread=8+x*.075;
+       const y=Math.sin(x*.115+tm+i*Math.PI/2)*spread;
+       if(x===18)ctx.moveTo(x,y);else ctx.lineTo(x,y);
      }
+     ctx.stroke();
+   }
+
+   // 空気が引っ張られて前へ流れている長い残像。
+   ctx.lineCap='round';
+   for(let i=0;i<8;i++){
+     const phase=(tm*22+i*29)%190;
+     const x=35+phase;
+     const side=(i%2?1:-1)*(15+(i%4)*7);
+     const len=38+(i%3)*18;
+     ctx.globalAlpha=.25+.35*life;
+     ctx.strokeStyle='rgba(235,250,255,.95)';
+     ctx.lineWidth=3+(i%2);
+     ctx.beginPath();
+     ctx.moveTo(x-len,side);
+     ctx.quadraticCurveTo(x-len*.45,side*.58,x,side*.18);
+     ctx.stroke();
+   }
+
+   // ドリル先端へ向かう空気リング。
+   ctx.globalAlpha=.42*life;
+   ctx.strokeStyle='rgba(210,247,255,.95)';
+   ctx.lineWidth=5;
+   for(let j=0;j<3;j++){
+     const x=105+j*46;
+     ctx.beginPath();
+     ctx.ellipse(x,0,10+j*5,24+j*8,0,0,Math.PI*2);
      ctx.stroke();
    }
    ctx.restore();
  }
+
  if(player.hammerSmash>0 && player.hammerSmashT>.705){
    const p=Math.min(1,(player.hammerSmashT-.705)/.06);
-   ctx.save();ctx.translate(player.x-cam.x,player.y-cam.y);
+   ctx.save();ctx.translate(player.x,player.y);
    ctx.globalAlpha=.6*(1-p);
    ctx.strokeStyle='#fff';ctx.lineWidth=9;
    ctx.beginPath();ctx.arc(0,0,30+p*120,0,Math.PI*2);ctx.stroke();
    ctx.restore();
  }
 }
-
 function drawSpinSlash(){
  if(!player.spin || player.weapon!==0) return;
  const t=player.spinT||0;
  const prog=Math.min(1,t/0.56);
  ctx.save();
- ctx.translate(player.x-cam.x,player.y-cam.y-player.jumpZ);
+ ctx.translate(player.x,player.y-(player.jumpZ||0));
  // 円形残像
  ctx.globalAlpha=0.58*(1-prog*0.25);
  ctx.strokeStyle='#f5fbff';
