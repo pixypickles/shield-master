@@ -242,6 +242,12 @@ function drawPlayer(){
  line(-rightX*8,5,handL.x,handL.y,10,'#111');line(-rightX*8,5,handL.x,handL.y,5,'#f7fbff');
  // actual weapon motion
  let wa=a,thrust=0;
+
+ // P10: 左向きの剣は上から下へ振り下ろす。
+ if(f==='left' && player.weapon===0 && player.attacking>0){
+   const swingP=1-Math.max(0,Math.min(1,player.attacking/.24));
+   wa=Math.PI + (-0.95 + swingP*1.9);
+ }
  if(player.attacking>0){const t=1-player.attacking/player.attackMax;if(player.weapon===1){wa=player.aim;thrust=Math.sin(t*Math.PI)*20}else if(player.weapon===2){wa=player.aim-1.15+t*2.25}else if(player.weapon>=3){wa=player.aim;thrust=Math.sin(t*Math.PI)*7}else{wa=player.aim-.95+t*1.9}}
  let sx=handL.x+frontX*(player.shield?22:10), sy=handL.y+frontY*(player.shield?22:10);
  if(f==='right') sy+=18;
@@ -258,7 +264,15 @@ function drawPlayer(){
    redrawBodyLayer(f);
  }else if(f==='right'){
    // P09 右向き：盾は身体の真後ろ。外周が少しだけ覗く。
-   const rsx=-18, rsy=5;
+   // 通常時は背中側から縁だけ。盾ボタン中は身体の前方へ出す。
+   // どちらも身体より奥のレイヤーに描く。
+   const rsx=player.shield?18:-18, rsy=player.shield?2:5;
+   if(player.shield){
+     // 左腕は身体の奥から前へ伸び、盾の裏を支える。
+     line(-3,5,rsx-7,rsy+2,12,'#111');
+     line(-3,5,rsx-7,rsy+2,6,'#f7fbff');
+     circle(rsx-7,rsy+2,6,'#f7fbff','#111',4);
+   }
    drawShield(rsx,rsy,a,player.shield,true);
    // 右腕・剣は腰より少し上。腕の根元は身体に隠す。
    const rwx=20, rwy=13;
