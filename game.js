@@ -10,7 +10,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={w:4800,h:1100};
+const world={w:7900,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 34: 最初の浮遊草原ステージ
+// Prototype 35: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -69,21 +69,21 @@ const props={
  grass:[{x:470,y:350,dead:false},{x:525,y:365,dead:false},{x:575,y:340,dead:false},{x:1240,y:390,dead:false}],
  rocks:[{x:1110,y:845,dead:false},{x:1165,y:860,dead:false}],
  switches:[{x:1310,y:630,on:false}],
- water:{x:250,y:820,w:320,h:150,frozen:0}
+ water:{x:250,y:820,w:320,h:150,frozen:0},
+ smallTrees:[
+  {x:850,y:390,dead:false},{x:850,y:455,dead:false},{x:850,y:520,dead:false},
+  {x:850,y:585,dead:false},{x:850,y:650,dead:false}
+ ]
 };
 
 const stageGeo={
- // 最初の島は基本広め。島のつなぎだけ少し細くする。
+ // ステージ1：一枚の読みやすい浮遊草原。
  path:[
-   {x:70,y:330,w:500,h:390},
-   {x:500,y:385,w:360,h:285},
-   {x:800,y:325,w:430,h:400},
-   {x:1160,y:390,w:360,h:310},
-   {x:1450,y:430,w:300,h:300}
+   {x:70,y:330,w:1680,h:400}
  ],
- bossArena:{x:1370,y:370,w:390,h:370},
- nextIsland:{x:1850,y:470,w:320,h:280},
- bridge:{x1:1740,y1:590,x2:1860,y2:590}
+ bossArena:{x:1370,y:350,w:380,h:380},
+ nextIsland:{x:1810,y:450,w:150,h:280},
+ bridge:{x1:1735,y1:570,x2:1905,y2:570}
 };
 
 const stage2Geo={
@@ -128,6 +128,38 @@ function spawnStage3Enemy(x,y,type='acorn'){
  speed:type==='walnut'?45:68,attackCd:.5+Math.random(),flash:0,dead:false,open:0});
 }
 [[3670,530,'acorn'],[3980,510,'flower'],[4250,570,'walnut'],[4510,500,'acorn'],[4630,610,'walnut']].forEach(v=>spawnStage3Enemy(...v));
+
+
+const stage4Geo={
+ // ステージ4：槍を持って進むツル草原
+ path:[
+  {x:4950,y:350,w:500,h:390},
+  {x:5380,y:400,w:360,h:300},
+  {x:5680,y:330,w:480,h:410}
+ ],
+ bridge:{x1:6130,y1:570,x2:6250,y2:570}
+};
+const stage4Enemies=[
+ {x:5150,y:520,r:25,hp:3,maxHp:3,type:'vine',speed:55,attackCd:.5,flash:0,dead:false},
+ {x:5480,y:500,r:25,hp:3,maxHp:3,type:'vine',speed:55,attackCd:.7,flash:0,dead:false},
+ {x:5860,y:590,r:27,hp:4,maxHp:4,type:'thorn',speed:48,attackCd:.8,flash:0,dead:false},
+ {x:6020,y:470,r:27,hp:4,maxHp:4,type:'thorn',speed:48,attackCd:.9,flash:0,dead:false}
+];
+
+const stage5Geo={
+ // ステージ5：草原エリアの最終広場
+ path:[
+  {x:6260,y:320,w:600,h:430},
+  {x:6780,y:370,w:420,h:340},
+  {x:7140,y:300,w:650,h:470}
+ ],
+ arena:{x:7140,y:300,w:650,h:470}
+};
+const grassFinalBoss={
+ x:7530,y:545,r:62,hp:32,maxHp:32,active:false,dead:false,
+ attackCd:.8,flash:0,phase:0
+};
+
 
 
 const particles=[];
@@ -386,6 +418,31 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
  }
 }
 
+
+function hitStage45(damage,range,base,cone,weapon){
+ if(stage4Started){
+  for(const e of stage4Enemies){
+   if(e.dead)continue;
+   const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(e.y-player.y,e.x-player.x);
+   if(d<=range+e.r&&Math.abs(angleDiff(a,base))<=cone/2){
+    let dmg=damage;
+    if(e.type==='thorn'&&weapon===0)dmg=Math.max(1,damage-1);
+    e.hp-=dmg;e.flash=.22;enemyHitReact(e,20);
+    particle(e.x,e.y-24,`-${dmg}`,'#b31313',.4,15);
+    if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.45,15)}
+   }
+  }
+ }
+ if(stage5Started&&grassFinalBoss.active&&!grassFinalBoss.dead){
+  const d=dist(player.x,player.y,grassFinalBoss.x,grassFinalBoss.y);
+  const a=Math.atan2(grassFinalBoss.y-player.y,grassFinalBoss.x-player.x);
+  if(d<=range+grassFinalBoss.r&&Math.abs(angleDiff(a,base))<=cone/2){
+   grassFinalBoss.hp-=damage;grassFinalBoss.flash=.18;
+   particle(grassFinalBoss.x,grassFinalBoss.y-55,`-${damage}`,'#b31313',.4,17);
+  }
+ }
+}
+
 function hitBoss(damage,range,base,cone=Math.PI*2){
  if(!boss.active||boss.dead)return;
  const d=dist(player.x,player.y,boss.x,boss.y);
@@ -408,7 +465,8 @@ function doAttack(charged=false){
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
    for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;enemyHitReact(e,28);particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
-   hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2);hitStage3(3,range+38,base,Math.PI*2,w,true);
+   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+55){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
+   hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2);hitStage3(3,range+38,base,Math.PI*2,w,true);hitStage45(3,range+38,base,Math.PI*2,w);
    return;
  }
 
@@ -428,7 +486,7 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);
+   hitBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(4,230,base,.55,w);
    for(const r of props.rocks){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
@@ -454,8 +512,11 @@ function doAttack(charged=false){
  let cone=w===1?.34:1.05;
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?3:1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e)}}}
  hitBoss(w===2?3:1,range,base,cone);
- hitStage2(w===2?3:1,range,base,cone);hitStage3(w===2?3:1,range,base,cone,w,false);
- if(w===0){for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}}
+ hitStage2(w===2?3:1,range,base,cone);hitStage3(w===2?3:1,range,base,cone,w,false);hitStage45(w===2?3:1,range,base,cone,w);
+ if(w===0){
+  for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
+  for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
+ }
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
  if(w===1){for(const sw of props.switches){if(!sw.on&&dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
 }
@@ -649,7 +710,12 @@ function update(dt){
      }
    }
  }
+ const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
+ // 小木は剣で切るまでは通れない。
+ for(const tr of props.smallTrees){
+  if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
+ }
 
  // 浮遊大陸から落ちた判定
  // 見た目上、足元が地面に少しでも乗っていれば落ちない。
@@ -669,10 +735,14 @@ function update(dt){
    if(onRect(stageGeo.nextIsland))safe=true;
    if(stage2Geo.path.some(onRect))safe=true;
    if(stage2BridgeOpen&&stage3Geo.path.some(onRect))safe=true;
+   if(stage3BridgeOpen&&stage4Geo.path.some(onRect))safe=true;
+   if(stage4BridgeOpen&&stage5Geo.path.some(onRect))safe=true;
    if(stage2BridgeOpen){
      const b2x1=Math.min(stage2Geo.bridge.x1,stage2Geo.bridge.x2)-25,b2x2=Math.max(stage2Geo.bridge.x1,stage2Geo.bridge.x2)+25;
      if(player.x>=b2x1&&player.x<=b2x2&&Math.abs(player.y-stage2Geo.bridge.y1)<72)safe=true;
    }
+   if(stage3BridgeOpen&&player.x>=4770&&player.x<=4980&&Math.abs(player.y-570)<75)safe=true;
+   if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<75)safe=true;
  }
  if(!safe){
    player.hp=Math.max(1,player.hp-15);
@@ -858,6 +928,72 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
+
+ // ステージ3の敵を倒し、槍を拾ったらステージ4への橋が開く。
+ if(stage3Started&&!stage3BridgeOpen&&spearPickup.taken&&stage3Enemies.every(e=>e.dead)){
+   stage3BridgeOpen=true;
+   say('ステージ4への虹の橋！');
+ }
+
+ if(stage3BridgeOpen&&player.x>4940&&!stage4Started){
+   stage4Started=true;currentStage=4;stage.checkpoint={x:5050,y:545};
+   say('ステージ4：ツル草原');
+ }
+
+ if(stage4Started&&!stage4Cleared){
+   for(const e of stage4Enemies){
+    if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);
+    const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+    if(d>64){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+    else if(e.attackCd<=0){
+     e.attackCd=e.type==='thorn'?1.15:.9;
+     if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){
+      const dmg=e.type==='thorn'?12:9;player.hp=Math.max(1,player.hp-dmg);player.inv=.6;
+      particle(player.x,player.y-35,`-${dmg}`,'#c11',.4,16);
+     }else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
+    }
+   }
+   if(stage4Enemies.every(e=>e.dead)){
+    stage4Cleared=true;stage4BridgeOpen=true;say('ステージ5への虹の橋！');
+   }
+ }
+
+ if(stage4BridgeOpen&&player.x>6250&&!stage5Started){
+   stage5Started=true;currentStage=5;stage.checkpoint={x:6370,y:545};
+   say('ステージ5：草原の最奥');
+ }
+
+ if(stage5Started&&!grassFinalBoss.dead){
+   if(!grassFinalBoss.active&&player.x>7100){
+    grassFinalBoss.active=true;say('大王ひまわり！');
+   }
+   if(grassFinalBoss.active){
+    grassFinalBoss.flash=Math.max(0,grassFinalBoss.flash-dt);
+    grassFinalBoss.attackCd-=dt;
+    if(grassFinalBoss.attackCd<=0){
+     grassFinalBoss.attackCd=.9;grassFinalBoss.phase++;
+     const base=Math.atan2(player.y-grassFinalBoss.y,player.x-grassFinalBoss.x);
+     // 3方向の種＋時々回転弾。ステージ2ボスより少し強い。
+     if(grassFinalBoss.phase%4===0){
+      for(let i=0;i<6;i++){
+       const a=i*Math.PI/3+grassFinalBoss.phase*.09;
+       projectiles.push({x:grassFinalBoss.x,y:grassFinalBoss.y-20,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:11,life:1.9,kind:'seed',damage:8,enemyShot:true,hit:false});
+      }
+     }else{
+      for(const off of [-.3,0,.3]){
+       const a=base+off;
+       projectiles.push({x:grassFinalBoss.x,y:grassFinalBoss.y-20,vx:Math.cos(a)*270,vy:Math.sin(a)*270,r:11,life:1.7,kind:'seed',damage:8,enemyShot:true,hit:false});
+      }
+     }
+    }
+    if(grassFinalBoss.hp<=0){
+     grassFinalBoss.dead=true;grassFinalBoss.active=false;grassAreaClear=true;
+     particle(grassFinalBoss.x,grassFinalBoss.y,'AREA CLEAR！','#fff',1.0,28);
+     say('草原エリア クリア！');
+    }
+   }
+ }
+
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;
  camera.x=clamp(player.x-W/2,0,Math.max(0,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
@@ -873,15 +1009,14 @@ function drawWorld(){
  ctx.fillStyle='#82c9ef';ctx.fillRect(0,0,W,H);
  ctx.save();ctx.translate(-camera.x,-camera.y);
 
- // 浮遊草原の地面
- for(const r of stageGeo.path){
-   ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
-   ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,45);ctx.fill();ctx.stroke();
-   // 崖の下面
-   ctx.fillStyle='#7b5b3c';ctx.globalAlpha=.9;
-   ctx.beginPath();ctx.moveTo(r.x+25,r.y+r.h);ctx.lineTo(r.x+r.w-25,r.y+r.h);ctx.lineTo(r.x+r.w-70,r.y+r.h+55);ctx.lineTo(r.x+70,r.y+r.h+55);ctx.closePath();ctx.fill();
-   ctx.globalAlpha=1;
- }
+ // ステージ1：二段に見えない、一枚の浮遊島として描画。
+ const s1=stageGeo.path[0];
+ ctx.fillStyle='#7b5b3c';ctx.strokeStyle='#111';ctx.lineWidth=7;
+ ctx.beginPath();
+ ctx.roundRect(s1.x+18,s1.y+38,s1.w-36,s1.h+58,58);
+ ctx.fill();ctx.stroke();
+ ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
+ ctx.beginPath();ctx.roundRect(s1.x,s1.y,s1.w,s1.h,58);ctx.fill();ctx.stroke();
 
  
  // 第2島：種を飛ばす植物の草原
@@ -915,6 +1050,25 @@ function drawWorld(){
    }
  }
 
+
+ // ステージ4
+ if(stage3BridgeOpen){
+  for(const r of stage4Geo.path){
+   ctx.fillStyle='#62b957';ctx.strokeStyle='#111';ctx.lineWidth=7;
+   ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
+  }
+  const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(4770,570+i*6-15);ctx.quadraticCurveTo(4865,530+i*6,4950,570+i*6-15);ctx.stroke()});
+ }
+ if(stage4BridgeOpen){
+  for(const r of stage5Geo.path){
+   ctx.fillStyle='#58ae51';ctx.strokeStyle='#111';ctx.lineWidth=7;
+   ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,50);ctx.fill();ctx.stroke();
+  }
+  const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1,stage4Geo.bridge.y1+i*6-15);ctx.quadraticCurveTo(6190,530+i*6,stage4Geo.bridge.x2,stage4Geo.bridge.y2+i*6-15);ctx.stroke()});
+ }
+
  // ボス後に現れる虹の橋
  if(stage.bridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
@@ -935,6 +1089,15 @@ function drawWorld(){
  ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
+
+ // 剣で切らないと通れない小木
+ for(const tr of props.smallTrees){
+  if(tr.dead)continue;
+  ctx.save();ctx.translate(tr.x,tr.y);
+  line(0,12,0,37,12,'#111');line(0,12,0,37,6,'#7b4d2a');
+  circle(-14,-2,18,'#4fae52','#111',5);circle(12,-6,20,'#56bc5d','#111',5);circle(0,-22,21,'#63c969','#111',5);
+  ctx.restore();
+ }
  // grass
  for(const g of props.grass){if(g.dead)continue;line(g.x-14,g.y+17,g.x,g.y-20,6,'#111');line(g.x,g.y+17,g.x+14,g.y-20,6,'#111');line(g.x,g.y+17,g.x,g.y-25,6,'#111');line(g.x-14,g.y+17,g.x,g.y-20,3,'#35a544');line(g.x,g.y+17,g.x+14,g.y-20,3,'#35a544');line(g.x,g.y+17,g.x,g.y-25,3,'#35a544')}
  // rocks
@@ -1026,6 +1189,36 @@ function drawWorld(){
  }
 
 
+
+ if(stage3BridgeOpen){
+  for(const e of stage4Enemies){
+   if(e.dead)continue;
+   ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.65;
+   if(e.type==='vine'){
+    line(-10,25,0,-18,9,'#111');line(-10,25,0,-18,4,'#37924a');
+    line(10,25,0,-18,9,'#111');line(10,25,0,-18,4,'#37924a');
+    circle(0,-20,19,'#6dc95e','#111',5);circle(-6,-23,3,'#111','#111',1);circle(6,-23,3,'#111','#111',1);
+   }else{
+    circle(0,0,25,'#62b24e','#111',6);
+    for(let i=0;i<8;i++){const aa=i*Math.PI/4;line(Math.cos(aa)*18,Math.sin(aa)*18,Math.cos(aa)*34,Math.sin(aa)*34,7,'#111');line(Math.cos(aa)*18,Math.sin(aa)*18,Math.cos(aa)*34,Math.sin(aa)*34,3,'#9dcb55')}
+    circle(-7,-4,3,'#111','#111',1);circle(7,-4,3,'#111','#111',1);
+   }
+   ctx.restore();
+  }
+ }
+ if(stage5Started&&!grassFinalBoss.dead){
+  ctx.save();ctx.translate(grassFinalBoss.x,grassFinalBoss.y);
+  if(grassFinalBoss.flash>0)ctx.globalAlpha=.6;
+  line(0,15,0,78,26,'#111');line(0,15,0,78,14,'#4a9a43');
+  for(let i=0;i<12;i++){const aa=i*Math.PI/6;ctx.save();ctx.translate(Math.cos(aa)*52,Math.sin(aa)*52-22);ctx.rotate(aa);ctx.fillStyle='#ffd34f';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,0,18,33,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+  circle(0,-22,42,'#7b6a2e','#111',8);circle(-14,-28,6,'#111','#111',1);circle(14,-28,6,'#111','#111',1);line(-15,-4,15,-4,6,'#111');
+  ctx.restore();
+  if(grassFinalBoss.active){
+   ctx.fillStyle='#111';ctx.fillRect(grassFinalBoss.x-105,grassFinalBoss.y-125,210,16);
+   ctx.fillStyle='#e84a3a';ctx.fillRect(grassFinalBoss.x-101,grassFinalBoss.y-121,202*Math.max(0,grassFinalBoss.hp/grassFinalBoss.maxHp),8);
+  }
+ }
+
  if(!boss.dead){
    ctx.save();ctx.translate(boss.x,boss.y);if(boss.flash>0)ctx.globalAlpha=.55;
    line(0,15,0,55,18,'#111');line(0,15,0,55,10,'#4e9e49');
@@ -1053,7 +1246,13 @@ function drawObjectiveArrow(){
  else if(!stage2Started){tx=stage2Geo.path[0].x+120;ty=stage2Geo.path[0].y+150;}
  else if(!stage2BossDefeated){tx=seedBoss.x;ty=seedBoss.y;}
  else if(!stage3Started){tx=stage3Geo.path[0].x+130;ty=stage3Geo.path[0].y+150;}
- else{tx=stage3Geo.path[stage3Geo.path.length-1].x+160;ty=stage3Geo.path[stage3Geo.path.length-1].y+180;}
+ else if(!spearPickup.taken){tx=spearPickup.x;ty=spearPickup.y;}
+ else if(!stage3BridgeOpen){tx=stage3Geo.path[stage3Geo.path.length-1].x+150;ty=550;}
+ else if(!stage4Started){tx=stage4Geo.path[0].x+120;ty=540;}
+ else if(!stage4Cleared){tx=stage4Geo.path[stage4Geo.path.length-1].x+180;ty=540;}
+ else if(!stage5Started){tx=stage5Geo.path[0].x+130;ty=540;}
+ else if(!grassAreaClear){tx=grassFinalBoss.x;ty=grassFinalBoss.y;}
+ else return;
 
  const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
  if(d<220)return;
@@ -1517,6 +1716,12 @@ let stage2BossDefeated=false;
 let stage2BridgeOpen=false;
 let stage3Started=false;
 let stage3BossDefeated=false;
+let stage3BridgeOpen=false;
+let stage4Started=false;
+let stage4Cleared=false;
+let stage4BridgeOpen=false;
+let stage5Started=false;
+let grassAreaClear=false;
 let spearPickup={x:3605,y:545,taken:false};
 
 
