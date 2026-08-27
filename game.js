@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
 
-// Prototype 47: 最初の浮遊草原ステージ
+// Prototype 48: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -240,20 +240,15 @@ function setStick(clientX,clientY){
  if(mag>.72&&stickWasNeutral){
   const a=Math.atan2(stick.y,stick.x),dir=Math.round(a/(Math.PI/2)),now=performance.now();
   if(lastFlickDir===dir&&now-lastFlickTime<330&&player.skillT<=0){
-   if(player.shield){
-     // 盾中はオートランせず、小ステップ。
-     // 盾の正面と逆方向ならバックステップになる。
-     player.shieldStepT=.26;
-     player.shieldStepDir=a;
-     player.dashAuto=false;
-     player.dashT=0;
-     player.dashShieldHit=new Set();
-     particle(player.x,player.y+20,'ステップ！','#fff',.22,13);
-   }else{
-     player.dashAuto=true;player.dashT=.12;player.dashDir=a;
-     player.dashAttack=false;player.dashShieldHit=new Set();
-     particle(player.x,player.y+20,'ダッシュ！','#fff',.25,14);
-   }
+   // 方向2回入力は、通常時も盾中も「大きく速いステップ」。
+   // オートランは廃止。入力方向へ一気に踏み込み、短時間で止まる。
+   player.shieldStepT=player.shield?.30:.27;
+   player.shieldStepDir=a;
+   player.dashAuto=false;
+   player.dashT=0;
+   player.dashAttack=false;
+   player.dashShieldHit=new Set();
+   particle(player.x,player.y+20,player.shield?'ガードステップ！':'ステップ！','#fff',.22,13);
    lastFlickTime=0;lastFlickDir=null;
   }else{lastFlickTime=now;lastFlickDir=dir}
   stickWasNeutral=false;
@@ -771,7 +766,7 @@ function update(dt){
 
  // オートラン中はスティックを離しても同じ方向へ走り続ける。
  // 進行方向と逆向きの入力を入れると、その場でオートラン解除。
- if(player.dashAuto&&player.skillT<=0){
+ if(false&&player.dashAuto&&player.skillT<=0){
    const rawMag=Math.hypot(mx,my);
    if(rawMag>.35){
      const nx=mx/rawMag,ny=my/rawMag;
@@ -789,8 +784,10 @@ function update(dt){
 
  if(player.shieldStepT>0&&player.skillT<=0){
    player.shieldStepT=Math.max(0,player.shieldStepT-dt);
-   mx=Math.cos(player.shieldStepDir)*1.34;
-   my=Math.sin(player.shieldStepDir)*1.34;
+   // 大きめ・高速。ただしダッシュのように走り続けない。
+   const stepPower=player.shield?1.62:1.72;
+   mx=Math.cos(player.shieldStepDir)*stepPower;
+   my=Math.sin(player.shieldStepDir)*stepPower;
  }
 
  let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
