@@ -23,10 +23,10 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
 
 const enemies=[];
-function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,dead:false})}
+function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,stagger:0,dead:false})}
 [[560,470],[1030,510],[880,760],[680,800],[1180,710],[420,700]].forEach((p,i)=>spawnEnemy(...p,i===4?'brute':'blob'));
 
 const props={
@@ -69,9 +69,28 @@ document.getElementById('skillBtn').addEventListener('pointerdown',()=>skill());
 document.getElementById('changeBtn').addEventListener('pointerdown',()=>{player.weapon=(player.weapon+1)%weapons.length;weaponNameEl.textContent=weapons[player.weapon].name;say(`${weapons[player.weapon].name} にチェンジ`)});
 
 function jump(){if(player.jumpT<=0){player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
-function skill(){if(player.skillT>0||player.jumpT>0)return;player.skillT=.28;player.shield=false;const a=autoAim(faceAngle(player.face),Math.PI*.65,260);player.aim=a;particle(player.x,player.y,'スキル！','#7e20a6',.5,18)}
+function skill(){
+ if(player.skillT>0||player.jumpT>0)return;
+ player.shield=false;
+ const a=autoAim(faceAngle(player.face),Math.PI*.65,300);
+ player.aim=a;
+ player.skillBase=a;
+ player.skillElapsed=0;
+ player.skillHit=new Set();
 
-function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;if(e.stagger>0)e.stagger=Math.max(0,e.stagger-dt);const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
+ if(player.weapon===0){
+   // 剣：敵へ直進 → 45度カクンと逸れる → 平行に斬り抜ける。
+   player.skillT=.46;
+   // 左右どちらへ逸れるかを交互にして、毎回同じ見た目になりすぎない。
+   player.skillSide=player.skillSide>0?-1:1;
+   particle(player.x,player.y,'斬り抜け！','#7e20a6',.5,18);
+ }else{
+   player.skillT=.28;
+   particle(player.x,player.y,'スキル！','#7e20a6',.5,18);
+ }
+}
+
+function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
 
 function fireMagic(w,charged,base){
  const speed=charged?560:470, damage=charged?3:2, radius=charged?16:11;
@@ -150,14 +169,29 @@ function doAttack(charged=false){
 function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);const facing=faceAngle(player.face);return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
+ // P17: 敵のよろけ時間はゲーム更新側で減らす。
+ for(const e of enemies){
+   if(e.stagger>0)e.stagger=Math.max(0,e.stagger-dt);
+ }
+
  // P16 チャージ攻撃の時間処理
  if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
  if(player.hammerSmash>0){
    player.hammerSmash-=dt;player.hammerSmashT+=dt;
    const p=Math.min(1,player.hammerSmashT/.72);
-   // 大きく跳び上がり、後半で急降下。
-   player.jumpZ=Math.sin(p*Math.PI)*105;
-   if(p>=.78&&!player.smashHit){
+
+   // 高く跳び、最後の約25%で一気に落下。
+   if(p<.72){
+     const q=p/.72;
+     player.jumpZ=Math.sin(q*Math.PI*.78)*112;
+   }else{
+     const q=(p-.72)/.28;
+     player.jumpZ=112*(1-q);
+   }
+
+   // 着地した瞬間にハンマーも地面へ到達し、ここで衝撃判定。
+   if(p>=.985&&!player.smashHit){
+     player.jumpZ=0;
      player.smashHit=true;
      particle(player.x,player.y,'ドゴォン！','#111',.55,24);
      for(const e of enemies){
@@ -169,7 +203,9 @@ function update(dt){
      }
      for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<92){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.5,17)}}
    }
-   if(player.hammerSmash<=0){player.hammerSmash=0;player.hammerSmashT=0;player.smashHit=false;player.jumpZ=0}
+   if(player.hammerSmash<=0){
+     player.hammerSmash=0;player.hammerSmashT=0;player.smashHit=false;player.jumpZ=0;
+   }
  }
 
  // 剣チャージ回転斬り
@@ -204,7 +240,35 @@ function update(dt){
  let mx=stick.x+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),my=stick.y+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
  player.moveMag=m; if(m>.16){player.face=faceFromVec(mx,my);if(!player.shield)player.aim=Math.atan2(my,mx);player.walkPhase+=dt*(9+Math.min(1,m)*4)}
  let speed=player.speed*(player.shield?.42:1);
- if(player.skillT>0){mx=Math.cos(player.aim)*2.5;my=Math.sin(player.aim)*2.5;speed=330;for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<62){e.hp-=2;e.flash=.12;if(e.hp<=0)e.dead=true}}}
+ if(player.skillT>0){
+   if(player.weapon===0){
+     player.skillElapsed+=dt;
+     const t=player.skillElapsed;
+     let sa=player.skillBase;
+     // 0〜0.14秒: 敵へ真っ直ぐ
+     // 0.14〜0.27秒: 45度カクンと逸れる
+     // 0.27秒〜: 元の方向と平行に斬り抜ける
+     if(t>=.14 && t<.27) sa=player.skillBase+player.skillSide*Math.PI/4;
+     else if(t>=.27) sa=player.skillBase;
+     player.aim=sa;
+     mx=Math.cos(sa)*2.6;my=Math.sin(sa)*2.6;speed=350;
+     player.face=faceFromVec(mx,my);
+
+     for(const e of enemies){
+       if(e.dead||player.skillHit.has(e))continue;
+       if(dist(player.x,player.y,e.x,e.y)<68){
+         e.hp-=3;e.flash=.14;player.skillHit.add(e);
+         particle(e.x,e.y-22,'-3','#b31313',.45,16);
+         if(e.hp<=0)e.dead=true;
+       }
+     }
+   }else{
+     mx=Math.cos(player.aim)*2.5;my=Math.sin(player.aim)*2.5;speed=330;
+     for(const e of enemies){
+       if(!e.dead&&dist(player.x,player.y,e.x,e.y)<62){e.hp-=2;e.flash=.12;if(e.hp<=0)e.dead=true}
+     }
+   }
+ }
  player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
  if(player.shield&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+6*dt)}
@@ -334,7 +398,16 @@ function drawPlayer(){
 
    }else if(player.weapon===2){
      // ハンマー
-     if(f==='left'){
+     if(player.hammerSmash>0){
+       const hp=Math.min(1,player.hammerSmashT/.72);
+       // 空中では振りかぶり、着地直前の最後12%で一気に振り下ろす。
+       const slam=Math.max(0,Math.min(1,(hp-.88)/.12));
+       if(f==='left'){
+         wa=-Math.PI*.72-slam*Math.PI*.58;
+       }else{
+         wa=player.aim-1.28+slam*2.55;
+       }
+     }else if(f==='left'){
        // 左向き：左上 → 左下への振り下ろし
        wa=-Math.PI*0.72 - t*Math.PI*0.58;
      }else{
@@ -457,8 +530,8 @@ function drawChargeEffects(){
    }
    ctx.restore();
  }
- if(player.hammerSmash>0 && player.hammerSmashT>.54){
-   const p=Math.min(1,(player.hammerSmashT-.54)/.18);
+ if(player.hammerSmash>0 && player.hammerSmashT>.705){
+   const p=Math.min(1,(player.hammerSmashT-.705)/.06);
    ctx.save();ctx.translate(player.x-cam.x,player.y-cam.y);
    ctx.globalAlpha=.6*(1-p);
    ctx.strokeStyle='#fff';ctx.lineWidth=9;
