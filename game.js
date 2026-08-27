@@ -23,9 +23,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set()};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
 
-// Prototype 44: 最初の浮遊草原ステージ
+// Prototype 45: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -221,9 +221,20 @@ function setStick(clientX,clientY){
  if(mag>.72&&stickWasNeutral){
   const a=Math.atan2(stick.y,stick.x),dir=Math.round(a/(Math.PI/2)),now=performance.now();
   if(lastFlickDir===dir&&now-lastFlickTime<330&&player.skillT<=0){
-   player.dashAuto=true;player.dashT=.12;player.dashDir=a;
-   player.dashAttack=false;player.dashShieldHit=new Set();
-   particle(player.x,player.y+20,'ダッシュ！','#fff',.25,14);
+   if(player.shield){
+     // 盾中はオートランせず、小ステップ。
+     // 盾の正面と逆方向ならバックステップになる。
+     player.shieldStepT=.16;
+     player.shieldStepDir=a;
+     player.dashAuto=false;
+     player.dashT=0;
+     player.dashShieldHit=new Set();
+     particle(player.x,player.y+20,'ステップ！','#fff',.22,13);
+   }else{
+     player.dashAuto=true;player.dashT=.12;player.dashDir=a;
+     player.dashAttack=false;player.dashShieldHit=new Set();
+     particle(player.x,player.y+20,'ダッシュ！','#fff',.25,14);
+   }
    lastFlickTime=0;lastFlickDir=null;
   }else{lastFlickTime=now;lastFlickDir=dir}
   stickWasNeutral=false;
@@ -331,7 +342,13 @@ function stickAngle(){
 function skill(){
  if(player.skillT>0||player.jumpT>0)return;
  player.shield=false;
- const a=autoAim(faceAngle(player.face),Math.PI*.65,320);
+ const baseFace=faceAngle(player.face);
+ let a=autoAim(baseFace,Math.PI*.65,320);
+ if(player.weapon===0||player.weapon===1){
+   // 剣・槍スキルはジャンプ開始時に近い敵へやや強めに自動補正。
+   const snap=skillAutoAim(baseFace,360,Math.PI*.82);
+   a=snap.angle;
+ }
  player.aim=a;
  player.skillBase=a;
  player.skillElapsed=0;
@@ -371,6 +388,30 @@ function skill(){
    player.skillT=.68;
    particle(player.x,player.y,'アイスサーフ！','#268bc1',.5,18);
  }
+}
+
+
+function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
+ const candidates=[];
+ for(const e of enemies)if(!e.dead)candidates.push(e);
+ for(const e of stage2Enemies)if(!e.dead)candidates.push(e);
+ for(const e of stage3Enemies)if(!e.dead)candidates.push(e);
+ for(const e of stage4Enemies)if(!e.dead)candidates.push(e);
+ if(boss.active&&!boss.dead)candidates.push(boss);
+ if(seedBoss.active&&!seedBoss.dead)candidates.push(seedBoss);
+ if(grassFinalBoss.active&&!grassFinalBoss.dead)candidates.push(grassFinalBoss);
+
+ let best=null,bestScore=1e9,bestA=base;
+ for(const e of candidates){
+   const d=dist(player.x,player.y,e.x,e.y);
+   if(d>maxDist)continue;
+   const a=Math.atan2(e.y-player.y,e.x-player.x);
+   const ad=Math.abs(angleDiff(a,base));
+   if(ad>cone)continue;
+   const score=d+ad*120;
+   if(score<bestScore){bestScore=score;best=e;bestA=a}
+ }
+ return {angle:bestA,target:best};
 }
 
 function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
@@ -711,11 +752,26 @@ function update(dt){
    }
    if(player.dashAuto){
      mx=Math.cos(player.dashDir)*1.28;my=Math.sin(player.dashDir)*1.28;
-     player.face=faceFromVec(mx,my);
+     if(!player.shield)player.face=faceFromVec(mx,my);
    }
  }
+
+ if(player.shieldStepT>0&&player.skillT<=0){
+   player.shieldStepT=Math.max(0,player.shieldStepT-dt);
+   mx=Math.cos(player.shieldStepDir)*1.20;
+   my=Math.sin(player.shieldStepDir)*1.20;
+ }
+
  let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
- player.moveMag=m; if(m>.16){player.face=faceFromVec(mx,my);if(!player.shield)player.aim=Math.atan2(my,mx);player.walkPhase+=dt*(9+Math.min(1,m)*4)}
+ player.moveMag=m;
+ if(m>.16){
+   // 盾中は向きを固定。移動しても盾の向きは変えない。
+   if(!player.shield){
+     player.face=faceFromVec(mx,my);
+     player.aim=Math.atan2(my,mx);
+   }
+   player.walkPhase+=dt*(9+Math.min(1,m)*4);
+ }
  let speed=player.speed*(player.shield?.42:1)*shields[player.shieldType].move;
  if(player.skillT>0){
    player.skillElapsed+=dt;
@@ -728,6 +784,8 @@ function update(dt){
 
      if(t<.10){
        mx=0;my=0;speed=0;player.skillZ=0;
+       const snap=skillAutoAim(player.skillBase,340,Math.PI*.60);
+       player.skillBase=steerAngle(player.skillBase,snap.angle,dt*4.5);
      }else if(t<.43){
        const p=(t-.10)/.33;
        mx=Math.cos(sa)*1.72;my=Math.sin(sa)*1.72;speed=345;
@@ -773,10 +831,13 @@ function update(dt){
 
    }else if(player.skillKind==='spear'){
      player.inv=Math.max(player.inv,.18);
-     const sa=player.skillBase;
+     let sa=player.skillBase;
      player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
 
      if(t<.12){
+       const snap=skillAutoAim(player.skillBase,380,Math.PI*.62);
+       player.skillBase=steerAngle(player.skillBase,snap.angle,dt*4.2);
+       sa=player.skillBase;
        mx=Math.cos(sa)*1.45;my=Math.sin(sa)*1.45;speed=285;player.skillZ=0;
      }else if(t<.54){
        const p=(t-.12)/.42;
@@ -871,7 +932,7 @@ function update(dt){
   if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
  }
  
- if((player.dashT>0||player.dashAuto)&&player.shield){
+ if((player.dashT>0||player.dashAuto||player.shieldStepT>0)&&player.shield){
    const bashList=[...enemies,...stage2Enemies,...stage3Enemies,...stage4Enemies];
    for(const e of bashList){
     if(e.dead||player.dashShieldHit.has(e))continue;
