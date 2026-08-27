@@ -4,6 +4,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const hpfill = document.getElementById('hpfill');
 const weaponNameEl = document.getElementById('weaponName');
+const leafStockEl=document.getElementById('leafStock');
 const messageEl = document.getElementById('message');
 const DPR = Math.min(2, window.devicePixelRatio || 1);
 let W=0,H=0;
@@ -23,9 +24,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 60: 最初の浮遊草原ステージ
+// Prototype 61: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -50,6 +51,15 @@ const shields=[
 ];
 const unlockedShields=[true,false,false,false,false];
 
+
+let areaMapOpen=false,area1Cleared=false;
+const areaPanel=document.getElementById('areaPanel');
+function openAreaMap(){areaMapOpen=true;areaPanel.classList.remove('hidden')}
+function closeAreaMap(){areaMapOpen=false;areaPanel.classList.add('hidden')}
+function travelArea1(){closeAreaMap();currentStage=1;player.x=250;player.y=545;stage.checkpoint={x:250,y:545};say('エリア1：草原群島')}
+function travelArea2(){closeAreaMap();stage6Started=true;currentStage=6;player.x=8170;player.y=545;stage.checkpoint={x:8170,y:545};say('エリア2：風の庭園')}
+document.getElementById('area1Btn').addEventListener('pointerdown',travelArea1);
+document.getElementById('area2Btn').addEventListener('pointerdown',travelArea2);
 
 const enemies=[];
 function spawnEnemy(x,y,type='grass'){
@@ -233,9 +243,8 @@ const guardRails=[
 ];
 
 const healDrops=[];
-const buffDrops=[];
-const areaFruitDropped={1:false,2:false,3:false,4:false,5:false};
-let powerFruitT=0,guardFruitT=0;
+const floatLeafDrops=[];
+let floatLeafStock=0;
 const particles=[];
 const projectiles=[];
 function particle(x,y,text,color='#111',life=.55,size=20){particles.push({x,y,text,color,life,max:life,size})}
@@ -532,7 +541,7 @@ function fireMagic(w,charged,base){
 
 
 function takeDamage(amount){
- const dmg=guardFruitT>0?Math.max(1,Math.ceil(amount*.5)):amount;
+ const dmg=amount;
  player.hp=Math.max(1,player.hp-dmg);
  return dmg;
 }
@@ -541,12 +550,7 @@ function maybeDropHeal(x,y,chance=.48){
 }
 function killDrop(e,chance=.48){
  maybeDropHeal(e.x,e.y,chance);
- const area=Math.max(1,Math.min(5,currentStage||1));
- if(!areaFruitDropped[area]&&Math.random()<.16){
-   areaFruitDropped[area]=true;
-   const kind=Math.random()<.5?'power':'guard';
-   buffDrops.push({x:e.x+14,y:e.y-8,r:12,life:14,bob:Math.random()*6.28,kind});
- }
+ if(Math.random()<.11)floatLeafDrops.push({x:e.x+14,y:e.y-8,r:12,life:16,bob:Math.random()*6.28});
 }
 
 function stage1DeathEffect(e){
@@ -567,7 +571,7 @@ function enemyHitReact(e,power=18){
 }
 function hitStage2(damage,range,base,cone){
  if(!stage2Started)return;
- damage=powerFruitT>0?damage*2:damage;
+ damage=damage;
  for(const e of stage2Enemies){
    if(e.dead)continue;
    const d=dist(player.x,player.y,e.x,e.y);
@@ -588,7 +592,7 @@ function hitStage2(damage,range,base,cone){
 
 function hitStage3(damage,range,base,cone,weapon,charged=false){
  if(!stage3Started)return;
- damage=powerFruitT>0?damage*2:damage;
+ damage=damage;
  for(const e of stage3Enemies){
   if(e.dead)continue;
   const d=dist(player.x,player.y,e.x,e.y);
@@ -628,7 +632,7 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
 
 
 function hitStage45(damage,range,base,cone,weapon){
- damage=powerFruitT>0?damage*2:damage;
+ damage=damage;
  if(stage4Started){
   for(const e of stage4Enemies){
    if(e.dead)continue;
@@ -817,6 +821,7 @@ function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
  return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
+ if(areaMapOpen)return;
  player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
  for(const e of enemies){
@@ -1149,32 +1154,27 @@ function update(dt){
    if(stage3BridgeOpen&&player.x>=4770&&player.x<=4980&&Math.abs(player.y-570)<105)safe=true;
    if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<105)safe=true;
  }
- // 通常ステージでは落下しない。
- // 浮遊大陸には独自の重力があり、縁まで行っても裏側へ吸い付く設定。
- // そのため通常探索では落下ダメージなし。レース専用コースだけ別処理にする。
- if(!safe){
-   const allGround=visibleGroundRects();
-   let best=null,bestD=1e9;
-   for(const r of allGround){
-     const rx=clamp(player.x,r.x+12,r.x+r.w-12);
-     const ry=clamp(player.y,r.y+12,r.y+r.h-12);
-     const dd=(rx-player.x)**2+(ry-player.y)**2;
-     if(dd<bestD){bestD=dd;best={x:rx,y:ry}}
-   }
-   // 完全に空へ出た時だけ、最寄りの地面へ吸い付く。HPは減らさない。
-   if(best&&bestD>55*55){
-     player.x=best.x;
-     player.y=best.y;
-     if(player.skillT>0){
-       player.skillT=0;
-       player.skillKind=null;
-       player.skillZ=0;
+ // 浮遊大陸の縁では、まずアニメのように踏ん張る。
+ if(safe){player.ledgeT=0;}
+ else{
+   const grounds=visibleGroundRects();let best=null,bestD=1e9;
+   for(const r of grounds){const rx=clamp(player.x,r.x+8,r.x+r.w-8),ry=clamp(player.y,r.y+8,r.y+r.h-8),dd=(rx-player.x)**2+(ry-player.y)**2;if(dd<bestD){bestD=dd;best={x:rx,y:ry}}}
+   if(player.ledgeT<=0){
+     player.ledgeT=.72;player.ledgeX=best?best.x:prevX;player.ledgeY=best?best.y:prevY;player.x=prevX;player.y=prevY;particle(player.x,player.y-35,'おっと！','#fff',.45,16);
+   }else{
+     player.ledgeT-=dt;const ix=player.ledgeX-player.x,iy=player.ledgeY-player.y,id=Math.hypot(ix,iy)||1;
+     const inward=(mx*ix+my*iy)/id;player.x=prevX;player.y=prevY;
+     if(inward>.18){player.x=player.ledgeX;player.y=player.ledgeY;player.ledgeT=0;particle(player.x,player.y-25,'セーフ！','#fff',.28,14)}
+     else if(player.ledgeT<=0){
+       if(floatLeafStock>0){floatLeafStock--;particle(player.x,player.y-40,'ふわっ！','#7edb72',.55,18);say(`羽の葉っぱで助かった！ 残り${floatLeafStock}`)}
+       else{const got=takeDamage(3);particle(player.x,player.y-40,`落下 -${got}`,'#c11',.55,17)}
+       player.x=player.ledgeX;player.y=player.ledgeY;player.inv=.65;player.ledgeT=0;
+       if(player.skillT>0){player.skillT=0;player.skillKind='';player.skillZ=0}
      }
-     particle(player.x,player.y,'ふわっ','#8ad4ff',.3,13);
    }
  }
 
- // ジャンプ攻撃の着地判定
+  // ジャンプ攻撃の着地判定
  if(player.airAttack&&player.jumpT>0&&player.jumpT<=dt+.025&&!player.airAttackDone){
    player.airAttackDone=true;
    const w=player.weapon;
@@ -1515,9 +1515,10 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
     }
     if(grassFinalBoss.hp<=0){
-     grassFinalBoss.dead=true;grassFinalBoss.active=false;grassAreaClear=true;
+     grassFinalBoss.dead=true;grassFinalBoss.active=false;grassAreaClear=true;area1Cleared=true;
      particle(grassFinalBoss.x,grassFinalBoss.y,'AREA CLEAR！','#fff',1.0,28);
-     say('草原エリア クリア！　新しい虹の橋が現れた！');
+     say('草原エリア クリア！');
+     setTimeout(()=>openAreaMap(),850);
     }
    }
  }
@@ -1525,7 +1526,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
 
  // 草原クリア後：風の庭園
- if(grassAreaClear&&player.x>8010&&!stage6Started){
+ if(false&&grassAreaClear&&player.x>8010&&!stage6Started){
    stage6Started=true;currentStage=6;stage.checkpoint={x:8170,y:545};
    say('風の庭園：風を操る植物たち');
  }
@@ -1653,29 +1654,16 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
 
- powerFruitT=Math.max(0,powerFruitT-dt);
- guardFruitT=Math.max(0,guardFruitT-dt);
- for(const d of buffDrops){
+ for(const d of floatLeafDrops){
    d.life-=dt;d.bob+=dt*4;
    if(d.life>0&&dist(player.x,player.y,d.x,d.y)<36){
-     if(d.kind==='power'){
-       powerFruitT=20;particle(d.x,d.y-18,'力の実！','#d33',.6,18);say('力の実：20秒 攻撃力アップ！');
-     }else{
-       guardFruitT=20;particle(d.x,d.y-18,'守りの実！','#3978c6',.6,18);say('守りの実：20秒 ダメージ半減！');
-     }
-     d.life=0;
+     floatLeafStock++;d.life=0;particle(d.x,d.y-18,'羽の葉っぱ +1','#4fba68',.6,17);say(`羽の葉っぱ　${floatLeafStock}枚`);
    }
  }
- for(let i=buffDrops.length-1;i>=0;i--)if(buffDrops[i].life<=0)buffDrops.splice(i,1);
-
-
- for(const d of buffDrops){
-   const yy=d.y+Math.sin(d.bob)*5;
-   ctx.save();ctx.globalAlpha=Math.min(1,d.life);
-   circle(d.x,yy,17,d.kind==='power'?'rgba(255,120,110,.25)':'rgba(120,180,255,.25)','transparent',0);
-   circle(d.x,yy,9,d.kind==='power'?'#ef5a4f':'#67a7ee','#111',3);
-   line(d.x+2,yy-8,d.x+7,yy-15,4,'#3b7d35');
-   ctx.restore();
+ for(let i=floatLeafDrops.length-1;i>=0;i--)if(floatLeafDrops[i].life<=0)floatLeafDrops.splice(i,1);
+ for(const d of floatLeafDrops){
+   const yy=d.y+Math.sin(d.bob)*5;ctx.save();ctx.translate(d.x,yy);ctx.rotate(-.55);
+   ctx.fillStyle='#7edb72';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,0,13,6,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
  }
 
  for(const d of healDrops){
@@ -1696,7 +1684,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
 
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
- hpfill.style.width=`${player.hp/player.maxHp*100}%`;
+ hpfill.style.width=`${player.hp/player.maxHp*100}%`;leafStockEl.textContent=`🍃 ${floatLeafStock}`;
  camera.x=clamp(player.x-W/2,0,Math.max(0,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
 }
 

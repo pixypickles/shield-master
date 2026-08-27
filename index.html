@@ -28,14 +28,14 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
 
 </head>
 <body>
-<div id="versionBadge">Prototype 60</div>
+<div id="versionBadge">Prototype 61</div>
 
   <main id="app">
     <canvas id="game" aria-label="game canvas"></canvas>
 
     <div id="hud">
       <div class="hpbox"><span>HP</span><div class="hpbar"><i id="hpfill"></i></div></div>
-      <div id="weaponName">剣</div>
+      <div id="weaponName">剣</div><div id="leafStock">🍃 0</div>
     </div>
 
     <div id="controls">
@@ -69,7 +69,13 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
     <button id="equipClose" class="equipClose">閉じる</button>
   </div>
 </div>
-  <script src="game.js" defer></script>
+  
+<div id="areaPanel" class="areaPanel hidden"><div class="areaCard">
+<div class="areaTitle">浮遊大陸マップ</div><div class="areaSub">行き先を選択</div>
+<button id="area1Btn" class="areaBtn">エリア1　草原群島<br><small>クリア済み・戻る</small></button>
+<button id="area2Btn" class="areaBtn">エリア2　風の庭園<br><small>新しい大陸へ</small></button>
+</div></div>
+<script src="game.js" defer></script>
 
 </body>
 </html>
