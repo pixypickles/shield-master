@@ -1836,8 +1836,12 @@ function drawWorld(){
  ctx.save();ctx.beginPath();ctx.roundRect(s1.x,s1.y,s1.w,s1.h,58);ctx.clip();
  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=245;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  ctx.restore();
- // ground patches
- ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
+ // 丸い模様：地面では草色、空ではごく薄い青系にして主張を弱くする。
+ for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
+   const px=x+(y%3)*8,py=y;
+   ctx.fillStyle=pointSupportedByGround(px,py,0)?'#a9df92':'rgba(203,235,239,.16)';
+   ctx.beginPath();ctx.arc(px,py,34,0,Math.PI*2);ctx.fill();
+ }
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
 
@@ -1997,6 +2001,11 @@ function drawWorld(){
  if(stage5Started&&!grassFinalBoss.dead){
   ctx.save();ctx.translate(grassFinalBoss.x,grassFinalBoss.y);
   if(grassFinalBoss.flash>0)ctx.globalAlpha=.6;
+  // 足元に大きな葉を2枚。茎だけより植物らしいシルエットにする。
+  ctx.fillStyle='#65b94f';ctx.strokeStyle='#111';ctx.lineWidth=7;
+  ctx.beginPath();ctx.ellipse(-34,54,34,17,-.55,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(34,58,35,17,.55,0,Math.PI*2);ctx.fill();ctx.stroke();
+  line(-9,55,-50,43,4,'#397f3a');line(9,58,50,48,4,'#397f3a');
   line(0,15,0,78,26,'#111');line(0,15,0,78,14,'#4a9a43');
   for(let i=0;i<12;i++){const aa=i*Math.PI/6;ctx.save();ctx.translate(Math.cos(aa)*52,Math.sin(aa)*52-22);ctx.rotate(aa);ctx.fillStyle='#ffd34f';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,0,18,33,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
   circle(0,-22,42,'#7b6a2e','#111',8);circle(-14,-28,6,'#111','#111',1);circle(14,-28,6,'#111','#111',1);line(-15,-4,15,-4,6,'#111');
