@@ -124,8 +124,8 @@ function update(dt){
  if(player.spin){
    player.spinT += dt;
    const seq=['down','left','up','right','down','left','up','right'];
-   player.facing=seq[Math.floor((player.spinT/0.56)*8)%8];
-   player.aim = ({down:Math.PI/2,left:Math.PI,up:-Math.PI/2,right:0})[player.facing];
+   player.face=seq[Math.floor((player.spinT/0.56)*8)%8];
+   player.aim = ({down:Math.PI/2,left:Math.PI,up:-Math.PI/2,right:0})[player.face];
    if(player.spinT>=0.56){
      player.spin=0; player.spinT=0;
    }
@@ -273,7 +273,20 @@ function drawPlayer(){
    }
  }
 
- if(player.attacking>0){const t=1-player.attacking/player.attackMax;if(player.weapon===1){wa=player.aim;thrust=Math.sin(t*Math.PI)*20}else if(player.weapon===2){wa=player.aim-1.15+t*2.25}else if(player.weapon>=3){wa=player.aim;thrust=Math.sin(t*Math.PI)*7}else{wa=player.aim-.95+t*1.9}}
+ if(player.attacking>0){
+   const t=1-player.attacking/player.attackMax;
+   if(player.weapon===1){
+     wa=player.aim;thrust=Math.sin(t*Math.PI)*20;
+   }else if(player.weapon>=3){
+     wa=player.aim;thrust=Math.sin(t*Math.PI)*7;
+   }else if((player.weapon===0||player.weapon===2) && f==='left' && !player.spin){
+     // 左向きだけは専用の上→下モーション。ここで上書きしない。
+   }else if(player.weapon===2){
+     wa=player.aim-1.15+t*2.25;
+   }else if(!player.spin){
+     wa=player.aim-.95+t*1.9;
+   }
+ }
  let sx=handL.x+frontX*(player.shield?22:10), sy=handL.y+frontY*(player.shield?22:10);
  if(f==='right') sy+=18;
  if(f==='left')  sy+=15;
