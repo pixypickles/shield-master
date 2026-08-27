@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 36: 最初の浮遊草原ステージ
+// Prototype 37: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -178,6 +178,9 @@ const guardRails=[
 ];
 
 const healDrops=[];
+const buffDrops=[];
+const areaFruitDropped={1:false,2:false,3:false,4:false,5:false};
+let powerFruitT=0,guardFruitT=0;
 const particles=[];
 const projectiles=[];
 function particle(x,y,text,color='#111',life=.55,size=20){particles.push({x,y,text,color,life,max:life,size})}
@@ -314,7 +317,7 @@ function skill(){
  }else if(player.weapon===1){
    // 槍：ダッシュ→ジャンプ→槍を下へ向けて着地
    player.skillKind='spear';
-   player.skillT=.78;
+   player.skillT=1.02;
    particle(player.x,player.y,'飛槍！','#2f6db0',.5,18);
 
  }else if(player.weapon===2){
@@ -378,11 +381,22 @@ function fireMagic(w,charged,base){
 
 
 
+function takeDamage(amount){
+ const dmg=guardFruitT>0?Math.max(1,Math.ceil(amount*.5)):amount;
+ player.hp=Math.max(1,player.hp-dmg);
+ return dmg;
+}
 function maybeDropHeal(x,y,chance=.48){
  if(Math.random()<chance)healDrops.push({x,y,r:10,life:10,bob:Math.random()*6.28});
 }
 function killDrop(e,chance=.48){
  maybeDropHeal(e.x,e.y,chance);
+ const area=Math.max(1,Math.min(5,currentStage||1));
+ if(!areaFruitDropped[area]&&Math.random()<.16){
+   areaFruitDropped[area]=true;
+   const kind=Math.random()<.5?'power':'guard';
+   buffDrops.push({x:e.x+14,y:e.y-8,r:12,life:14,bob:Math.random()*6.28,kind});
+ }
 }
 
 function stage1DeathEffect(e){
@@ -403,6 +417,7 @@ function enemyHitReact(e,power=18){
 }
 function hitStage2(damage,range,base,cone){
  if(!stage2Started)return;
+ damage=powerFruitT>0?damage*2:damage;
  for(const e of stage2Enemies){
    if(e.dead)continue;
    const d=dist(player.x,player.y,e.x,e.y);
@@ -423,6 +438,7 @@ function hitStage2(damage,range,base,cone){
 
 function hitStage3(damage,range,base,cone,weapon,charged=false){
  if(!stage3Started)return;
+ damage=powerFruitT>0?damage*2:damage;
  for(const e of stage3Enemies){
   if(e.dead)continue;
   const d=dist(player.x,player.y,e.x,e.y);
@@ -444,6 +460,7 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
 
 
 function hitStage45(damage,range,base,cone,weapon){
+ damage=powerFruitT>0?damage*2:damage;
  if(stage4Started){
   for(const e of stage4Enemies){
    if(e.dead)continue;
@@ -451,7 +468,7 @@ function hitStage45(damage,range,base,cone,weapon){
    if(d<=range+e.r&&Math.abs(angleDiff(a,base))<=cone/2){
     let dmg=damage;
     if(e.type==='thorn'&&weapon===0)dmg=Math.max(1,damage-1);
-    e.hp-=dmg;e.flash=.22;enemyHitReact(e,20);
+    e.hp-=dmg;e.flash=.22;enemyHitReact(e,52);
     particle(e.x,e.y-24,`-${dmg}`,'#b31313',.4,15);
     if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.45,15);killDrop(e,.55)}
    }
@@ -490,7 +507,7 @@ function doAttack(charged=false){
    for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;enemyHitReact(e,28);particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+55){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
-   hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2);hitStage3(3,range+38,base,Math.PI*2,w,true);hitStage45(3,range+38,base,Math.PI*2,w);
+   hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2);hitStage3(3,range+38,base,Math.PI*2,w,true);hitStage45(6,range+38,base,Math.PI*2,w);
    return;
  }
 
@@ -510,7 +527,7 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(4,230,base,.55,w);
+   hitBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(8,230,base,.55,w);
    for(const r of props.rocks){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
@@ -645,33 +662,54 @@ function update(dt){
      }
 
    }else if(player.skillKind==='spear'){
-     // 槍：ジャンプ前のダッシュ中だけ少し方向修正。飛んだら固定。
+     // 槍：ダッシュ→大ジャンプ→槍で一度バウンド→斜め前へ再着地。
+     // 空中〜着地攻撃中は無敵なので、敵陣へ飛び込む用途を明確にする。
+     player.inv=Math.max(player.inv,.16);
      const inputA=stickAngle();
-     if(t<.22 && inputA!==null){
+     if(t<.24 && inputA!==null){
        player.skillBase=steerAngle(player.skillBase,inputA,dt*2.2);
      }
-     mx=Math.cos(player.skillBase)*2.45;my=Math.sin(player.skillBase)*2.45;speed=315;
+     mx=Math.cos(player.skillBase)*2.55;my=Math.sin(player.skillBase)*2.55;speed=320;
      player.face=faceFromVec(mx,my);
-     if(t<.22){
+     if(t<.24){
        player.skillZ=0;
-     }else{
-       const p=Math.min(1,(t-.22)/.48);
-       player.skillZ=Math.sin(p*Math.PI)*100;
-       if(p>.88&&!player.skillPhase){
+     }else if(t<.60){
+       const p=(t-.24)/.36;
+       player.skillZ=Math.sin(p*Math.PI)*112;
+       if(p>.88&&player.skillPhase===0){
          player.skillPhase=1;
-         const ix=player.x+Math.cos(player.skillBase)*34;
-         const iy=player.y+Math.sin(player.skillBase)*34;
-         particle(ix,iy,'ズドッ！','#2f6db0',.45,20);
+         const ix=player.x+Math.cos(player.skillBase)*38,iy=player.y+Math.sin(player.skillBase)*38;
+         particle(ix,iy,'ガン！','#2f6db0',.35,18);
          for(const e of enemies){
            if(e.dead)continue;
-           if(dist(ix,iy,e.x,e.y)<74){
-             e.hp-=4;e.flash=.16;particle(e.x,e.y-20,'-4','#b31313',.45,16);
-             if(e.hp<=0)e.dead=true;
+           if(dist(ix,iy,e.x,e.y)<82){
+             e.hp-=8;enemyHitReact(e,78);particle(e.x,e.y-20,'-8','#b31313',.45,16);
+             if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.6)}
            }
          }
+         hitStage2(8,92,player.skillBase,Math.PI*.9);
+         hitStage3(8,92,player.skillBase,Math.PI*.9,1,true);
+         hitStage45(8,92,player.skillBase,Math.PI*.9,1);
+       }
+     }else{
+       const p=Math.min(1,(t-.60)/.42);
+       player.skillZ=Math.sin(p*Math.PI)*62;
+       if(p>.88&&player.skillPhase===1){
+         player.skillPhase=2;
+         const ix=player.x+Math.cos(player.skillBase)*42,iy=player.y+Math.sin(player.skillBase)*42;
+         particle(ix,iy,'ズドン！','#2f6db0',.5,22);
+         for(const e of enemies){
+           if(e.dead)continue;
+           if(dist(ix,iy,e.x,e.y)<92){
+             e.hp-=10;enemyHitReact(e,90);particle(e.x,e.y-20,'-10','#b31313',.45,17);
+             if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.65)}
+           }
+         }
+         hitStage2(10,105,player.skillBase,Math.PI);
+         hitStage3(10,105,player.skillBase,Math.PI,1,true);
+         hitStage45(10,105,player.skillBase,Math.PI,1);
        }
      }
-
    }else if(player.skillKind==='hammer'){
      // ハンマー：回転開始前のダッシュ中だけ少し方向修正。
      if(t<.24){
@@ -688,7 +726,7 @@ function update(dt){
          for(const e of enemies){
            if(e.dead)continue;
            if(dist(player.x,player.y,e.x,e.y)<105){
-             e.hp-=4;e.flash=.16;particle(e.x,e.y-20,'-4','#b31313',.45,16);
+             e.hp-=8;e.flash=.16;enemyHitReact(e,72);particle(e.x,e.y-20,'-8','#b31313',.45,16);
              if(e.hp<=0)e.dead=true;
            }
          }
@@ -773,10 +811,24 @@ function update(dt){
    if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<105)safe=true;
  }
  if(!safe){
-   player.hp=Math.max(1,player.hp-15);
-   particle(player.x,player.y,'うわっ！','#b31313',.45,18);
-   player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;
-   say('落下！ 少しダメージ');
+   player.hp=Math.max(1,player.hp-5);
+   particle(player.x,player.y,'-5','#b31313',.45,18);
+   // 大きく巻き戻さず、落ちた場所のすぐ近くへ戻す。
+   let best=null,bestD=1e9;
+   const allGround=[...stageGeo.path];
+   if(stage.bridgeOpen)allGround.push(...stage2Geo.path);
+   if(stage2BridgeOpen)allGround.push(...stage3Geo.path);
+   if(stage3BridgeOpen)allGround.push(...stage4Geo.path);
+   if(stage4BridgeOpen)allGround.push(...stage5Geo.path);
+   for(const r of allGround){
+     const rx=clamp(player.x,r.x+34,r.x+r.w-34),ry=clamp(player.y,r.y+34,r.y+r.h-34);
+     const dd=(rx-player.x)**2+(ry-player.y)**2;
+     if(dd<bestD){bestD=dd;best={x:rx,y:ry}}
+   }
+   if(best){player.x=best.x;player.y=best.y}
+   else{player.x=stage.checkpoint.x;player.y=stage.checkpoint.y}
+   player.inv=1;
+   say('落下！ -5');
  }
 
  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
@@ -815,9 +867,9 @@ function update(dt){
        }else if(shieldBlocks({x:pr.x,y:pr.y})){
          particle(pr.x,pr.y,pr.kind==='seed'?'カン！':'ポフン！','#111',.35,14);
        }else if(player.inv<=0){
-         player.hp=Math.max(1,player.hp-pr.damage);
+         const got=takeDamage(pr.damage);
          player.inv=.45;
-         particle(player.x,player.y-35,`-${pr.damage}`,'#c11',.45,16);
+         particle(player.x,player.y-35,`-${got}`,'#c11',.45,16);
        }
        pr.hit=true;
      }
@@ -890,7 +942,7 @@ function update(dt){
        for(let i=0;i<shots;i++){
          const off=shots===1?0:(i-1)*.24;
          const a=base+off;
-         projectiles.push({x:e.x,y:e.y-12,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:9,life:1.7,kind:'seed',damage:6,enemyShot:true,hit:false});
+         projectiles.push({x:e.x,y:e.y-12,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:9,life:1.7,kind:'seed',damage:5,enemyShot:true,hit:false});
        }
        particle(e.x,e.y-30,'プッ！','#567d28',.3,14);
      }
@@ -909,13 +961,13 @@ function update(dt){
        if(seedBoss.phase%4===0){
          for(let i=0;i<6;i++){
            const a=i*Math.PI/3+seedBoss.phase*.07;
-           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*225,vy:Math.sin(a)*225,r:11,life:1.9,kind:'seed',damage:7,enemyShot:true,hit:false});
+           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*225,vy:Math.sin(a)*225,r:11,life:1.9,kind:'seed',damage:6,enemyShot:true,hit:false});
          }
          particle(seedBoss.x,seedBoss.y-55,'パパパッ！','#567d28',.4,18);
        }else{
          for(const off of [-.28,0,.28]){
            const a=base+off;
-           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*255,vy:Math.sin(a)*255,r:11,life:1.7,kind:'seed',damage:7,enemyShot:true,hit:false});
+           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*255,vy:Math.sin(a)*255,r:11,life:1.7,kind:'seed',damage:6,enemyShot:true,hit:false});
          }
        }
      }
@@ -950,7 +1002,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      if(d>62&&e.hitReact<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
      else if(e.attackCd<=0){
        e.attackCd=1;
-       if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){player.hp=Math.max(1,player.hp-10);player.inv=.6;particle(player.x,player.y-35,'-10','#c11',.4,16)}
+       if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){const got=takeDamage(6);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}
        else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
      }
    }
@@ -976,8 +1028,8 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
     else if(e.attackCd<=0){
      e.attackCd=e.type==='thorn'?1.15:.9;
      if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){
-      const dmg=e.type==='thorn'?12:9;player.hp=Math.max(1,player.hp-dmg);player.inv=.6;
-      particle(player.x,player.y-35,`-${dmg}`,'#c11',.4,16);
+      const dmg=e.type==='thorn'?8:6;const got=takeDamage(dmg);player.inv=.6;
+      particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
      }else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
     }
    }
@@ -1005,12 +1057,12 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      if(grassFinalBoss.phase%4===0){
       for(let i=0;i<6;i++){
        const a=i*Math.PI/3+grassFinalBoss.phase*.09;
-       projectiles.push({x:grassFinalBoss.x,y:grassFinalBoss.y-20,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:11,life:1.9,kind:'seed',damage:8,enemyShot:true,hit:false});
+       projectiles.push({x:grassFinalBoss.x,y:grassFinalBoss.y-20,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:11,life:1.9,kind:'seed',damage:6,enemyShot:true,hit:false});
       }
      }else{
       for(const off of [-.3,0,.3]){
        const a=base+off;
-       projectiles.push({x:grassFinalBoss.x,y:grassFinalBoss.y-20,vx:Math.cos(a)*270,vy:Math.sin(a)*270,r:11,life:1.7,kind:'seed',damage:8,enemyShot:true,hit:false});
+       projectiles.push({x:grassFinalBoss.x,y:grassFinalBoss.y-20,vx:Math.cos(a)*270,vy:Math.sin(a)*270,r:11,life:1.7,kind:'seed',damage:6,enemyShot:true,hit:false});
       }
      }
     }
@@ -1022,6 +1074,32 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
+
+
+ powerFruitT=Math.max(0,powerFruitT-dt);
+ guardFruitT=Math.max(0,guardFruitT-dt);
+ for(const d of buffDrops){
+   d.life-=dt;d.bob+=dt*4;
+   if(d.life>0&&dist(player.x,player.y,d.x,d.y)<36){
+     if(d.kind==='power'){
+       powerFruitT=20;particle(d.x,d.y-18,'力の実！','#d33',.6,18);say('力の実：20秒 攻撃力アップ！');
+     }else{
+       guardFruitT=20;particle(d.x,d.y-18,'守りの実！','#3978c6',.6,18);say('守りの実：20秒 ダメージ半減！');
+     }
+     d.life=0;
+   }
+ }
+ for(let i=buffDrops.length-1;i>=0;i--)if(buffDrops[i].life<=0)buffDrops.splice(i,1);
+
+
+ for(const d of buffDrops){
+   const yy=d.y+Math.sin(d.bob)*5;
+   ctx.save();ctx.globalAlpha=Math.min(1,d.life);
+   circle(d.x,yy,17,d.kind==='power'?'rgba(255,120,110,.25)':'rgba(120,180,255,.25)','transparent',0);
+   circle(d.x,yy,9,d.kind==='power'?'#ef5a4f':'#67a7ee','#111',3);
+   line(d.x+2,yy-8,d.x+7,yy-15,4,'#3b7d35');
+   ctx.restore();
+ }
 
  for(const d of healDrops){
    d.life-=dt;d.bob+=dt*4;
