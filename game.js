@@ -383,9 +383,10 @@ function drawPlayer(){
  let wa=player.aim;
  let thrust=0;
 
- // 剣スキル中、曲がった後は剣先を走行方向へ固定。
+ // 剣スキル中、曲がった後は剣を走行方向に対して横へ張り出す。
+ // ラリアットの腕のように、進行方向へ突くのではなく横向きで斬り抜ける。
  if(player.weapon===0 && player.skillT>0 && player.skillElapsed>=.14){
-   wa=player.aim;
+   wa=player.aim + player.skillSide*Math.PI/2;
  }
  // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
  if(player.attacking>0 && !player.spin){
@@ -527,39 +528,43 @@ function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.sav
 function drawSwordSkillEffect(){
  if(player.weapon!==0 || player.skillT<=0 || player.skillElapsed<.14)return;
 
- const a=player.aim;
- const fx=Math.cos(a),fy=Math.sin(a);
- const rx=Math.cos(a+Math.PI/2),ry=Math.sin(a+Math.PI/2);
+ const moveA=player.aim;
+ const bladeA=moveA+player.skillSide*Math.PI/2;
+ const fx=Math.cos(moveA),fy=Math.sin(moveA);
+ const bx=Math.cos(bladeA),by=Math.sin(bladeA);
 
  ctx.save();ctx.translate(player.x,player.y);
+ ctx.lineCap='round';
 
- // カクンと曲がった後は剣を前へ出したまま走る。
- ctx.globalAlpha=.95;
- ctx.strokeStyle='#111';ctx.lineWidth=11;ctx.lineCap='round';
- ctx.beginPath();
- ctx.moveTo(fx*14+rx*8,fy*14+ry*8);
- ctx.lineTo(fx*72+rx*8,fy*72+ry*8);
- ctx.stroke();
- ctx.strokeStyle='#eef5fa';ctx.lineWidth=5;
- ctx.beginPath();
- ctx.moveTo(fx*14+rx*8,fy*14+ry*8);
- ctx.lineTo(fx*72+rx*8,fy*72+ry*8);
- ctx.stroke();
+ // 剣そのものは drawPlayer() が1本だけ描く。
+ // ここではラリアット斬りの「横に流れる残像」だけ描画。
+ for(let i=0;i<4;i++){
+   const back=10+i*15;
+   const alpha=.34-i*.065;
+   ctx.globalAlpha=alpha;
+   ctx.strokeStyle='rgba(210,247,255,.95)';
+   ctx.lineWidth=12-i*2;
 
- // 走った軌道に剣の薄い残像。
- for(let i=0;i<3;i++){
-   const back=18+i*18;
-   ctx.globalAlpha=.32-i*.08;
-   ctx.strokeStyle='rgba(205,245,255,.95)';
-   ctx.lineWidth=10-i*2;
+   // 走行方向へ少し後ろにずらした、横向きの剣残像。
+   const ox=-fx*back, oy=-fy*back;
    ctx.beginPath();
-   ctx.moveTo(-fx*back+rx*(10-i*6),-fy*back+ry*(10-i*6));
-   ctx.lineTo(fx*(42-back*.12)+rx*(10-i*6),fy*(42-back*.12)+ry*(10-i*6));
+   ctx.moveTo(ox-bx*16,oy-by*16);
+   ctx.lineTo(ox+bx*64,oy+by*64);
+   ctx.stroke();
+ }
+
+ // 曲がった瞬間だけ短い斬撃の弧を添える。
+ if(player.skillElapsed<.24){
+   const p=(player.skillElapsed-.14)/.10;
+   ctx.globalAlpha=Math.max(0,.45*(1-p));
+   ctx.strokeStyle='rgba(245,255,255,.95)';
+   ctx.lineWidth=8;
+   ctx.beginPath();
+   ctx.arc(0,0,58,bladeA-.5,bladeA+.5);
    ctx.stroke();
  }
  ctx.restore();
 }
-
 function drawChargeEffects(){
  // drawWorld() のカメラ変換内で呼ぶためワールド座標をそのまま使う。
  const px=player.x,py=player.y-(player.jumpZ||0);
