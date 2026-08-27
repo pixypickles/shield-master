@@ -23,7 +23,7 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
 
 const enemies=[];
 function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,stagger:0,dead:false})}
@@ -364,6 +364,9 @@ function update(dt){
    }else if(player.skillKind==='ice'){
      mx=Math.cos(player.skillBase)*2.75;my=Math.sin(player.skillBase)*2.75;speed=355;
      player.face=faceFromVec(mx,my);
+     if(!player.iceTrail.length || dist(player.x,player.y,player.iceTrail[player.iceTrail.length-1].x,player.iceTrail[player.iceTrail.length-1].y)>28){
+       player.iceTrail.push({x:player.x,y:player.y,life:1.15,phase:Math.random()*Math.PI*2});
+     }
      for(const e of enemies){
        if(e.dead||player.skillHit.has(e))continue;
        if(dist(player.x,player.y,e.x,e.y)<72){
@@ -394,6 +397,8 @@ function update(dt){
    }
  }
  player.fireTrail=player.fireTrail.filter(f=>f.life>0);
+ for(const f of player.iceTrail)f.life-=dt;
+ player.iceTrail=player.iceTrail.filter(f=>f.life>0);
  // magic projectiles
  for(const pr of projectiles){
    if(pr.hit)continue;pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
@@ -434,9 +439,10 @@ function drawWorld(){
  for(const s of props.switches){circle(s.x,s.y,24,s.on?'#7cff78':'#ffdb55','#111',6);circle(s.x,s.y,9,'#fff','#111',4)}
  for(const pr of projectiles)drawProjectile(pr);
  for(const e of enemies)if(!e.dead)drawEnemy(e);
+ // 氷板・炎輪など移動スキルの土台を先に描く。
+ drawStaffSkillEffects();
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
- drawStaffSkillEffects();
  drawSwordSkillEffect();
  drawChargeEffects();
  drawSpinSlash();
@@ -655,40 +661,7 @@ function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.sav
 
 
 function drawStaffSkillEffects(){
- if(player.skillT<=0)return;
- ctx.save();
- ctx.translate(player.x,player.y-(player.skillZ||0));
-
- if(player.skillKind==='fire'){
-   const t=performance.now()*.018;
-   ctx.globalAlpha=.8;
-   ctx.strokeStyle='rgba(255,110,30,.95)';
-   ctx.lineWidth=12;
-   ctx.beginPath();ctx.arc(0,0,42,0,Math.PI*2);ctx.stroke();
-   ctx.strokeStyle='rgba(255,220,90,.9)';
-   ctx.lineWidth=5;
-   for(let i=0;i<5;i++){
-     const a=t+i*Math.PI*2/5;
-     ctx.beginPath();
-     ctx.arc(Math.cos(a)*35,Math.sin(a)*35,9,0,Math.PI*2);
-     ctx.stroke();
-   }
- }else if(player.skillKind==='ice'){
-   // サーフィン用の板状の氷
-   ctx.rotate(player.skillBase);
-   ctx.globalAlpha=.9;
-   ctx.fillStyle='rgba(190,240,255,.9)';
-   ctx.strokeStyle='#157fa8';ctx.lineWidth=5;
-   ctx.beginPath();
-   ctx.moveTo(-28,-15);ctx.lineTo(42,-9);ctx.lineTo(55,0);ctx.lineTo(42,9);ctx.lineTo(-28,15);ctx.closePath();
-   ctx.fill();ctx.stroke();
-   ctx.globalAlpha=.35;
-   ctx.strokeStyle='rgba(235,255,255,.95)';ctx.lineWidth=10;
-   ctx.beginPath();ctx.moveTo(-65,0);ctx.lineTo(-18,0);ctx.stroke();
- }
- ctx.restore();
-
- // 地面の火跡
+ // 地面に残る炎
  if(player.fireTrail.length){
    for(const f of player.fireTrail){
      ctx.save();ctx.globalAlpha=Math.min(.7,f.life);
@@ -698,8 +671,76 @@ function drawStaffSkillEffects(){
      ctx.restore();
    }
  }
-}
 
+ // 青杖スキルの通過跡：火ではなく氷のキラキラ。
+ if(player.iceTrail.length){
+   const tm=performance.now()*.012;
+   for(const f of player.iceTrail){
+     ctx.save();ctx.translate(f.x,f.y);
+     ctx.globalAlpha=Math.min(.75,f.life*.72);
+     ctx.strokeStyle='rgba(225,252,255,.95)';
+     ctx.lineWidth=3;
+     for(let i=0;i<3;i++){
+       const a=f.phase+i*2.1+tm*.18;
+       const ox=Math.cos(a)*12,oy=Math.sin(a)*7;
+       const r=5+i*2;
+       ctx.beginPath();
+       ctx.moveTo(ox-r,oy);ctx.lineTo(ox+r,oy);
+       ctx.moveTo(ox,oy-r);ctx.lineTo(ox,oy+r);
+       ctx.stroke();
+     }
+     ctx.restore();
+   }
+ }
+
+ if(player.skillT<=0)return;
+
+ if(player.skillKind==='fire'){
+   ctx.save();ctx.translate(player.x,player.y-(player.skillZ||0));
+   const t=performance.now()*.018;
+   ctx.globalAlpha=.8;
+   ctx.strokeStyle='rgba(255,110,30,.95)';
+   ctx.lineWidth=12;
+   ctx.beginPath();ctx.arc(0,0,42,0,Math.PI*2);ctx.stroke();
+   ctx.strokeStyle='rgba(255,220,90,.9)';
+   ctx.lineWidth=5;
+   for(let i=0;i<5;i++){
+     const a=t+i*Math.PI*2/5;
+     ctx.beginPath();ctx.arc(Math.cos(a)*35,Math.sin(a)*35,9,0,Math.PI*2);ctx.stroke();
+   }
+   ctx.restore();
+
+ }else if(player.skillKind==='ice'){
+   // 氷板はキャラの正面ではなく「足元」。キャラの下に敷く。
+   // drawPlayerより後に呼ばれるため、足と重ならないよう下半分中心に描画。
+   ctx.save();ctx.translate(player.x,player.y+24);
+   ctx.rotate(player.skillBase);
+
+   // 船/サーフボード風の細長い氷板
+   ctx.globalAlpha=.92;
+   ctx.fillStyle='rgba(190,240,255,.92)';
+   ctx.strokeStyle='#157fa8';ctx.lineWidth=5;
+   ctx.beginPath();
+   ctx.moveTo(-48,-12);
+   ctx.quadraticCurveTo(-60,0,-48,12);
+   ctx.lineTo(42,12);
+   ctx.quadraticCurveTo(62,0,42,-12);
+   ctx.closePath();
+   ctx.fill();ctx.stroke();
+
+   // 氷の芯
+   ctx.globalAlpha=.7;
+   ctx.strokeStyle='rgba(245,255,255,.95)';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(-35,0);ctx.lineTo(40,0);ctx.stroke();
+
+   // 後ろへ滑走の白い尾
+   ctx.globalAlpha=.34;
+   ctx.strokeStyle='rgba(230,255,255,.95)';ctx.lineWidth=9;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(-88,-6);ctx.lineTo(-45,-3);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(-78,8);ctx.lineTo(-42,5);ctx.stroke();
+   ctx.restore();
+ }
+}
 function drawSwordSkillEffect(){
  if(player.weapon!==0 || player.skillT<=0 || player.skillElapsed<.14)return;
 
