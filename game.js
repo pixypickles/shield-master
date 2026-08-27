@@ -79,9 +79,17 @@ const props={
  grass:[{x:470,y:350,dead:false},{x:525,y:365,dead:false},{x:575,y:340,dead:false},{x:1240,y:390,dead:false}],
  rocks:[{x:1110,y:655,dead:false},{x:1165,y:670,dead:false}],
  water:{x:260,y:590,w:300,h:105,frozen:0},
+ // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
+ shallowWater:{x:650,y:565,w:300,h:82,flowX:32,flowY:0},
+ // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
+ upperPond:{x:980,y:365,w:250,h:105,flowX:0,flowY:0},
+ waterfall:{x:1170,y:455,w:72,h:190,flowX:0,flowY:52},
  smallTrees:[
-  {x:850,y:390,dead:false},{x:850,y:455,dead:false},{x:850,y:520,dead:false},
-  {x:850,y:585,dead:false},{x:850,y:650,dead:false}
+  // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
+  {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
+  // それ以外は意味のない自然配置。斬っても斬らなくてもよい。
+  {x:615,y:410,dead:false},{x:790,y:675,dead:false},{x:1040,y:515,dead:false},
+  {x:1280,y:390,dead:false},{x:1340,y:675,dead:false},{x:455,y:470,dead:false}
  ]
 };
 
@@ -1088,9 +1096,11 @@ function update(dt){
  }
  const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
- // 小木は剣で切るまでは通れない。
+ // gate付きの木だけは道を塞ぐ。ほかの小木は自然物なので通行を妨げない。
  for(const tr of props.smallTrees){
-  if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
+   if(tr.gate&&!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){
+     player.x=prevX;player.y=prevY;break;
+   }
  }
  // 序盤の水場は最初は越えられない。青杖で凍らせた時だけ通れる。
  const earlyWater=props.water;
@@ -1099,6 +1109,12 @@ function update(dt){
    if(player.x>earlyWater.x-wp&&player.x<earlyWater.x+earlyWater.w+wp&&
       player.y>earlyWater.y-wp&&player.y<earlyWater.y+earlyWater.h+wp){
      player.x=prevX;player.y=prevY;
+   }
+ }
+ // 水色の浅瀬・小川・滝は侵入可能。流れの方向へ少しずつ押される。
+ for(const wa of [props.shallowWater,props.upperPond,props.waterfall]){
+   if(player.x>wa.x&&player.x<wa.x+wa.w&&player.y>wa.y&&player.y<wa.y+wa.h){
+     player.x+=wa.flowX*dt;player.y+=wa.flowY*dt;
    }
  }
  // 序盤の岩も最初は越えられない。ハンマー入手後に戻れば壊せる。
@@ -1174,7 +1190,14 @@ function update(dt){
    }
  }
 
-  // ジャンプ攻撃の着地判定
+  // 大型ボスの中心には入り込めない。接触自体は攻撃ではない。
+ for(const b of [boss,seedBoss,grassFinalBoss,rockBoss]){
+   if(!b.active||b.dead)continue;
+   const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,minD=player.r+b.r*.72;
+   if(d<minD){const push=minD-d;player.x+=dx/d*push;player.y+=dy/d*push}
+ }
+
+ // ジャンプ攻撃の着地判定
  if(player.airAttack&&player.jumpT>0&&player.jumpT<=dt+.025&&!player.airAttackDone){
    player.airAttackDone=true;
    const w=player.weapon;
@@ -1234,6 +1257,10 @@ function update(dt){
    // 敵が撃った種・花粉弾は、プレイヤー専用の当たり判定。
    // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
    if(pr.enemyShot){
+     // 槍スキルの風車回転中は、槍そのものが弾を弾く。
+     if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed<.46&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
+       pr.hit=true;particle(pr.x,pr.y,'キン！','#fff',.28,14);continue;
+     }
      if(dist(pr.x,pr.y,player.x,player.y)<pr.r+player.r){
        if(player.jumpT>0){
          particle(player.x,player.y-45,'スカッ','#333',.3,13);
@@ -1327,12 +1354,17 @@ function update(dt){
    boss.flash=Math.max(0,boss.flash-dt);
    boss.attackCd-=dt;
    const dx=player.x-boss.x,dy=player.y-boss.y,d=Math.hypot(dx,dy)||1;
-   if(d>78){boss.x+=dx/d*boss.speed*dt;boss.y+=dy/d*boss.speed*dt}
-   else if(boss.attackCd<=0){
-     boss.attackCd=.95;
-     if(player.jumpT>0){particle(player.x,player.y-45,'スカッ','#333',.35,14)}
-     else if(shieldBlocks(boss)){particle((player.x+boss.x)/2,(player.y+boss.y)/2,'ガギィン！','#111',.5,24)}
-     else if(player.inv<=0){const got=takeDamage(8);player.inv=.7;particle(player.x,player.y-35,`-${got}`,'#b31313',.45,18)}
+   // ボスとは重ならない。近すぎれば離れ、適度な距離から葉っぱを飛ばす。
+   if(d<150){boss.x-=dx/d*boss.speed*.85*dt;boss.y-=dy/d*boss.speed*.85*dt}
+   else if(d>285){boss.x+=dx/d*boss.speed*.65*dt;boss.y+=dy/d*boss.speed*.65*dt}
+   if(d<boss.r+player.r+10){
+     const push=boss.r+player.r+10-d;player.x+=dx/d*push;player.y+=dy/d*push;
+   }
+   if(boss.attackCd<=0&&d<390){
+     boss.attackCd=1.55;
+     const a=Math.atan2(player.y-boss.y,player.x-boss.x);
+     projectiles.push({x:boss.x+Math.cos(a)*65,y:boss.y+Math.sin(a)*65-8,vx:Math.cos(a)*205,vy:Math.sin(a)*205,r:13,life:2.0,kind:'leafshot',damage:5,enemyShot:true,hit:false});
+     particle(boss.x,boss.y-48,'シュッ！','#3a8d3f',.3,15);
    }
    if(boss.hp<=0){
      boss.dead=true;boss.active=false;stage.bossDefeated=true;stage.bridgeOpen=true;
@@ -1356,7 +1388,7 @@ function update(dt){
      const d=dist(player.x,player.y,e.x,e.y);
      // この雑魚は動かない。一定距離に入ると種を飛ばす。
      if(e.attackCd<=0&&d<360){
-       e.attackCd=e.type==='seedflower'?1.35:1.6;
+       e.attackCd=e.type==='seedflower'?1.85:2.15;
        const base=Math.atan2(player.y-e.y,player.x-e.x);
        const shots=e.type==='seedflower'?2:1;
        for(let i=0;i<shots;i++){
@@ -1375,7 +1407,7 @@ function update(dt){
      seedBoss.flash=Math.max(0,seedBoss.flash-dt);
      seedBoss.attackCd-=dt;
      if(seedBoss.attackCd<=0){
-       seedBoss.attackCd=1.05;seedBoss.phase++;
+       seedBoss.attackCd=1.45;seedBoss.phase++;
        const base=Math.atan2(player.y-seedBoss.y,player.x-seedBoss.x);
        // 正面5方向と、ときどき全周8方向を交互に撃つ。
        if(seedBoss.phase%4===0){
@@ -1499,7 +1531,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
     grassFinalBoss.flash=Math.max(0,grassFinalBoss.flash-dt);
     grassFinalBoss.attackCd-=dt;
     if(grassFinalBoss.attackCd<=0){
-     grassFinalBoss.attackCd=.9;grassFinalBoss.phase++;
+     grassFinalBoss.attackCd=1.25;grassFinalBoss.phase++;
      const base=Math.atan2(player.y-grassFinalBoss.y,player.x-grassFinalBoss.x);
      // 3方向の種＋時々回転弾。ステージ2ボスより少し強い。
      if(grassFinalBoss.phase%4===0){
@@ -1541,7 +1573,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      else if(d>280){e.x+=dx/d*24*dt;e.y+=dy/d*24*dt}
 
      if(e.attackCd<=0&&d<420){
-       e.attackCd=e.type==='dandelion'?1.45:1.15;
+       e.attackCd=e.type==='dandelion'?1.85:1.55;
        const a=Math.atan2(player.y-e.y,player.x-e.x);
        if(e.type==='dandelion'){
          // タンポポ：遅い綿毛。盾で受けやすい。
@@ -1808,6 +1840,18 @@ function drawWorld(){
  ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
+
+ // 水色＝浅い水。歩ける。濃い青＝深い水で、青杖で凍らせるまで入れない。
+ const sw=props.shallowWater;
+ ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(sw.x,sw.y,sw.w,sw.h,24);ctx.fill();ctx.stroke();
+ for(let x=sw.x+18;x<sw.x+sw.w-10;x+=48){line(x,sw.y+22,x+24,sw.y+22,3,'rgba(255,255,255,.75)');line(x+10,sw.y+52,x+35,sw.y+52,3,'rgba(255,255,255,.6)')}
+ const up=props.upperPond;
+ // 高台の土台
+ ctx.fillStyle='#6f9e55';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(up.x-22,up.y-24,up.w+44,up.h+46,28);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#a8e9f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(up.x,up.y,up.w,up.h,28);ctx.fill();ctx.stroke();
+ const wf=props.waterfall;
+ ctx.fillStyle='rgba(137,221,246,.82)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y,wf.w,wf.h,18);ctx.fill();ctx.stroke();
+ for(let x=wf.x+14;x<wf.x+wf.w;x+=20)line(x,wf.y+8,x,wf.y+wf.h-8,3,'rgba(255,255,255,.72)');
 
 
  // 崖際の自然なガードレール。全部は囲わず、落ちられる場所も残す。
