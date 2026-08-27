@@ -23,11 +23,43 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,inv:0,walkPhase:0,moveMag:0};
+const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
+
+// Prototype 25: 最初の浮遊草原ステージ
+const stage={
+ id:1,
+ bossDefeated:false,
+ bridgeOpen:false,
+ goalUnlocked:false,
+ bossStarted:false,
+ bossHp:18,
+ bossMaxHp:18,
+ checkpoint:{x:220,y:560},
+ messageStep:0
+};
+
+// 最初は剣と基本盾のみ。
+// 今後ここへ槍・ハンマー・杖、各種盾をアンロックしていく。
+const unlockedWeapons=[true,false,false,false,false];
+const shields=[
+ {name:'勇者の盾',heal:6,move:1,jump:1,magic:false,reflect:false},
+ {name:'生命の盾',heal:11,move:.96,jump:1,magic:false,reflect:false},
+ {name:'ミラーシールド',heal:5,move:1,jump:1,magic:false,reflect:true},
+ {name:'マジックシールド',heal:4,move:.92,jump:1,magic:true,reflect:false},
+ {name:'ウイングシールド',heal:5,move:1.12,jump:1.25,magic:false,reflect:false}
+];
+const unlockedShields=[true,false,false,false,false];
+
 
 const enemies=[];
 function spawnEnemy(x,y,type='blob'){enemies.push({x,y,r:23,hp:type==='brute'?6:3,maxHp:type==='brute'?6:3,speed:type==='brute'?52:76,type,hit:0,attackCd:Math.random(),flash:0,stagger:0,dead:false})}
-[[560,470],[1030,510],[880,760],[680,800],[1180,710],[420,700]].forEach((p,i)=>spawnEnemy(...p,i===4?'brute':'blob'));
+[[500,560],[760,520],[960,650],[1110,490]].forEach((p,i)=>spawnEnemy(...p,i===3?'brute':'blob'));
+
+
+const boss={
+ x:1330,y:610,r:42,hp:18,maxHp:18,active:false,dead:false,
+ speed:64,attackCd:1.2,flash:0,phase:0
+};
 
 const props={
  grass:[{x:470,y:350,dead:false},{x:525,y:365,dead:false},{x:575,y:340,dead:false},{x:1240,y:390,dead:false}],
@@ -35,6 +67,22 @@ const props={
  switches:[{x:1310,y:630,on:false}],
  water:{x:250,y:820,w:320,h:150,frozen:0}
 };
+
+const stageGeo={
+ // 一本道すぎないが迷いにくい、少し細めの浮遊草原。
+ path:[
+   {x:120,y:430,w:390,h:260},
+   {x:430,y:455,w:300,h:210},
+   {x:700,y:420,w:320,h:260},
+   {x:980,y:455,w:280,h:220},
+   {x:1230,y:500,w:250,h:220}
+ ],
+ bossArena:{x:1190,y:465,w:300,h:290},
+ nextIsland:{x:1580,y:500,w:280,h:250},
+ bridge:{x1:1465,y:610,x2:1585,y2:610}
+};
+
+
 
 const particles=[];
 const projectiles=[];
@@ -66,9 +114,56 @@ attackBtn.addEventListener('pointerup',releaseAttack);attackBtn.addEventListener
 
 document.getElementById('jumpBtn').addEventListener('pointerdown',()=>jump());
 document.getElementById('skillBtn').addEventListener('pointerdown',()=>skill());
-document.getElementById('changeBtn').addEventListener('pointerdown',()=>{player.weapon=(player.weapon+1)%weapons.length;weaponNameEl.textContent=weapons[player.weapon].name;say(`${weapons[player.weapon].name} にチェンジ`)});
+document.getElementById('changeBtn').addEventListener('pointerdown',()=>openEquipPanel());
+
+
+const equipPanel=document.getElementById('equipPanel');
+const equipItems=document.getElementById('equipItems');
+let equipMode='weapon';
+
+function openEquipPanel(){
+ equipPanel.classList.remove('hidden');
+ renderEquipPanel();
+}
+function closeEquipPanel(){equipPanel.classList.add('hidden')}
+function renderEquipPanel(){
+ equipItems.innerHTML='';
+ document.getElementById('equipWeaponTab').classList.toggle('active',equipMode==='weapon');
+ document.getElementById('equipShieldTab').classList.toggle('active',equipMode==='shield');
+
+ if(equipMode==='weapon'){
+   weapons.forEach((w,i)=>{
+     const b=document.createElement('button');
+     b.className='equipItem'+(!unlockedWeapons[i]?' locked':'')+(player.weapon===i?' selected':'');
+     b.textContent=unlockedWeapons[i]?w.name:'？？？';
+     if(unlockedWeapons[i])b.onclick=()=>{player.weapon=i;weaponNameEl.textContent=w.name;renderEquipPanel()};
+     equipItems.appendChild(b);
+   });
+ }else{
+   shields.forEach((sh,i)=>{
+     const b=document.createElement('button');
+     b.className='equipItem'+(!unlockedShields[i]?' locked':'')+(player.shieldType===i?' selected':'');
+     b.textContent=unlockedShields[i]?sh.name:'？？？';
+     if(unlockedShields[i])b.onclick=()=>{player.shieldType=i;say(`${sh.name} を装備`);renderEquipPanel()};
+     equipItems.appendChild(b);
+   });
+ }
+}
+document.getElementById('equipWeaponTab').onclick=()=>{equipMode='weapon';renderEquipPanel()};
+document.getElementById('equipShieldTab').onclick=()=>{equipMode='shield';renderEquipPanel()};
+document.getElementById('equipClose').onclick=closeEquipPanel;
 
 function jump(){if(player.jumpT<=0){player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+
+function steerAngle(current,target,maxStep){
+ const d=angleDiff(target,current);
+ return current+Math.max(-maxStep,Math.min(maxStep,d));
+}
+function stickAngle(){
+ if(Math.hypot(stick.x,stick.y)<.18)return null;
+ return Math.atan2(stick.y,stick.x);
+}
+
 function skill(){
  if(player.skillT>0||player.jumpT>0)return;
  player.shield=false;
@@ -149,6 +244,16 @@ function fireMagic(w,charged,base){
  projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged:false,hit:false});
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
+
+function hitBoss(damage,range,base,cone=Math.PI*2){
+ if(!boss.active||boss.dead)return;
+ const d=dist(player.x,player.y,boss.x,boss.y);
+ const a=Math.atan2(boss.y-player.y,boss.x-player.x);
+ if(d<=range+boss.r && Math.abs(angleDiff(a,base))<=cone/2){
+   boss.hp-=damage;boss.flash=.14;particle(boss.x,boss.y-35,`-${damage}`,'#b31313',.45,18);
+ }
+}
+
 function doAttack(charged=false){
  if(player.attackCooldown>0)return;
  const w=player.weapon, wp=weapons[w];
@@ -162,6 +267,7 @@ function doAttack(charged=false){
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
    for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;e.flash=.14;particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
+   hitBoss(3,range+38,base,Math.PI*2);
    return;
  }
 
@@ -181,6 +287,7 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
+   hitBoss(4,230,base,.55);
    for(const r of props.rocks){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
@@ -205,11 +312,16 @@ function doAttack(charged=false){
 
  let cone=w===1?.34:1.05;
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?3:1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
+ hitBoss(w===2?3:1,range,base,cone);
  if(w===0){for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}}
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
  if(w===1){for(const sw of props.switches){if(!sw.on&&dist(player.x,player.y,sw.x,sw.y)<range+35){sw.on=true;particle(sw.x,sw.y,'カチッ','#111')}}}
 }
-function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);const facing=faceAngle(player.face);return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
+function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
+ if(shields[player.shieldType].magic)return true;
+ const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);
+ const facing=faceAngle(player.face);
+ return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
@@ -244,6 +356,7 @@ function update(dt){
        else if(d<145){e.hp-=1;e.flash=.14;e.stagger=.75;particle(e.x,e.y-20,'よろっ','#555',.45,14)}
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
      }
+     if(boss.active&&!boss.dead&&dist(player.x,player.y,boss.x,boss.y)<145){boss.hp-=dist(player.x,player.y,boss.x,boss.y)<62?5:1;boss.flash=.16;}
      for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<92){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.5,17)}}
    }
    if(player.hammerSmash<=0){
@@ -282,7 +395,7 @@ function update(dt){
  player.attackCooldown=Math.max(0,player.attackCooldown-dt);player.attacking=Math.max(0,player.attacking-dt);player.skillT=Math.max(0,player.skillT-dt);if(player.skillT<=0){player.skillZ=0;player.hammerSpin=0;player.skillKind='';}player.inv=Math.max(0,player.inv-dt);if(props.water.frozen>0)props.water.frozen=Math.max(0,props.water.frozen-dt);
  let mx=stick.x+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),my=stick.y+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
  player.moveMag=m; if(m>.16){player.face=faceFromVec(mx,my);if(!player.shield)player.aim=Math.atan2(my,mx);player.walkPhase+=dt*(9+Math.min(1,m)*4)}
- let speed=player.speed*(player.shield?.42:1);
+ let speed=player.speed*(player.shield?.42:1)*shields[player.shieldType].move;
  if(player.skillT>0){
    player.skillElapsed+=dt;
    const t=player.skillElapsed;
@@ -304,7 +417,11 @@ function update(dt){
      }
 
    }else if(player.skillKind==='spear'){
-     // 0-.22 ダッシュ、.22-.58 ジャンプ、最後に槍着地。
+     // 槍：ジャンプ前のダッシュ中だけ少し方向修正。飛んだら固定。
+     const inputA=stickAngle();
+     if(t<.22 && inputA!==null){
+       player.skillBase=steerAngle(player.skillBase,inputA,dt*2.2);
+     }
      mx=Math.cos(player.skillBase)*2.45;my=Math.sin(player.skillBase)*2.45;speed=315;
      player.face=faceFromVec(mx,my);
      if(t<.22){
@@ -326,8 +443,10 @@ function update(dt){
      }
 
    }else if(player.skillKind==='hammer'){
-     // 最初に短くダッシュ、その後その場で一本軸のスピン→横振り。
+     // ハンマー：回転開始前のダッシュ中だけ少し方向修正。
      if(t<.24){
+       const inputA=stickAngle();
+       if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.0);
        mx=Math.cos(player.skillBase)*2.35;my=Math.sin(player.skillBase)*2.35;speed=315;
      }else{
        mx=0;my=0;speed=0;
@@ -347,6 +466,10 @@ function update(dt){
      }
 
    }else if(player.skillKind==='fire'){
+     // 赤杖：かなり強く旋回できる。燃えるタイヤのような操作感。
+     const inputA=stickAngle();
+     if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*5.2);
+     player.aim=player.skillBase;
      mx=Math.cos(player.skillBase)*2.55;my=Math.sin(player.skillBase)*2.55;speed=340;
      player.face=faceFromVec(mx,my);
      // 地面に短時間残る火を置く。
@@ -362,6 +485,10 @@ function update(dt){
      }
 
    }else if(player.skillKind==='ice'){
+     // 青杖：サーフィンらしく、急には曲がれず大きな弧で旋回。
+     const inputA=stickAngle();
+     if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.7);
+     player.aim=player.skillBase;
      mx=Math.cos(player.skillBase)*2.75;my=Math.sin(player.skillBase)*2.75;speed=355;
      player.face=faceFromVec(mx,my);
      if(!player.iceTrail.length || dist(player.x,player.y,player.iceTrail[player.iceTrail.length-1].x,player.iceTrail[player.iceTrail.length-1].y)>28){
@@ -378,8 +505,25 @@ function update(dt){
    }
  }
  player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
+
+ // 浮遊大陸から落ちた判定
+ const onRect=(r)=>player.x>=r.x&&player.x<=r.x+r.w&&player.y>=r.y&&player.y<=r.y+r.h;
+ let safe=stageGeo.path.some(onRect);
+ if(stage.bridgeOpen){
+   const bx1=Math.min(stageGeo.bridge.x1,stageGeo.bridge.x2)-25,bx2=Math.max(stageGeo.bridge.x1,stageGeo.bridge.x2)+25;
+   const by=stageGeo.bridge.y1;
+   if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<55)safe=true;
+   if(onRect(stageGeo.nextIsland))safe=true;
+ }
+ if(!safe){
+   player.hp=Math.max(1,player.hp-15);
+   particle(player.x,player.y,'うわっ！','#b31313',.45,18);
+   player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;
+   say('落下！ 少しダメージ');
+ }
+
  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
- if(player.shield&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+6*dt)}
+ if(player.shield&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+shields[player.shieldType].heal*dt)}
 
 
  // 赤杖スキルの火の跡
@@ -409,11 +553,40 @@ function update(dt){
      const wa=props.water;if(pr.x>wa.x-pr.r&&pr.x<wa.x+wa.w+pr.r&&pr.y>wa.y-pr.r&&pr.y<wa.y+wa.h+pr.r){wa.frozen=5;particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
    }
    if(pr.hit)continue;
+   if(boss.active&&!boss.dead&&dist(pr.x,pr.y,boss.x,boss.y)<pr.r+boss.r){
+     boss.hp-=pr.damage;boss.flash=.14;particle(boss.x,boss.y-35,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);pr.hit=true;
+   }
+   if(pr.hit)continue;
    for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;e.flash=.14;particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
  for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='brute'?1.35:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='brute'?24:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='brute'?18:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
+
+ // 最初の島のボス：奥の広場へ入ると戦闘開始。
+ if(!stage.bossDefeated && !boss.active && player.x>1180){
+   boss.active=true;
+   stage.bossStarted=true;
+   say('草原の守護者！');
+ }
+ if(boss.active&&!boss.dead){
+   boss.flash=Math.max(0,boss.flash-dt);
+   boss.attackCd-=dt;
+   const dx=player.x-boss.x,dy=player.y-boss.y,d=Math.hypot(dx,dy)||1;
+   if(d>78){boss.x+=dx/d*boss.speed*dt;boss.y+=dy/d*boss.speed*dt}
+   else if(boss.attackCd<=0){
+     boss.attackCd=.95;
+     if(player.jumpT>0){particle(player.x,player.y-45,'スカッ','#333',.35,14)}
+     else if(shieldBlocks(boss)){particle((player.x+boss.x)/2,(player.y+boss.y)/2,'ガギィン！','#111',.5,24)}
+     else if(player.inv<=0){player.hp=Math.max(0,player.hp-18);player.inv=.7;particle(player.x,player.y-35,'-18','#b31313',.45,18)}
+   }
+   if(boss.hp<=0){
+     boss.dead=true;boss.active=false;stage.bossDefeated=true;stage.bridgeOpen=true;
+     particle(boss.x,boss.y,'撃破！','#fff',.8,26);
+     say('虹の橋が現れた！');
+   }
+ }
+
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;
  camera.x=clamp(player.x-W/2,0,Math.max(0,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
@@ -424,7 +597,33 @@ function circle(x,y,r,fill,stroke='#111',lw=5){ctx.fillStyle=fill;ctx.strokeStyl
 function roundRect(x,y,w,h,r,fill,stroke='#111',lw=5){ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();ctx.stroke()}
 
 function drawWorld(){
- ctx.fillStyle='#98d483';ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(-camera.x,-camera.y);
+
+ // 空と雲
+ ctx.fillStyle='#82c9ef';ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.translate(-camera.x,-camera.y);
+
+ // 浮遊草原の地面
+ for(const r of stageGeo.path){
+   ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
+   ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,45);ctx.fill();ctx.stroke();
+   // 崖の下面
+   ctx.fillStyle='#7b5b3c';ctx.globalAlpha=.9;
+   ctx.beginPath();ctx.moveTo(r.x+25,r.y+r.h);ctx.lineTo(r.x+r.w-25,r.y+r.h);ctx.lineTo(r.x+r.w-70,r.y+r.h+55);ctx.lineTo(r.x+70,r.y+r.h+55);ctx.closePath();ctx.fill();
+   ctx.globalAlpha=1;
+ }
+ // ボス後に現れる虹の橋
+ if(stage.bridgeOpen){
+   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
+   cols.forEach((c,i)=>{
+     ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();
+     ctx.moveTo(stageGeo.bridge.x1,stageGeo.bridge.y1+i*6-15);
+     ctx.quadraticCurveTo(1525,555+i*6,stageGeo.bridge.x2,stageGeo.bridge.y2+i*6-15);
+     ctx.stroke();
+   });
+   ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
+   const ni=stageGeo.nextIsland;ctx.beginPath();ctx.roundRect(ni.x,ni.y,ni.w,ni.h,45);ctx.fill();ctx.stroke();
+ }
+
  // 少し狭めの「進む場所」が読める道。広場は残しつつ迷いにくくする。
  ctx.strokeStyle='#b8e3a2';ctx.lineWidth=250;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=190;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
@@ -439,6 +638,23 @@ function drawWorld(){
  for(const s of props.switches){circle(s.x,s.y,24,s.on?'#7cff78':'#ffdb55','#111',6);circle(s.x,s.y,9,'#fff','#111',4)}
  for(const pr of projectiles)drawProjectile(pr);
  for(const e of enemies)if(!e.dead)drawEnemy(e);
+
+ if(!boss.dead && boss.active){
+   ctx.save();ctx.translate(boss.x,boss.y);
+   if(boss.flash>0)ctx.globalAlpha=.55;
+   circle(0,0,boss.r,'#d95f4e','#111',8);
+   circle(-14,-7,5,'#111','#111',1);circle(14,-7,5,'#111','#111',1);
+   line(-15,15,15,15,6,'#111');
+   // 角
+   ctx.fillStyle='#f0d36a';ctx.strokeStyle='#111';ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(-28,-25);ctx.lineTo(-45,-52);ctx.lineTo(-16,-36);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.moveTo(28,-25);ctx.lineTo(45,-52);ctx.lineTo(16,-36);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.restore();
+   // boss hp
+   ctx.fillStyle='#111';ctx.fillRect(boss.x-80,boss.y-72,160,14);
+   ctx.fillStyle='#e84a3a';ctx.fillRect(boss.x-76,boss.y-68,152*Math.max(0,boss.hp/boss.maxHp),6);
+ }
+
  // 氷板・炎輪など移動スキルの土台を先に描く。
  drawStaffSkillEffects();
  drawPlayer();
@@ -452,13 +668,18 @@ function drawWorld(){
 }
 
 function drawObjectiveArrow(){
- // 今はスイッチを仮目的地に。後でクエスト目的地へ差し替えられる。
- const target=props.switches.find(s=>!s.on) || props.rocks.find(r=>!r.dead) || {x:800,y:300};
- const a=Math.atan2(target.y-player.y,target.x-player.x), d=dist(player.x,player.y,target.x,target.y);
- if(d<150)return;
- const x=player.x+Math.cos(a)*92, y=player.y+Math.sin(a)*92-58;
- ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha=.38;ctx.fillStyle='#fff';ctx.strokeStyle='#245a72';ctx.lineWidth=4;
- ctx.beginPath();ctx.moveTo(25,0);ctx.lineTo(-10,-15);ctx.lineTo(-4,-5);ctx.lineTo(-28,-5);ctx.lineTo(-28,5);ctx.lineTo(-4,5);ctx.lineTo(-10,15);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ let tx,ty;
+ if(!stage.bossDefeated){tx=boss.x;ty=boss.y;}
+ else{tx=stageGeo.nextIsland.x+80;ty=stageGeo.nextIsland.y+110;}
+
+ const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
+ if(d<220)return;
+ const a=Math.atan2(dy,dx);
+ const x=player.x+Math.cos(a)*105,y=player.y+Math.sin(a)*105-70;
+ ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha=.45;
+ ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(-12,-11);ctx.lineTo(-5,0);ctx.lineTo(-12,11);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.restore();
 }
 
 function drawProjectile(pr){ctx.save();ctx.translate(pr.x,pr.y);const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);ctx.globalAlpha=.28;circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':'#b8ecff','transparent',0);ctx.globalAlpha=1;circle(0,0,pr.r,pr.kind==='fire'?'#ff6247':'#63d7ff','#111',4);line(-pr.r-12,0,-pr.r+1,0,7,pr.kind==='fire'?'#ffcf58':'#eafcff');ctx.restore()}
@@ -466,7 +687,7 @@ function drawEnemy(e){ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalA
 
 function drawPlayer(){
  const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
- const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight:0;
+ const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight*shields[player.shieldType].jump:0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
  const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
  const moving=player.moveMag>.16&&player.jumpT<=0;
@@ -869,6 +1090,6 @@ function drawAttackArc(a){const w=player.weapon,r=weapons[w].range;ctx.save();ct
 let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 
 // keyboard fallback
-addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='j')player.shield=true;if(k==='k')doAttack(false);if(k==='l')jump();if(k==='i')skill();if(k==='q'){player.weapon=(player.weapon+1)%weapons.length;weaponNameEl.textContent=weapons[player.weapon].name}});
+addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='j')player.shield=true;if(k==='k')doAttack(false);if(k==='l')jump();if(k==='i')skill();if(k==='q')openEquipPanel()});
 addEventListener('keyup',e=>{if(e.key.toLowerCase()==='j')player.shield=false});
 })();
