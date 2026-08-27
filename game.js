@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashDir:0,dashAttack:false,dashShieldHit:new Set()};
 
-// Prototype 40: 最初の浮遊草原ステージ
+// Prototype 41: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -341,14 +341,14 @@ function skill(){
  if(player.weapon===0){
    // 剣：直進→45度に折れる→ラリアット斬り
    player.skillKind='sword';
-   player.skillT=.42;
+   player.skillT=.58;
    player.skillSide=player.skillSide>0?-1:1;
-   particle(player.x,player.y,'斬り抜け！','#7e20a6',.5,18);
+   particle(player.x,player.y,'疾走斬り！','#7e20a6',.5,18);
 
  }else if(player.weapon===1){
    // 槍：ダッシュ→ジャンプ→槍を下へ向けて着地
    player.skillKind='spear';
-   player.skillT=.78;
+   player.skillT=.72;
    particle(player.x,player.y,'飛槍！','#2f6db0',.5,18);
 
  }else if(player.weapon===2){
@@ -686,75 +686,82 @@ function update(dt){
    const t=player.skillElapsed;
 
    if(player.skillKind==='sword'){
-     // 短く踏み込み、斬った瞬間にバックステップ。
-     // 長距離を勝手に走らず、敵へ飛び込んで戻る一撃離脱技。
+     // 中距離を走って接近→横薙ぎ→少しだけバックステップ。
      const sa=player.skillBase;
      player.aim=sa;
      player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
-     if(t<.16){
-       mx=Math.cos(sa)*1.45;my=Math.sin(sa)*1.45;speed=255;
-     }else if(t<.23){
-       mx=Math.cos(sa)*.25;my=Math.sin(sa)*.25;speed=180;
+
+     if(t<.30){
+       // 前半は気持ちよく走る。ただし旧仕様ほど長距離にはしない。
+       mx=Math.cos(sa)*1.75;my=Math.sin(sa)*1.75;speed=280;
+     }else if(t<.38){
+       mx=Math.cos(sa)*.55;my=Math.sin(sa)*.55;speed=210;
        if(player.skillPhase===0){
          player.skillPhase=1;
-         const ix=player.x+Math.cos(sa)*48,iy=player.y+Math.sin(sa)*48;
+         const ix=player.x+Math.cos(sa)*52,iy=player.y+Math.sin(sa)*52;
          particle(ix,iy,'ザン！','#fff',.4,19);
          for(const e of enemies){
            if(e.dead||player.skillHit.has(e))continue;
-           if(dist(ix,iy,e.x,e.y)<82){
+           if(dist(ix,iy,e.x,e.y)<84){
              e.hp-=7;enemyHitReact(e,82);player.skillHit.add(e);
              particle(e.x,e.y-22,'-7','#b31313',.45,17);
              if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.6)}
            }
          }
-         hitBoss(7,100,sa,1.25);hitStage2(7,100,sa,1.25);hitStage3(7,100,sa,1.25,0,false);hitStage45(7,100,sa,1.25,0);
+         hitBoss(7,104,sa,1.3);
+         hitStage2(7,104,sa,1.3);
+         hitStage3(7,104,sa,1.3,0,false);
+         hitStage45(7,104,sa,1.3,0);
        }
      }else{
-       mx=-Math.cos(sa)*1.15;my=-Math.sin(sa)*1.15;speed=230;
+       // 逃げすぎない、軽いバックステップだけ。
+       mx=-Math.cos(sa)*.75;my=-Math.sin(sa)*.75;speed=185;
      }
 
    }else if(player.skillKind==='spear'){
-     // 短距離の飛び込み。大ジャンプ→一度バウンド→斜め前へ着地。
+     // ダッシュ→大ジャンプ→斜め前へ一度だけ着地。
+     // 接触ダメージがないので、途中の自動盾・2回目バウンドは廃止。
      player.inv=Math.max(player.inv,.18);
+
      const inputA=stickAngle();
-     if(t<.16&&inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.4);
-     mx=Math.cos(player.skillBase)*1.45;my=Math.sin(player.skillBase)*1.45;speed=245;
+     if(t<.20&&inputA!==null){
+       player.skillBase=steerAngle(player.skillBase,inputA,dt*2.2);
+     }
+
+     mx=Math.cos(player.skillBase)*1.70;
+     my=Math.sin(player.skillBase)*1.70;
+     speed=265;
      player.face=faceFromVec(mx,my);
-     if(t<.16){
+
+     if(t<.20){
        player.skillZ=0;
-     }else if(t<.48){
-       const p=(t-.16)/.32;
-       player.skillZ=Math.sin(p*Math.PI)*108;
+     }else{
+       const p=Math.min(1,(t-.20)/.52);
+       player.skillZ=Math.sin(p*Math.PI)*112;
+
        if(p>.88&&player.skillPhase===0){
          player.skillPhase=1;
-         const ix=player.x+Math.cos(player.skillBase)*34,iy=player.y+Math.sin(player.skillBase)*34;
-         particle(ix,iy,'ガン！','#2f6db0',.35,18);
+         const ix=player.x+Math.cos(player.skillBase)*42;
+         const iy=player.y+Math.sin(player.skillBase)*42;
+         particle(ix,iy,'ズドン！','#2f6db0',.48,21);
+
          for(const e of enemies){
            if(e.dead)continue;
-           if(dist(ix,iy,e.x,e.y)<82){
-             e.hp-=7;enemyHitReact(e,76);particle(e.x,e.y-20,'-7','#b31313',.45,16);
-             if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.6)}
+           if(dist(ix,iy,e.x,e.y)<92){
+             e.hp-=7;
+             enemyHitReact(e,86);
+             particle(e.x,e.y-20,'-7','#b31313',.45,17);
+             if(e.hp<=0){
+               e.dead=true;
+               stage1DeathEffect(e);
+               killDrop(e,.65);
+             }
            }
          }
-         hitStage2(7,90,player.skillBase,Math.PI*.9);hitStage3(7,90,player.skillBase,Math.PI*.9,1,true);hitStage45(7,90,player.skillBase,Math.PI*.9,1);
-       }
-     }else{
-       // 一度目の着地で跳ね返る瞬間は自動で盾を構える。
-       player.shield=true;shieldBtn.classList.add('active');
-       const p=Math.min(1,(t-.48)/.30);
-       player.skillZ=Math.sin(p*Math.PI)*55;
-       if(p>.86&&player.skillPhase===1){
-         player.skillPhase=2;
-         const ix=player.x+Math.cos(player.skillBase)*38,iy=player.y+Math.sin(player.skillBase)*38;
-         particle(ix,iy,'ズドン！','#2f6db0',.45,21);
-         for(const e of enemies){
-           if(e.dead)continue;
-           if(dist(ix,iy,e.x,e.y)<88){
-             e.hp-=7;enemyHitReact(e,86);particle(e.x,e.y-20,'-7','#b31313',.45,17);
-             if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.65)}
-           }
-         }
-         hitStage2(7,98,player.skillBase,Math.PI);hitStage3(7,98,player.skillBase,Math.PI,1,true);hitStage45(7,98,player.skillBase,Math.PI,1);
+
+         hitStage2(7,102,player.skillBase,Math.PI);
+         hitStage3(7,102,player.skillBase,Math.PI,1,true);
+         hitStage45(7,102,player.skillBase,Math.PI,1);
        }
      }
 
@@ -867,24 +874,29 @@ for(const g of guardRails){
    if(stage3BridgeOpen&&player.x>=4770&&player.x<=4980&&Math.abs(player.y-570)<105)safe=true;
    if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<105)safe=true;
  }
- if(!safe&&player.fallGrace<=0){
-   player.fallGrace=.9;
-   player.hp=Math.max(1,player.hp-5);
-   particle(player.x,player.y,'-5','#b31313',.45,18);
-   // 大きく巻き戻さず、落ちた場所のすぐ近くへ戻す。
-   let best=null,bestD=1e9;
+ // 通常ステージでは落下しない。
+ // 浮遊大陸には独自の重力があり、縁まで行っても裏側へ吸い付く設定。
+ // そのため通常探索では落下ダメージなし。レース専用コースだけ別処理にする。
+ if(!safe){
    const allGround=visibleGroundRects();
+   let best=null,bestD=1e9;
    for(const r of allGround){
-     const rx=clamp(player.x,r.x+34,r.x+r.w-34),ry=clamp(player.y,r.y+34,r.y+r.h-34);
+     const rx=clamp(player.x,r.x+12,r.x+r.w-12);
+     const ry=clamp(player.y,r.y+12,r.y+r.h-12);
      const dd=(rx-player.x)**2+(ry-player.y)**2;
      if(dd<bestD){bestD=dd;best={x:rx,y:ry}}
    }
-   if(best){player.x=best.x;player.y=best.y}
-   else{player.x=stage.checkpoint.x;player.y=stage.checkpoint.y}
-   // 落下した時点でダッシュ/スキル移動を終了。壁へ再突入し続けない。
-   if(player.skillT>0){player.skillT=0;player.skillKind=null;player.skillZ=0}
-   player.inv=1;
-   say('落下！ -5');
+   // 完全に空へ出た時だけ、最寄りの地面へ吸い付く。HPは減らさない。
+   if(best&&bestD>55*55){
+     player.x=best.x;
+     player.y=best.y;
+     if(player.skillT>0){
+       player.skillT=0;
+       player.skillKind=null;
+       player.skillZ=0;
+     }
+     particle(player.x,player.y,'ふわっ','#8ad4ff',.3,13);
+   }
  }
 
  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
@@ -1173,15 +1185,9 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  for(let i=healDrops.length-1;i>=0;i--)if(healDrops[i].life<=0)healDrops.splice(i,1);
 
 
- function enemyOnGround(e){
-  return pointSupportedByGround(e.x,e.y,8);
- }
- for(const e of [...enemies,...stage2Enemies,...stage3Enemies,...stage4Enemies]){
-  if(!e.dead&&!enemyOnGround(e)){
-   e.dead=true;particle(e.x,e.y,'ヒュー…','#555',.5,15);
-   killDrop(e,.25);
-  }
- }
+
+ // 通常ステージでは敵も落下死しない。レース専用コースのみ別扱い。
+
 
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;
