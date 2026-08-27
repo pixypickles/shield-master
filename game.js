@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 32: 最初の浮遊草原ステージ
+// Prototype 33: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -101,14 +101,14 @@ const stage2Enemies=[];
 function spawnStage2Enemy(x,y,type='seedpod'){
  stage2Enemies.push({
   x,y,type,r:type==='seedflower'?27:24,
-  hp:type==='seedflower'?5:4,maxHp:type==='seedflower'?5:4,
-  attackCd:.5+Math.random()*.7,flash:0,dead:false
+  hp:type==='seedflower'?3:2,maxHp:type==='seedflower'?3:2,
+  attackCd:.8+Math.random()*.7,flash:0,dead:false
  });
 }
 [[2100,520,'seedpod'],[2390,505,'seedflower'],[2710,600,'seedpod'],[2820,455,'seedflower']].forEach(v=>spawnStage2Enemy(...v));
 
 const seedBoss={
- x:3180,y:555,r:52,hp:24,maxHp:24,active:false,dead:false,
+ x:3180,y:555,r:52,hp:18,maxHp:18,active:false,dead:false,
  attackCd:.8,flash:0,phase:0
 };
 
@@ -574,10 +574,12 @@ function update(dt){
        player.skillZ=Math.sin(p*Math.PI)*100;
        if(p>.88&&!player.skillPhase){
          player.skillPhase=1;
-         particle(player.x,player.y,'ズドッ！','#2f6db0',.45,20);
+         const ix=player.x+Math.cos(player.skillBase)*34;
+         const iy=player.y+Math.sin(player.skillBase)*34;
+         particle(ix,iy,'ズドッ！','#2f6db0',.45,20);
          for(const e of enemies){
            if(e.dead)continue;
-           if(dist(player.x,player.y,e.x,e.y)<74){
+           if(dist(ix,iy,e.x,e.y)<74){
              e.hp-=4;e.flash=.16;particle(e.x,e.y-20,'-4','#b31313',.45,16);
              if(e.hp<=0)e.dead=true;
            }
@@ -763,13 +765,13 @@ function update(dt){
      const d=dist(player.x,player.y,e.x,e.y);
      // この雑魚は動かない。一定距離に入ると種を飛ばす。
      if(e.attackCd<=0&&d<360){
-       e.attackCd=e.type==='seedflower'?1.0:1.35;
+       e.attackCd=e.type==='seedflower'?1.35:1.6;
        const base=Math.atan2(player.y-e.y,player.x-e.x);
-       const shots=e.type==='seedflower'?3:1;
+       const shots=e.type==='seedflower'?2:1;
        for(let i=0;i<shots;i++){
          const off=shots===1?0:(i-1)*.24;
          const a=base+off;
-         projectiles.push({x:e.x,y:e.y-12,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:9,life:1.7,kind:'seed',damage:8,enemyShot:true,hit:false});
+         projectiles.push({x:e.x,y:e.y-12,vx:Math.cos(a)*245,vy:Math.sin(a)*245,r:9,life:1.7,kind:'seed',damage:6,enemyShot:true,hit:false});
        }
        particle(e.x,e.y-30,'プッ！','#567d28',.3,14);
      }
@@ -782,19 +784,19 @@ function update(dt){
      seedBoss.flash=Math.max(0,seedBoss.flash-dt);
      seedBoss.attackCd-=dt;
      if(seedBoss.attackCd<=0){
-       seedBoss.attackCd=.72;seedBoss.phase++;
+       seedBoss.attackCd=1.05;seedBoss.phase++;
        const base=Math.atan2(player.y-seedBoss.y,player.x-seedBoss.x);
        // 正面5方向と、ときどき全周8方向を交互に撃つ。
        if(seedBoss.phase%4===0){
-         for(let i=0;i<8;i++){
-           const a=i*Math.PI/4+seedBoss.phase*.07;
-           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*225,vy:Math.sin(a)*225,r:11,life:1.9,kind:'seed',damage:9,enemyShot:true,hit:false});
+         for(let i=0;i<6;i++){
+           const a=i*Math.PI/3+seedBoss.phase*.07;
+           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*225,vy:Math.sin(a)*225,r:11,life:1.9,kind:'seed',damage:7,enemyShot:true,hit:false});
          }
          particle(seedBoss.x,seedBoss.y-55,'パパパッ！','#567d28',.4,18);
        }else{
-         for(const off of [-.46,-.23,0,.23,.46]){
+         for(const off of [-.28,0,.28]){
            const a=base+off;
-           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*255,vy:Math.sin(a)*255,r:11,life:1.7,kind:'seed',damage:9,enemyShot:true,hit:false});
+           projectiles.push({x:seedBoss.x,y:seedBoss.y-10,vx:Math.cos(a)*255,vy:Math.sin(a)*255,r:11,life:1.7,kind:'seed',damage:7,enemyShot:true,hit:false});
          }
        }
      }
@@ -807,9 +809,19 @@ function update(dt){
  }
 
 if(stage2BridgeOpen && player.x>3470 && !stage3Started){
-   stage3Started=true;currentStage=3;unlockedWeapons[1]=true;
+   stage3Started=true;currentStage=3;
    stage.checkpoint={x:3600,y:550};
-   say('第3島！ 槍を手に入れた！');
+   say('第3島。何か地面に刺さっている…');
+ }
+
+
+ if(stage3Started&&!spearPickup.taken&&dist(player.x,player.y,spearPickup.x,spearPickup.y)<58){
+   spearPickup.taken=true;
+   unlockedWeapons[1]=true;
+   player.weapon=1;
+   weaponNameEl.textContent=weapons[1].name;
+   particle(spearPickup.x,spearPickup.y-30,'槍 GET！','#fff',.7,22);
+   say('槍を手に入れた！');
  }
 
  if(stage3Started){
@@ -950,7 +962,22 @@ function drawWorld(){
   }
  }
 
-if(stage2BridgeOpen){
+
+ if(stage3Started&&!spearPickup.taken){
+   ctx.save();ctx.translate(spearPickup.x,spearPickup.y);
+   // 地面に斜めに刺さった槍
+   ctx.rotate(-.28);
+   line(0,18,0,-54,12,'#111');
+   line(0,18,0,-54,6,'#8b5a35');
+   ctx.fillStyle='#e9eef2';ctx.strokeStyle='#111';ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(0,-74);ctx.lineTo(-10,-50);ctx.lineTo(10,-50);ctx.closePath();ctx.fill();ctx.stroke();
+   line(-14,-42,14,-42,7,'#111');
+   line(-12,-42,12,-42,3,'#e5b33b');
+   ctx.restore();
+   particle(spearPickup.x,spearPickup.y-70,'！','#ffe15a',.12,18);
+ }
+
+ if(stage2BridgeOpen){
   for(const e of stage3Enemies){
    if(e.dead)continue;
    ctx.save();ctx.translate(e.x,e.y);
@@ -1090,7 +1117,9 @@ function drawPlayer(){
  }
  
  if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed>=.22){
-   wa=Math.PI/2;
+   // 真下ではなく、進行方向へ少し傾けた斜め下突き。
+   const downA=Math.PI/2;
+   wa=player.skillBase*.42 + downA*.58;
    thrust=8;
  }
 // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
@@ -1449,5 +1478,6 @@ let stage2BossDefeated=false;
 let stage2BridgeOpen=false;
 let stage3Started=false;
 let stage3BossDefeated=false;
+let spearPickup={x:3605,y:545,taken:false};
 
 
