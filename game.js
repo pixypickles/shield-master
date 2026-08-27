@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
 
-// Prototype 46: 最初の浮遊草原ステージ
+// Prototype 47: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -160,6 +160,24 @@ const grassFinalBoss={
  attackCd:.8,flash:0,phase:0
 };
 
+// 草原エリアを抜けた先の「風の庭園」。
+// 次の本格エリアへの導入ステージ。広めの島＋風を使う植物。
+const stage6Geo={
+ path:[
+  {x:8060,y:330,w:560,h:420},
+  {x:8500,y:390,w:390,h:310},
+  {x:8790,y:300,w:650,h:470}
+ ],
+ bridge:{x1:7790,y1:550,x2:8060,y2:550}
+};
+const stage6Enemies=[
+ {x:8250,y:510,r:24,hp:1,maxHp:1,type:'dandelion',attackCd:.6,flash:0,dead:false},
+ {x:8550,y:590,r:24,hp:1,maxHp:1,type:'dandelion',attackCd:1.0,flash:0,dead:false},
+ {x:8950,y:470,r:27,hp:2,maxHp:2,type:'fanleaf',attackCd:.7,flash:0,dead:false},
+ {x:9180,y:610,r:27,hp:2,maxHp:2,type:'fanleaf',attackCd:1.1,flash:0,dead:false}
+];
+
+
 
 
 
@@ -194,6 +212,7 @@ function visibleGroundRects(){
  if(stage2BridgeOpen)grounds.push(...stage3Geo.path);
  if(stage3BridgeOpen)grounds.push(...stage4Geo.path);
  if(stage4BridgeOpen)grounds.push(...stage5Geo.path);
+ if(grassAreaClear)grounds.push(...stage6Geo.path);
  return grounds;
 }
 function pointSupportedByGround(x,y,pad=24){
@@ -397,6 +416,7 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
  for(const e of stage2Enemies)if(!e.dead)candidates.push(e);
  for(const e of stage3Enemies)if(!e.dead)candidates.push(e);
  for(const e of stage4Enemies)if(!e.dead)candidates.push(e);
+ for(const e of stage6Enemies)if(!e.dead)candidates.push(e);
  if(boss.active&&!boss.dead)candidates.push(boss);
  if(seedBoss.active&&!seedBoss.dead)candidates.push(seedBoss);
  if(grassFinalBoss.active&&!grassFinalBoss.dead)candidates.push(grassFinalBoss);
@@ -544,6 +564,17 @@ function hitStage45(damage,range,base,cone,weapon){
     e.hp-=dmg;e.flash=.22;enemyHitReact(e,52);
     particle(e.x,e.y-24,`-${dmg}`,'#b31313',.4,15);
     if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.45,15);killDrop(e,.55)}
+   }
+  }
+ }
+ if(stage6Started){
+  for(const e of stage6Enemies){
+   if(e.dead)continue;
+   const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(e.y-player.y,e.x-player.x);
+   if(d<=range+e.r&&Math.abs(angleDiff(a,base))<=cone/2){
+    e.hp-=damage;e.flash=.22;enemyHitReact(e,70);
+    particle(e.x,e.y-24,`-${damage}`,'#b31313',.4,15);
+    if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パァッ！','#fff',.45,15);killDrop(e,.55)}
    }
   }
  }
@@ -817,6 +848,7 @@ function update(dt){
            }else hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15);killDrop(e,.5)});
          }
          for(const e of stage4Enemies)hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.4,15);killDrop(e,.55)});
+         for(const e of stage6Enemies)hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'パァッ！','#fff',.4,15);killDrop(e,.55)});
 
          hitOne(boss);hitOne(seedBoss);hitOne(grassFinalBoss);
 
@@ -1302,11 +1334,45 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
     if(grassFinalBoss.hp<=0){
      grassFinalBoss.dead=true;grassFinalBoss.active=false;grassAreaClear=true;
      particle(grassFinalBoss.x,grassFinalBoss.y,'AREA CLEAR！','#fff',1.0,28);
-     say('草原エリア クリア！');
+     say('草原エリア クリア！　新しい虹の橋が現れた！');
     }
    }
  }
 
+
+
+ // 草原クリア後：風の庭園
+ if(grassAreaClear&&player.x>8060&&!stage6Started){
+   stage6Started=true;currentStage=6;stage.checkpoint={x:8170,y:545};
+   say('風の庭園：風を操る植物たち');
+ }
+ if(stage6Started){
+   for(const e of stage6Enemies){
+     if(e.dead)continue;
+     e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+
+     // このステージの敵は追い回さず、距離を取って風で攻撃。
+     if(d<130){e.x-=dx/d*38*dt;e.y-=dy/d*38*dt}
+     else if(d>280){e.x+=dx/d*24*dt;e.y+=dy/d*24*dt}
+
+     if(e.attackCd<=0&&d<420){
+       e.attackCd=e.type==='dandelion'?1.45:1.15;
+       const a=Math.atan2(player.y-e.y,player.x-e.x);
+       if(e.type==='dandelion'){
+         // タンポポ：遅い綿毛。盾で受けやすい。
+         for(const off of [-.16,.16]){
+           projectiles.push({x:e.x,y:e.y-18,vx:Math.cos(a+off)*155,vy:Math.sin(a+off)*155,r:10,life:2.5,kind:'puff',damage:4,enemyShot:true,hit:false});
+         }
+         particle(e.x,e.y-28,'ふわっ','#fff',.35,14);
+       }else{
+         // 扇葉：一直線の風刃。予告を見て盾かジャンプ。
+         projectiles.push({x:e.x,y:e.y-16,vx:Math.cos(a)*225,vy:Math.sin(a)*225,r:13,life:2.0,kind:'wind',damage:5,enemyShot:true,hit:false});
+         particle(e.x,e.y-30,'シュッ！','#5cae78',.3,14);
+       }
+     }
+   }
+ }
 
 
  powerFruitT=Math.max(0,powerFruitT-dt);
@@ -1424,6 +1490,18 @@ function drawWorld(){
   }
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1,stage4Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(6190,530+i*6,stage4Geo.bridge.x2,stage4Geo.bridge.y2+i*9-23);ctx.stroke()});
+ }
+ if(grassAreaClear){
+  // 次エリアへの虹の橋
+  const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(stage6Geo.bridge.x1,stage6Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(7925,505+i*6,stage6Geo.bridge.x2,stage6Geo.bridge.y2+i*9-23);ctx.stroke()});
+  for(const r of stage6Geo.path){
+   ctx.fillStyle='#9bd77a';ctx.strokeStyle='#111';ctx.lineWidth=7;
+   ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,52);ctx.fill();ctx.stroke();
+   // 風の庭園らしい白い風模様
+   ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#fff';ctx.lineWidth=12;ctx.lineCap='round';
+   ctx.beginPath();ctx.arc(r.x+r.w*.48,r.y+r.h*.48,70,-2.7,.4);ctx.stroke();ctx.restore();
+  }
  }
 
  // ボス後に現れる虹の橋
@@ -1600,6 +1678,26 @@ function drawWorld(){
   }
  }
 
+
+ // 風の庭園の敵
+ if(stage6Started){
+  for(const e of stage6Enemies){
+   if(e.dead)continue;
+   ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.55;
+   if(e.type==='dandelion'){
+    line(0,8,0,32,12,'#111');line(0,8,0,32,6,'#4c9c48');
+    for(let i=0;i<10;i++){const a=i*Math.PI/5;circle(Math.cos(a)*20,Math.sin(a)*20-12,7,'#fff','#111',3)}
+    circle(0,-12,16,'#f4e9a5','#111',5);circle(-5,-14,2.5,'#111','#111',1);circle(5,-14,2.5,'#111','#111',1);
+   }else{
+    line(0,5,0,35,13,'#111');line(0,5,0,35,7,'#478e42');
+    ctx.fillStyle='#68c85e';ctx.strokeStyle='#111';ctx.lineWidth=6;
+    ctx.beginPath();ctx.ellipse(-18,-8,24,13,-.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.ellipse(18,-8,24,13,.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+    circle(0,-12,15,'#d7ef83','#111',5);circle(-5,-14,2.5,'#111','#111',1);circle(5,-14,2.5,'#111','#111',1);
+   }
+   ctx.restore();
+  }
+ }
  if(!boss.dead){
    ctx.save();ctx.translate(boss.x,boss.y);if(boss.flash>0)ctx.globalAlpha=.55;
    line(0,15,0,55,18,'#111');line(0,15,0,55,10,'#4e9e49');
@@ -2133,6 +2231,7 @@ let stage4Cleared=false;
 let stage4BridgeOpen=false;
 let stage5Started=false;
 let grassAreaClear=false;
+let stage6Started=false;
 let spearPickup={x:3605,y:545,taken:false};
 
 
