@@ -259,32 +259,40 @@ function drawPlayer(){
  line(-rightX*8,5,handL.x,handL.y,10,'#111');line(-rightX*8,5,handL.x,handL.y,5,'#f7fbff');
  // actual weapon motion
  let wa=player.aim;
- // P12: 近接武器の振り方向を向き別に明示。
- // 左向きの剣・ハンマーは「上→下」へ振り下ろす。
- if(player.attacking>0 && !player.spin){
-   const p=1-Math.max(0,Math.min(1,player.attacking/player.attackMax));
-   if(f==='left' && (player.weapon===0 || player.weapon===2)){
-     // 左向き：開始は左上、終了は左下。
-     wa = -Math.PI*0.78 + p*Math.PI*0.62;
-   }else if(player.weapon===0 || player.weapon===2){
-     // その他の向きは既存の狙い方向を基準に振る。
-     const swing=-0.72 + p*1.44;
-     wa = player.aim + swing;
-   }
- }
+ let thrust=0;
 
- if(player.attacking>0){
-   const t=1-player.attacking/player.attackMax;
-   if(player.weapon===1){
-     wa=player.aim;thrust=Math.sin(t*Math.PI)*20;
-   }else if(player.weapon>=3){
-     wa=player.aim;thrust=Math.sin(t*Math.PI)*7;
-   }else if((player.weapon===0||player.weapon===2) && f==='left' && !player.spin){
-     // 左向きだけは専用の上→下モーション。ここで上書きしない。
+ // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
+ if(player.attacking>0 && !player.spin){
+   const t=1-Math.max(0,Math.min(1,player.attacking/player.attackMax));
+
+   if(player.weapon===0){
+     // 剣
+     if(f==='left'){
+       // 左向き：左上 → 左下への振り下ろし
+       wa=-Math.PI*0.78 + t*Math.PI*0.62;
+     }else{
+       // その他：狙い方向を中心に薙ぐ
+       wa=player.aim-.95+t*1.9;
+     }
+
+   }else if(player.weapon===1){
+     // 槍：角度固定で前へ突く
+     wa=player.aim;
+     thrust=Math.sin(t*Math.PI)*20;
+
    }else if(player.weapon===2){
-     wa=player.aim-1.15+t*2.25;
-   }else if(!player.spin){
-     wa=player.aim-.95+t*1.9;
+     // ハンマー
+     if(f==='left'){
+       // 左向き：左上 → 左下への振り下ろし
+       wa=-Math.PI*0.82 + t*Math.PI*0.68;
+     }else{
+       wa=player.aim-1.15+t*2.25;
+     }
+
+   }else{
+     // 杖：向きは固定、少しだけ前へ出す
+     wa=player.aim;
+     thrust=Math.sin(t*Math.PI)*7;
    }
  }
  let sx=handL.x+frontX*(player.shield?22:10), sy=handL.y+frontY*(player.shield?22:10);
