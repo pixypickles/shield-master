@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
 
-// Prototype 49: 最初の浮遊草原ステージ
+// Prototype 50: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -251,7 +251,7 @@ function setStick(clientX,clientY){
   if(lastFlickDir===dir&&now-lastFlickTime<330&&player.skillT<=0){
    // 方向2回入力は、通常時も盾中も「大きく速いステップ」。
    // オートランは廃止。入力方向へ一気に踏み込み、短時間で止まる。
-   player.shieldStepT=player.shield?.30:.27;
+   player.shieldStepT=player.shield?.30:.28;
    player.shieldStepDir=a;
    player.dashAuto=false;
    player.dashT=0;
@@ -793,10 +793,10 @@ function update(dt){
 
  if(player.shieldStepT>0&&player.skillT<=0){
    player.shieldStepT=Math.max(0,player.shieldStepT-dt);
-   // 大きめ・高速。ただしダッシュのように走り続けない。
-   const stepPower=player.shield?1.62:1.72;
-   mx=Math.cos(player.shieldStepDir)*stepPower;
-   my=Math.sin(player.shieldStepDir)*stepPower;
+   // ステップ方向だけをここで固定。距離は後段の専用速度で決める。
+   // 通常移動の正規化処理に潰されないよう倍率をここには持たせない。
+   mx=Math.cos(player.shieldStepDir);
+   my=Math.sin(player.shieldStepDir);
  }
 
  let m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
@@ -810,6 +810,11 @@ function update(dt){
    player.walkPhase+=dt*(9+Math.min(1,m)*4);
  }
  let speed=player.speed*(player.shield?.42:1)*shields[player.shieldType].move;
+ // ステップは通常移動とは完全に別速度。
+ // 盾の移動速度低下0.42倍を受けないので、見た目にも明確に大きく移動する。
+ if(player.shieldStepT>0&&player.skillT<=0){
+   speed=(player.shield?640:690)*shields[player.shieldType].move;
+ }
  if(player.skillT>0){
    player.skillElapsed+=dt;
    const t=player.skillElapsed;
@@ -977,7 +982,7 @@ function update(dt){
     if(dist(player.x,player.y,e.x,e.y)<player.r+e.r+20){
       player.dashShieldHit.add(e);
       const dx=e.x-player.x,dy=e.y-player.y,dd=Math.hypot(dx,dy)||1;
-      e.x+=dx/dd*125;e.y+=dy/dd*125;e.flash=.2;e.stagger=.55;
+      e.x+=dx/dd*155;e.y+=dy/dd*155;e.flash=.2;e.stagger=.55;
       particle(e.x,e.y-18,'ドン！','#fff',.35,17);
     }
    }
