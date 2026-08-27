@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 35: 最初の浮遊草原ステージ
+// Prototype 36: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -124,7 +124,7 @@ const stage3Geo={
 };
 const stage3Enemies=[];
 function spawnStage3Enemy(x,y,type='acorn'){
- stage3Enemies.push({x,y,type,r:type==='walnut'?30:23,hp:type==='walnut'?7:4,maxHp:type==='walnut'?7:4,
+ stage3Enemies.push({x,y,type,r:type==='walnut'?30:23,hp:type==='walnut'?4:1,maxHp:type==='walnut'?4:1,
  speed:type==='walnut'?45:68,attackCd:.5+Math.random(),flash:0,dead:false,open:0});
 }
 [[3670,530,'acorn'],[3980,510,'flower'],[4250,570,'walnut'],[4510,500,'acorn'],[4630,610,'walnut']].forEach(v=>spawnStage3Enemy(...v));
@@ -140,10 +140,10 @@ const stage4Geo={
  bridge:{x1:6130,y1:570,x2:6250,y2:570}
 };
 const stage4Enemies=[
- {x:5150,y:520,r:25,hp:3,maxHp:3,type:'vine',speed:55,attackCd:.5,flash:0,dead:false},
- {x:5480,y:500,r:25,hp:3,maxHp:3,type:'vine',speed:55,attackCd:.7,flash:0,dead:false},
- {x:5860,y:590,r:27,hp:4,maxHp:4,type:'thorn',speed:48,attackCd:.8,flash:0,dead:false},
- {x:6020,y:470,r:27,hp:4,maxHp:4,type:'thorn',speed:48,attackCd:.9,flash:0,dead:false}
+ {x:5150,y:520,r:25,hp:1,maxHp:1,type:'vine',speed:55,attackCd:.5,flash:0,dead:false},
+ {x:5480,y:500,r:25,hp:1,maxHp:1,type:'vine',speed:55,attackCd:.7,flash:0,dead:false},
+ {x:5860,y:590,r:27,hp:2,maxHp:2,type:'thorn',speed:48,attackCd:.8,flash:0,dead:false},
+ {x:6020,y:470,r:27,hp:2,maxHp:2,type:'thorn',speed:48,attackCd:.9,flash:0,dead:false}
 ];
 
 const stage5Geo={
@@ -162,6 +162,22 @@ const grassFinalBoss={
 
 
 
+
+const guardRails=[
+ // stage1: rocks / low trees along portions of cliff
+ {x:180,y:340,w:260,h:24,type:'rock'},{x:1020,y:340,w:250,h:24,type:'bush'},
+ {x:300,y:690,w:260,h:24,type:'bush'},{x:1050,y:690,w:230,h:24,type:'rock'},
+ // stage2
+ {x:1990,y:360,w:230,h:22,type:'bush'},{x:2640,y:710,w:250,h:22,type:'rock'},
+ // stage3
+ {x:3540,y:370,w:210,h:22,type:'rock'},{x:4210,y:710,w:210,h:22,type:'bush'},
+ // stage4
+ {x:5020,y:360,w:220,h:22,type:'bush'},{x:5720,y:700,w:230,h:22,type:'rock'},
+ // stage5
+ {x:6350,y:330,w:260,h:22,type:'rock'},{x:7240,y:730,w:260,h:22,type:'bush'}
+];
+
+const healDrops=[];
 const particles=[];
 const projectiles=[];
 function particle(x,y,text,color='#111',life=.55,size=20){particles.push({x,y,text,color,life,max:life,size})}
@@ -361,6 +377,14 @@ function fireMagic(w,charged,base){
 
 
 
+
+function maybeDropHeal(x,y,chance=.48){
+ if(Math.random()<chance)healDrops.push({x,y,r:10,life:10,bob:Math.random()*6.28});
+}
+function killDrop(e,chance=.48){
+ maybeDropHeal(e.x,e.y,chance);
+}
+
 function stage1DeathEffect(e){
  if(e.type==='grass'){
    particle(e.x,e.y-16,'ザシュッ！','#267524',.5,17);
@@ -385,7 +409,7 @@ function hitStage2(damage,range,base,cone){
    const a=Math.atan2(e.y-player.y,e.x-player.x);
    if(d<=range+e.r&&Math.abs(angleDiff(a,base))<=cone/2){
      e.hp-=damage;e.flash=.26;particle(e.x,e.y-25,`-${damage}`,'#b31313',.4,15);
-     if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パサッ','#fff',.4,15)}
+     if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パサッ','#fff',.4,15);killDrop(e,.5)}
    }
  }
  if(seedBoss.active&&!seedBoss.dead){
@@ -414,7 +438,7 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
     else dmg=1;
   }
   if(dmg>0){e.hp-=dmg;enemyHitReact(e,22);particle(e.x,e.y-25,`-${dmg}`,'#b31313',.4,15)}
-  if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15)}
+  if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15);killDrop(e,.55)}
  }
 }
 
@@ -429,7 +453,7 @@ function hitStage45(damage,range,base,cone,weapon){
     if(e.type==='thorn'&&weapon===0)dmg=Math.max(1,damage-1);
     e.hp-=dmg;e.flash=.22;enemyHitReact(e,20);
     particle(e.x,e.y-24,`-${dmg}`,'#b31313',.4,15);
-    if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.45,15)}
+    if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.45,15);killDrop(e,.55)}
    }
   }
  }
@@ -463,7 +487,7 @@ function doAttack(charged=false){
  if(w===0 && charged){
    player.spin=1;player.spinT=0;player.attackMax=.56;player.attacking=.56;player.attackCooldown=.72;
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
-   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;enemyHitReact(e,28);particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e)}}}
+   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;enemyHitReact(e,28);particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+55){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
    hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2);hitStage3(3,range+38,base,Math.PI*2,w,true);hitStage45(3,range+38,base,Math.PI*2,w);
@@ -510,7 +534,7 @@ function doAttack(charged=false){
  if(w>=3){fireMagic(w,charged,base);return;}
 
  let cone=w===1?.34:1.05;
- for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?3:1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e)}}}
+ for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=w===2?3:1;e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
  hitBoss(w===2?3:1,range,base,cone);
  hitStage2(w===2?3:1,range,base,cone);hitStage3(w===2?3:1,range,base,cone,w,false);hitStage45(w===2?3:1,range,base,cone,w);
  if(w===0){
@@ -716,6 +740,10 @@ function update(dt){
  for(const tr of props.smallTrees){
   if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){player.x=prevX;player.y=prevY;break}
  }
+ for(const g of guardRails){
+   const px=clamp(player.x,g.x,g.x+g.w),py=clamp(player.y,g.y,g.y+g.h);
+   if((player.x-px)**2+(player.y-py)**2<28*28){player.x=prevX;player.y=prevY;break}
+ }
 
  // 浮遊大陸から落ちた判定
  // 見た目上、足元が地面に少しでも乗っていれば落ちない。
@@ -731,7 +759,7 @@ function update(dt){
  if(stage.bridgeOpen){
    const bx1=Math.min(stageGeo.bridge.x1,stageGeo.bridge.x2)-25,bx2=Math.max(stageGeo.bridge.x1,stageGeo.bridge.x2)+25;
    const by=stageGeo.bridge.y1;
-   if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<72)safe=true;
+   if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<100)safe=true;
    if(onRect(stageGeo.nextIsland))safe=true;
    if(stage2Geo.path.some(onRect))safe=true;
    if(stage2BridgeOpen&&stage3Geo.path.some(onRect))safe=true;
@@ -739,10 +767,10 @@ function update(dt){
    if(stage4BridgeOpen&&stage5Geo.path.some(onRect))safe=true;
    if(stage2BridgeOpen){
      const b2x1=Math.min(stage2Geo.bridge.x1,stage2Geo.bridge.x2)-25,b2x2=Math.max(stage2Geo.bridge.x1,stage2Geo.bridge.x2)+25;
-     if(player.x>=b2x1&&player.x<=b2x2&&Math.abs(player.y-stage2Geo.bridge.y1)<72)safe=true;
+     if(player.x>=b2x1&&player.x<=b2x2&&Math.abs(player.y-stage2Geo.bridge.y1)<100)safe=true;
    }
-   if(stage3BridgeOpen&&player.x>=4770&&player.x<=4980&&Math.abs(player.y-570)<75)safe=true;
-   if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<75)safe=true;
+   if(stage3BridgeOpen&&player.x>=4770&&player.x<=4980&&Math.abs(player.y-570)<105)safe=true;
+   if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<105)safe=true;
  }
  if(!safe){
    player.hp=Math.max(1,player.hp-15);
@@ -930,7 +958,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
 
  // ステージ3の敵を倒し、槍を拾ったらステージ4への橋が開く。
- if(stage3Started&&!stage3BridgeOpen&&spearPickup.taken&&stage3Enemies.every(e=>e.dead)){
+ if(stage3Started&&!stage3BridgeOpen&&spearPickup.taken&&player.x>4580){
    stage3BridgeOpen=true;
    say('ステージ4への虹の橋！');
  }
@@ -953,7 +981,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }else if(shieldBlocks(e))particle(player.x,player.y-25,'ガキン！','#111',.35,16);
     }
    }
-   if(stage4Enemies.every(e=>e.dead)){
+   if(player.x>5980){
     stage4Cleared=true;stage4BridgeOpen=true;say('ステージ5への虹の橋！');
    }
  }
@@ -994,6 +1022,19 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
+
+ for(const d of healDrops){
+   d.life-=dt;d.bob+=dt*4;
+   if(d.life>0&&dist(player.x,player.y,d.x,d.y)<34){
+     if(player.hp<player.maxHp){
+       player.hp=Math.min(player.maxHp,player.hp+12);
+       particle(d.x,d.y-15,'+12','#38a84a',.45,16);
+       d.life=0;
+     }
+   }
+ }
+ for(let i=healDrops.length-1;i>=0;i--)if(healDrops[i].life<=0)healDrops.splice(i,1);
+
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;
  camera.x=clamp(player.x-W/2,0,Math.max(0,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
@@ -1032,9 +1073,9 @@ function drawWorld(){
  if(stage2BridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
    cols.forEach((c,i)=>{
-     ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();
-     ctx.moveTo(stage2Geo.bridge.x1,stage2Geo.bridge.y1+i*6-15);
-     ctx.quadraticCurveTo(3420,535+i*6,stage2Geo.bridge.x2,stage2Geo.bridge.y2+i*6-15);
+     ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();
+     ctx.moveTo(stage2Geo.bridge.x1,stage2Geo.bridge.y1+i*9-23);
+     ctx.quadraticCurveTo(3420,535+i*6,stage2Geo.bridge.x2,stage2Geo.bridge.y2+i*9-23);
      ctx.stroke();
    });
  }
@@ -1058,7 +1099,7 @@ function drawWorld(){
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
   }
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(4770,570+i*6-15);ctx.quadraticCurveTo(4865,530+i*6,4950,570+i*6-15);ctx.stroke()});
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(4770,570+i*9-23);ctx.quadraticCurveTo(4865,530+i*6,4950,570+i*9-23);ctx.stroke()});
  }
  if(stage4BridgeOpen){
   for(const r of stage5Geo.path){
@@ -1066,7 +1107,7 @@ function drawWorld(){
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,50);ctx.fill();ctx.stroke();
   }
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1,stage4Geo.bridge.y1+i*6-15);ctx.quadraticCurveTo(6190,530+i*6,stage4Geo.bridge.x2,stage4Geo.bridge.y2+i*6-15);ctx.stroke()});
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1,stage4Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(6190,530+i*6,stage4Geo.bridge.x2,stage4Geo.bridge.y2+i*9-23);ctx.stroke()});
  }
 
  // ボス後に現れる虹の橋
@@ -1089,6 +1130,23 @@ function drawWorld(){
  ctx.fillStyle='#a9df92';for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){ctx.beginPath();ctx.arc(x+(y%3)*8,y,34,0,7);ctx.fill()}
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
+
+
+ // 崖際の自然なガードレール。全部は囲わず、落ちられる場所も残す。
+ for(const g of guardRails){
+   ctx.save();
+   if(g.type==='rock'){
+     for(let x=g.x+14;x<g.x+g.w;x+=30){
+       ctx.fillStyle='#8f918a';ctx.strokeStyle='#111';ctx.lineWidth=4;
+       ctx.beginPath();ctx.ellipse(x,g.y+g.h/2,18,13,-.15,0,Math.PI*2);ctx.fill();ctx.stroke();
+     }
+   }else{
+     for(let x=g.x+12;x<g.x+g.w;x+=26){
+       circle(x,g.y+g.h/2,15,'#4b9f49','#111',4);
+     }
+   }
+   ctx.restore();
+ }
 
  // 剣で切らないと通れない小木
  for(const tr of props.smallTrees){
