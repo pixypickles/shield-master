@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 54: 最初の浮遊草原ステージ
+// Prototype 56: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -961,8 +961,8 @@ function update(dt){
        const key='p'+tick;
        if(!player.skillHit.has(key)){
          player.skillHit.add(key);
-         hitBoss(2,92,sa,Math.PI*2);hitStage2(2,92,sa,Math.PI*2);hitStage3(2,92,sa,Math.PI*2,1,false);hitStage45(2,92,sa,Math.PI*2,1);
-         for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<92+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
+         hitBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
+         for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<76+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
        // 最後に一歩踏み込んで強い突き。
@@ -977,25 +977,38 @@ function update(dt){
      }
 
    }else if(player.skillKind==='hammer'){
-     // ハンマー：回転開始前のダッシュ中だけ少し方向修正。
-     if(t<.24){
-       const inputA=stickAngle();
-       if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.0);
-       mx=Math.cos(player.skillBase)*2.35;my=Math.sin(player.skillBase)*2.35;speed=315;
-     }else{
-       mx=0;my=0;speed=0;
-       const p=Math.min(1,(t-.24)/.34);
-       player.hammerSpin=p*Math.PI*2.2*player.skillSide;
-       if(p>.72&&!player.skillPhase){
-         player.skillPhase=1;
-         particle(player.x,player.y,'ブォン！','#7e20a6',.45,20);
-         for(const e of enemies){
-           if(e.dead)continue;
-           if(dist(player.x,player.y,e.x,e.y)<105){
-             e.hp-=8;e.flash=.16;enemyHitReact(e,72);particle(e.x,e.y-20,'-8','#b31313',.45,16);
-             if(e.hp<=0)e.dead=true;
-           }
+     // ハンマー：その場で剣の回転斬りのように3回転。
+     mx=0;my=0;speed=0;player.skillZ=0;
+     const p=Math.min(1,t/.78);
+     player.hammerSpin=p*Math.PI*6*player.skillSide;
+     // 1回転ごとに1回ずつ当たり判定。
+     const spin=Math.min(2,Math.floor(p*3));
+     const key='hammerSpin'+spin;
+     if(!player.skillHit.has(key)){
+       player.skillHit.add(key);
+       particle(player.x,player.y,'ブォン！','#7e20a6',.28,16);
+       const dmg=4,rad=118;
+       hitBoss(dmg,rad,0,Math.PI*2);
+       hitStage2(dmg,rad,0,Math.PI*2);
+       hitStage3(dmg,rad,0,Math.PI*2,2,true);
+       hitStage45(dmg,rad,0,Math.PI*2,2);
+       for(const e of enemies){
+         if(e.dead)continue;
+         if(dist(player.x,player.y,e.x,e.y)<rad+e.r){
+           e.hp-=dmg;e.flash=.16;enemyHitReact(e,70);
+           particle(e.x,e.y-20,`-${dmg}`,'#b31313',.35,15);
+           if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}
          }
+       }
+       // 岩・クルミも回転ハンマーで粉砕可能。
+       for(const r of stage7Rocks){
+         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<rad+r.r){r.dead=true;particle(r.x,r.y,'粉砕！','#444',.4,16)}
+       }
+       for(const e of bossWalnuts){
+         if(!e.dead&&dist(player.x,player.y,e.x,e.y)<rad+e.r){e.dead=true;particle(e.x,e.y,'パカン！','#9b6637',.4,16)}
+       }
+       for(const r of rollingRocks){
+         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<rad+r.r){r.dead=true;particle(r.x,r.y,'ガシャッ！','#666',.35,15)}
        }
      }
 
@@ -2115,13 +2128,19 @@ function drawPlayer(){
  }
  // 槍スキル：前半は風車回転、後半は前方へ突く。
  if(player.skillKind==='spear'&&player.skillT>0){
-   if(player.skillElapsed<.46)wa=player.skillBase+player.skillElapsed*18;
-   else {wa=player.skillBase;thrust=Math.sin(Math.min(1,(player.skillElapsed-.46)/.26)*Math.PI)*26}
+   if(player.skillElapsed<.46){
+     // 槍の中央を握って回すための角度。通常の「柄の端を持つ」描画は後段で差し替える。
+     wa=player.skillBase+player.skillElapsed*20;
+     thrust=0;
+   }else {wa=player.skillBase;thrust=Math.sin(Math.min(1,(player.skillElapsed-.46)/.26)*Math.PI)*26}
  }
  // ジャンプ通常攻撃：剣/槍は下突き、ハンマーは着地へ振り下ろす。
  if(player.airAttack&&player.jumpT>0){
-   if(player.weapon===0||player.weapon===1){wa=Math.PI/2;thrust=18}
-   else if(player.weapon===2){const jp=1-player.jumpT/player.jumpDur;wa=player.aim-1.25+Math.max(0,(jp-.65)/.35)*2.4}
+   if(player.weapon===0||player.weapon===1){
+     // ジャンプ剣・槍は向いている方向に関係なく、武器を画面上の真下へ向けて突き刺す。
+     wa=Math.PI/2;
+     thrust=player.weapon===1?20:16;
+   }else if(player.weapon===2){const jp=1-player.jumpT/player.jumpDur;wa=player.aim-1.25+Math.max(0,(jp-.65)/.35)*2.4}
  }
 
  // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
@@ -2178,7 +2197,7 @@ function drawPlayer(){
  // left: 盾 → 身体 → 武器/右手
  if(f==='up'){
    drawShieldBack(sx,sy,a,player.shield);
-   drawWeapon(handR.x,handR.y+8,wa,thrust);
+   drawActiveWeapon(handR.x,handR.y+8,wa,thrust);
    redrawBodyLayer(f);
  }else if(f==='right'){
    // P09 右向き：盾は身体の真後ろ。外周が少しだけ覗く。
@@ -2195,12 +2214,12 @@ function drawPlayer(){
    // 右腕・剣は腰より少し上。腕の根元は身体に隠す。
    const rwx=20, rwy=13;
    line(5,7,rwx,rwy,11,'#111');line(5,7,rwx,rwy,6,'#f7fbff');
-   drawWeapon(rwx,rwy,wa,thrust);
+   drawActiveWeapon(rwx,rwy,wa,thrust);
    redrawBodyLayer(f);
  }else if(f==='left'){
    // P09 左向き：剣/右腕は最奥、身体、盾腕、盾の順。
    const lwx=-18, lwy=12;
-   drawWeapon(lwx,lwy,wa,thrust);
+   drawActiveWeapon(lwx,lwy,wa,thrust);
    redrawBodyLayer(f);
    // 左腕を胸の前から前方へ伸ばし、盾の中央裏を掴む。
    const lsx=-31, lsy=-1;
@@ -2209,7 +2228,7 @@ function drawPlayer(){
    circle(lsx+7,lsy+1,6,'#f7fbff','#111',4);
    drawShield(lsx,lsy,a,player.shield,true);
  }else{
-   drawWeapon(handR.x,handR.y,wa,thrust);
+   drawActiveWeapon(handR.x,handR.y,wa,thrust);
    drawShield(sx,sy,a,player.shield,false);
  }
  
@@ -2220,6 +2239,28 @@ function drawPlayer(){
  ctx.restore();
 }
 
+
+
+function drawActiveWeapon(wx,wy,wa,thrust){
+ // 槍スキル前半：槍の「真ん中」を手で持つ。
+ // 槍全長が回転円の直径になる。手から穂先までが半径ではない。
+ if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed<.46){
+   ctx.save();ctx.translate(wx,wy);ctx.rotate(wa);
+   const half=68;
+   // 中央の握り
+   line(-half,0,half,0,11,'#111');
+   line(-half+5,0,half-13,0,5,'#d9e7ef');
+   // 穂先は片側だけ。反対側は石突。
+   ctx.fillStyle='#eef6fb';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(half+16,0);ctx.lineTo(half-2,-11);ctx.lineTo(half-2,11);ctx.closePath();ctx.fill();ctx.stroke();
+   circle(-half,0,6,'#7a4b2b','#111',3);
+   // 手が中央を握っているのを強調
+   circle(0,0,7,'#f7fbff','#111',4);
+   ctx.restore();
+ }else{
+   drawActiveWeapon(wx,wy,wa,thrust);
+ }
+}
 
 function drawSwordDropSlash(base,p){
  ctx.save();ctx.rotate(base);ctx.globalAlpha=.78*(1-p*.35);ctx.lineCap='round';
