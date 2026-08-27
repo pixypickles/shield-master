@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
 
-// Prototype 51: 最初の浮遊草原ステージ
+// Prototype 52: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -246,14 +246,27 @@ function visibleGroundRects(){
  if(stage4BridgeOpen)grounds.push(...stage5Geo.path);
  if(grassAreaClear){
    grounds.push(...stage6Geo.path);
-   // ひまわり撃破後の虹の橋も歩行可能地面として扱う。
+   // ひまわり撃破後の虹の橋
    grounds.push({
-     x:Math.min(stage6Geo.bridge.x1,stage6Geo.bridge.x2)-12,
-     y:stage6Geo.bridge.y1-72,
-     w:Math.abs(stage6Geo.bridge.x2-stage6Geo.bridge.x1)+24,
-     h:144
+     x:Math.min(stage6Geo.bridge.x1,stage6Geo.bridge.x2)-20,
+     y:stage6Geo.bridge.y1-82,
+     w:Math.abs(stage6Geo.bridge.x2-stage6Geo.bridge.x1)+40,
+     h:164
    });
  }
+ if(stage6Started){
+   // 風の庭園→岩の分かれ道の虹も、見た目だけでなく実際の地面にする。
+   // stage7Startedになる前から橋を渡れる必要がある。
+   grounds.push({
+     x:Math.min(stage7Geo.bridge.x1,stage7Geo.bridge.x2)-28,
+     y:stage7Geo.bridge.y1-86,
+     w:Math.abs(stage7Geo.bridge.x2-stage7Geo.bridge.x1)+56,
+     h:172
+   });
+   // 橋の出口側の島も、stage7Startedになる前から地面判定を有効にする。
+   grounds.push(stage7Geo.path[0]);
+ }
+ if(stage7Started)grounds.push(...stage7Geo.path);
  return grounds;
 }
 function pointSupportedByGround(x,y,pad=24){
@@ -1473,7 +1486,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
 
  // 風の庭園の奥から岩の分かれ道へ
- if(stage6Started&&player.x>9390&&!stage7Started){
+ if(stage6Started&&player.x>9540&&!stage7Started){
    stage7Started=true;currentStage=7;stage.checkpoint={x:9690,y:545};
    say('岩の分かれ道');
  }
