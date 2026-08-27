@@ -26,17 +26,9 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
 .equipClose{width:100%;padding:11px;border:3px solid #111;border-radius:14px;background:#222;color:white;font-weight:900}
 </style>
 
-<style>
-.shortcutBtn{
- position:fixed;left:48%;bottom:112px;z-index:1200;width:70px;height:70px;
- border:4px solid #111;border-radius:50%;background:#fff3a8;font-weight:900;
- box-shadow:0 5px 0 rgba(0,0,0,.25);touch-action:none
-}
-.shortcutBtn span{font-size:10px}
-</style>
 </head>
 <body>
-<div id="versionBadge">Prototype 29</div>
+<div id="versionBadge">Prototype 30</div>
 
   <main id="app">
     <canvas id="game" aria-label="game canvas"></canvas>
@@ -51,7 +43,10 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
         <div class="stick-base"><div id="stickKnob" class="stick-knob"></div></div>
       </div>
 
-      <button id="changeBtn" class="btn change">チェンジ</button>
+      <div class="equip-quick">
+        <button id="changeBtn" class="btn change">チェンジ</button>
+        <button id="shortcutBtn" class="btn shortcut">SHORT <span id="shortcutLabel">なし</span></button>
+      </div>
 
       <div class="action-cluster">
         <button id="shieldBtn" class="btn shield">盾</button>
@@ -74,6 +69,5 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
 </div>
   <script src="game.js" defer></script>
 
-<button id="shortcutBtn" class="shortcutBtn">SHORT<br><span id="shortcutLabel">なし</span></button>
 </body>
 </html>

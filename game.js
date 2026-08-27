@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 29: 最初の浮遊草原ステージ
+// Prototype 30: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -326,6 +326,13 @@ function fireMagic(w,charged,base){
 
 
 
+
+function enemyHitReact(e,power=18){
+ const dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy)||1;
+ e.x+=dx/d*power;e.y+=dy/d*power;
+ e.flash=.24;
+ e.hitReact=.16;
+}
 function hitStage2(damage,range,base,cone){
  if(!stage2Started)return;
  for(const e of stage2Enemies){
@@ -333,7 +340,7 @@ function hitStage2(damage,range,base,cone){
    const d=dist(player.x,player.y,e.x,e.y);
    const a=Math.atan2(e.y-player.y,e.x-player.x);
    if(d<=range+e.r&&Math.abs(angleDiff(a,base))<=cone/2){
-     e.hp-=damage;e.flash=.14;particle(e.x,e.y-25,`-${damage}`,'#b31313',.4,15);
+     e.hp-=damage;e.flash=.26;particle(e.x,e.y-25,`-${damage}`,'#b31313',.4,15);
      if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パサッ','#fff',.4,15)}
    }
  }
@@ -362,7 +369,7 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
     else if(weapon===1){dmg=charged?4:2}
     else dmg=1;
   }
-  if(dmg>0){e.hp-=dmg;e.flash=.14;particle(e.x,e.y-25,`-${dmg}`,'#b31313',.4,15)}
+  if(dmg>0){e.hp-=dmg;enemyHitReact(e,22);particle(e.x,e.y-25,`-${dmg}`,'#b31313',.4,15)}
   if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15)}
  }
 }
@@ -387,7 +394,7 @@ function doAttack(charged=false){
  if(w===0 && charged){
    player.spin=1;player.spinT=0;player.attackMax=.56;player.attacking=.56;player.attackCooldown=.72;
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
-   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;e.flash=.14;particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
+   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=3;enemyHitReact(e,28);particle(e.x,e.y-22,'-3','#b31313',.45,16);if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    hitBoss(3,range+38,base,Math.PI*2);hitStage2(3,range+38,base,Math.PI*2);hitStage3(3,range+38,base,Math.PI*2,w,true);
    return;
@@ -405,7 +412,7 @@ function doAttack(charged=false){
      const dx=e.x-player.x,dy=e.y-player.y;
      const along=dx*fx+dy*fy, side=Math.abs(dx*fy-dy*fx);
      if(along>0&&along<reach&&side<width+e.r*.45){
-       e.hp-=4;e.flash=.18;particle(e.x,e.y-22,'-4','#b31313',.45,16);
+       e.hp-=4;enemyHitReact(e,34);particle(e.x,e.y-22,'-4','#b31313',.45,16);
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
@@ -691,11 +698,11 @@ function update(dt){
      boss.hp-=pr.damage;boss.flash=.14;particle(boss.x,boss.y-35,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);pr.hit=true;
    }
    if(pr.hit)continue;
-   for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;e.flash=.14;particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
+   for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;enemyHitReact(e,14);particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
- for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='flower'?1.15:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='flower'?18:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='flower'?8:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
+ for(const e of enemies){if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;if(d>58&&e.hitReact<=0){e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1)}else if(e.attackCd<=0){e.attackCd=e.type==='flower'?1.15:.9;if(player.jumpT>0){particle(player.x,player.y-55,'スカッ','#333',.35,14);continue}if(shieldBlocks(e)){particle((player.x+e.x)/2,(player.y+e.y)/2,'ガキン！','#111',.45,e.type==='flower'?18:19);e.x-=dx/d*18;e.y-=dy/d*18}else if(player.inv<=0){let dmg=e.type==='flower'?8:10;player.hp=Math.max(0,player.hp-dmg);player.inv=.65;particle(player.x,player.y-38,`-${dmg}`,'#c11',.5,18);if(player.hp<=0){player.hp=100;player.x=800;player.y=580;say('やられた！ でも試作なので即復活') }}}}
 
  // 最初の島のボス：奥の広場へ入ると戦闘開始。
  if(!stage.bossDefeated && !boss.active && player.x>1360){
@@ -787,9 +794,9 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  if(stage3Started){
    for(const e of stage3Enemies){
-     if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);
+     if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);
      const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
-     if(d>62){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+     if(d>62&&e.hitReact<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
      else if(e.attackCd<=0){
        e.attackCd=1;
        if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){player.hp=Math.max(1,player.hp-10);player.inv=.6;particle(player.x,player.y-35,'-10','#c11',.4,16)}
@@ -887,7 +894,8 @@ function drawWorld(){
  if(stage.bridgeOpen){
   for(const e of stage2Enemies){
    if(e.dead)continue;
-   ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+   ctx.save();ctx.translate(e.x,e.y);
+ if(e.flash>0){ctx.globalAlpha=.65;ctx.fillStyle='rgba(255,70,70,.48)';ctx.beginPath();ctx.arc(0,0,e.r+9,0,Math.PI*2);ctx.fill();}
    // 根を張って動かない種飛ばし植物
    line(0,10,0,35,12,'#111');line(0,10,0,35,6,'#4d9d48');
    line(-12,30,-27,40,8,'#111');line(12,30,27,40,8,'#111');
@@ -925,7 +933,8 @@ function drawWorld(){
 if(stage2BridgeOpen){
   for(const e of stage3Enemies){
    if(e.dead)continue;
-   ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+   ctx.save();ctx.translate(e.x,e.y);
+   if(e.flash>0){ctx.fillStyle='rgba(255,70,70,.48)';ctx.beginPath();ctx.arc(0,0,e.r+9,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.7;}
    if(e.type==='walnut'){
      // 硬いクルミ。わずかな顔の隙間。
      ctx.fillStyle='#9b6637';ctx.strokeStyle='#111';ctx.lineWidth=7;
