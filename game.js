@@ -23,9 +23,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 53: 最初の浮遊草原ステージ
+// Prototype 54: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -397,7 +397,7 @@ shortcutBtn.addEventListener('pointerdown',(ev)=>{
  }
 });
 
-function jump(){if(player.jumpT<=0){player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+function jump(){if(player.jumpT<=0){player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
 function steerAngle(current,target,maxStep){
  const d=angleDiff(target,current);
@@ -427,16 +427,16 @@ function skill(){
  player.hammerSpin=0;
 
  if(player.weapon===0){
-   // 剣：頭上へ振り上げ→高速小ジャンプ→着地振り下ろし→短い硬直
+   // 剣：一歩ずつ高速で踏み込みながら3連撃。
    player.skillKind='sword';
-   player.skillT=.74;
-   particle(player.x,player.y,'跳び斬り！','#7e20a6',.45,18);
+   player.skillT=.66;
+   particle(player.x,player.y,'三連斬り！','#7e20a6',.4,18);
 
  }else if(player.weapon===1){
-   // 槍：前へ大ジャンプして突き刺し→同じ軌道を後ろへジャンプで戻る
+   // 槍：風車のように回して周囲を攻撃→最後に一歩踏み込み突き。
    player.skillKind='spear';
-   player.skillT=.98;
-   particle(player.x,player.y,'飛槍！','#2f6db0',.5,18);
+   player.skillT=.72;
+   particle(player.x,player.y,'風車突き！','#2f6db0',.4,18);
 
  }else if(player.weapon===2){
    // ハンマー：ダッシュ→身体を一本軸にしてクルッ→横振り抜き
@@ -688,6 +688,27 @@ function doAttack(charged=false){
  let base=autoAim(faceAngle(player.face),Math.PI*.58,w>=3?440:range+90);
  player.aim=base;
 
+ // ジャンプ中の通常攻撃は、地上攻撃とは別の「下方向攻撃」。
+ if(jumpStrike){
+   player.attackMax=.34;player.attacking=.34;player.attackCooldown=.38;
+   player.airAttack=true;player.airAttackDone=false;
+   if(w===0||w===1){
+     // 剣/槍：真下へ武器を向けて落下地点を突く。
+     player.airSlam=true;
+     particle(player.x,player.y+22,w===0?'急降下突き！':'落下突き！','#fff',.32,15);
+   }else if(w===2){
+     // ハンマー：着地と同時に振り下ろす。チャージ版と違い衝撃波なし。
+     player.airSlam=true;
+     particle(player.x,player.y+22,'着地叩き！','#fff',.32,15);
+   }else{
+     // 杖：斜め下へ撃ち、地面へ着弾して柱/氷トゲを発生。
+     const landX=player.x+Math.cos(base)*92,landY=player.y+Math.sin(base)*92;
+     player.airMagic={kind:w===3?'fire':'ice',x:landX,y:landY,done:false};
+     particle(landX,landY,w===3?'火球！':'氷弾！',w===3?'#e43':'#268bc1',.28,14);
+   }
+   return;
+ }
+
  // 剣チャージ：360度回転斬り（既存）
  if(w===0 && charged){
    player.spin=1;player.spinT=0;player.attackMax=.56;player.attacking=.56;player.attackCooldown=.72;
@@ -911,89 +932,48 @@ function update(dt){
 
    if(player.skillKind==='sword'){
      const sa=player.skillBase;
-     player.aim=sa;
-     player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
-
-     if(t<.10){
-       mx=0;my=0;speed=0;player.skillZ=0;
-       const snap=skillAutoAim(player.skillBase,340,Math.PI*.60);
-       player.skillBase=steerAngle(player.skillBase,snap.angle,dt*4.5);
-     }else if(t<.43){
-       const p=(t-.10)/.33;
-       mx=Math.cos(sa)*1.72;my=Math.sin(sa)*1.72;speed=345;
-       player.skillZ=Math.sin(p*Math.PI)*58;
-     }else{
-       mx=0;my=0;speed=0;player.skillZ=0;
-       if(player.skillPhase===0){
-         player.skillPhase=1;
-         const ix=player.x+Math.cos(sa)*42,iy=player.y+Math.sin(sa)*42;
-         particle(ix,iy,'ズバン！','#fff',.42,20);
-
-         const hitOne=(e,deathFx)=>{
-           if(!e||e.dead||player.skillHit.has(e))return;
-           const d=dist(ix,iy,e.x,e.y);
-           const aa=Math.atan2(e.y-player.y,e.x-player.x);
-           if(d<118+(e.r||24)*.45&&Math.abs(angleDiff(aa,sa))<1.05){
-             player.skillHit.add(e);e.hp-=7;e.flash=.22;
-             if(e!==boss&&e!==seedBoss&&e!==grassFinalBoss)enemyHitReact(e,92);
-             particle(e.x,e.y-24,'-7','#b31313',.42,17);
-             if(e.hp<=0&&deathFx)deathFx(e);
-           }
-         };
-
-         for(const e of enemies)hitOne(e,e=>{e.dead=true;stage1DeathEffect(e);killDrop(e,.6)});
-         for(const e of stage2Enemies)hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'パサッ','#fff',.4,15);killDrop(e,.5)});
-         for(const e of stage3Enemies){
-           if(e.type==='walnut'){
-             if(!e.dead&&dist(ix,iy,e.x,e.y)<125){player.skillHit.add(e);particle(e.x,e.y-24,'カキン！','#111',.35,15)}
-           }else hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'ポン！','#fff',.4,15);killDrop(e,.5)});
-         }
-         for(const e of stage4Enemies)hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'ブチッ！','#4d8b37',.4,15);killDrop(e,.55)});
-         for(const e of stage6Enemies)hitOne(e,e=>{e.dead=true;particle(e.x,e.y,'パァッ！','#fff',.4,15);killDrop(e,.55)});
-
-         hitOne(boss);hitOne(seedBoss);hitOne(grassFinalBoss);
-
-         for(const tr of props.smallTrees){
-           if(!tr.dead&&dist(ix,iy,tr.x,tr.y)<120){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}
-         }
-         for(const g of props.grass){
-           if(!g.dead&&dist(ix,iy,g.x,g.y)<115){g.dead=true;particle(g.x,g.y,'ザシュ','#267524',.35,14)}
-         }
+     player.aim=sa;player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
+     player.skillZ=0;
+     // 3回の短い踏み込み。各斬撃に独立判定。
+     const phase=Math.min(2,Math.floor(t/.20));
+     const local=t-phase*.20;
+     if(t<.60&&local<.13){
+       mx=Math.cos(sa);my=Math.sin(sa);speed=430;
+     }else{mx=0;my=0;speed=0}
+     if(t<.60&&local>.055&&local<.12&&!player.skillHit.has('s'+phase)){
+       player.skillHit.add('s'+phase);
+       particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,'ザシュ！','#fff',.25,15);
+       hitBoss(3,112,sa,1.25);hitStage2(3,112,sa,1.25);hitStage3(3,112,sa,1.25,0,false);hitStage45(3,112,sa,1.25,0);
+       for(const e of enemies){
+         if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
+         if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=3;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
        }
      }
 
    }else if(player.skillKind==='spear'){
-     player.inv=Math.max(player.inv,.18);
-     let sa=player.skillBase;
-     player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
-
-     if(t<.12){
-       const snap=skillAutoAim(player.skillBase,380,Math.PI*.62);
-       player.skillBase=steerAngle(player.skillBase,snap.angle,dt*4.2);
-       sa=player.skillBase;
-       mx=Math.cos(sa)*1.45;my=Math.sin(sa)*1.45;speed=285;player.skillZ=0;
-     }else if(t<.54){
-       const p=(t-.12)/.42;
-       mx=Math.cos(sa)*1.62;my=Math.sin(sa)*1.62;speed=280;
-       player.skillZ=Math.sin(p*Math.PI)*112;
-       if(p>.89&&player.skillPhase===0){
-         player.skillPhase=1;
-         const ix=player.x+Math.cos(sa)*42,iy=player.y+Math.sin(sa)*42;
-         particle(ix,iy,'ズドン！','#2f6db0',.48,21);
-         for(const e of enemies){
-           if(e.dead)continue;
-           if(dist(ix,iy,e.x,e.y)<94){
-             e.hp-=7;enemyHitReact(e,86);particle(e.x,e.y-20,'-7','#b31313',.45,17);
-             if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.65)}
-           }
-         }
-         hitStage2(7,104,sa,Math.PI);hitStage3(7,104,sa,Math.PI,1,true);hitStage45(7,104,sa,Math.PI,1);hitBoss(7,104,sa,Math.PI);
+     const sa=player.skillBase;
+     player.aim=sa;player.face=faceFromVec(Math.cos(sa),Math.sin(sa));player.skillZ=0;
+     if(t<.46){
+       mx=0;my=0;speed=0;
+       player.spiral=.10;player.spiralA=sa+t*18;
+       // 回転中は周囲に当たり判定。敵ごとに短い間隔で最大2ヒット。
+       const tick=Math.floor(t/.20);
+       const key='p'+tick;
+       if(!player.skillHit.has(key)){
+         player.skillHit.add(key);
+         hitBoss(2,92,sa,Math.PI*2);hitStage2(2,92,sa,Math.PI*2);hitStage3(2,92,sa,Math.PI*2,1,false);hitStage45(2,92,sa,Math.PI*2,1);
+         for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<92+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
-       const p=Math.min(1,(t-.54)/.44);
-       mx=-Math.cos(sa)*1.52;my=-Math.sin(sa)*1.52;speed=275;
-       player.skillZ=Math.sin(p*Math.PI)*88;
-       player.face=faceFromVec(Math.cos(sa),Math.sin(sa));
+       // 最後に一歩踏み込んで強い突き。
+       const p=(t-.46)/.26;
+       if(p<.62){mx=Math.cos(sa);my=Math.sin(sa);speed=440}else{mx=0;my=0;speed=0}
+       if(p>.35&&!player.skillHit.has('finish')){
+         player.skillHit.add('finish');
+         particle(player.x+Math.cos(sa)*90,player.y+Math.sin(sa)*90,'ズドッ！','#fff',.3,17);
+         hitBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);
+         for(const e of enemies){if(e.dead)continue;const dx=e.x-player.x,dy=e.y-player.y,along=dx*Math.cos(sa)+dy*Math.sin(sa),side=Math.abs(dx*Math.sin(sa)-dy*Math.cos(sa));if(along>0&&along<165&&side<35+e.r*.4){e.hp-=6;e.flash=.18;enemyHitReact(e,70);if(e.hp<=0)e.dead=true}}
+       }
      }
 
    }else if(player.skillKind==='hammer'){
@@ -1136,7 +1116,33 @@ function update(dt){
    }
  }
 
- if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
+ // ジャンプ攻撃の着地判定
+ if(player.airAttack&&player.jumpT>0&&player.jumpT<=dt+.025&&!player.airAttackDone){
+   player.airAttackDone=true;
+   const w=player.weapon;
+   if(w===0||w===1){
+     const rad=w===0?64:72,dmg=5;
+     particle(player.x,player.y,w===0?'ズブッ！':'ドスッ！','#fff',.38,17);
+     hitBoss(dmg,rad,0,Math.PI*2);hitStage2(dmg,rad,0,Math.PI*2);hitStage3(dmg,rad,0,Math.PI*2,w,false);hitStage45(dmg,rad,0,Math.PI*2,w);
+     for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<rad+e.r){e.hp-=dmg;e.flash=.18;enemyHitReact(e,42);if(e.hp<=0)e.dead=true}}
+   }else if(w===2){
+     // 直撃範囲のみ。チャージのような外周衝撃波は無し。
+     particle(player.x,player.y,'ドン！','#555',.34,17);
+     hitBoss(5,68,0,Math.PI*2);hitStage2(5,68,0,Math.PI*2);hitStage3(5,68,0,Math.PI*2,2,false);hitStage45(5,68,0,Math.PI*2,2);
+     for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<68+e.r){e.hp-=5;e.flash=.18;enemyHitReact(e,65);if(e.hp<=0)e.dead=true}}
+   }else if(player.airMagic){
+     const m=player.airMagic;
+     particle(m.x,m.y,m.kind==='fire'?'ボォン！':'キィン！',m.kind==='fire'?'#e43':'#268bc1',.55,20);
+     // 着地点中心の魔法柱/氷トゲ
+     const rad=82,dmg=5;
+     const hit=(e)=>{if(!e||e.dead)return;if(dist(m.x,m.y,e.x,e.y)<rad+(e.r||20)){e.hp-=dmg;e.flash=.2;particle(e.x,e.y-25,`-${dmg}`,m.kind==='fire'?'#e43':'#268bc1',.4,16);if(e.hp<=0)e.dead=true}};
+     for(const e of enemies)hit(e);for(const e of stage2Enemies)hit(e);for(const e of stage3Enemies)hit(e);for(const e of stage4Enemies)hit(e);for(const e of stage6Enemies)hit(e);for(const e of bossWalnuts)hit(e);
+     hit(boss);hit(seedBoss);hit(grassFinalBoss);hit(rockBoss);
+     if(m.kind==='fire'){for(const g of props.grass){if(!g.dead&&dist(m.x,m.y,g.x,g.y)<95){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}}}
+     else {const wa=props.water;if(m.x>wa.x-80&&m.x<wa.x+wa.w+80&&m.y>wa.y-80&&m.y<wa.y+wa.h+80)wa.frozen=5}
+   }
+ }
+  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
  if(player.shield&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+shields[player.shieldType].heal*dt)}
 
 
@@ -2101,26 +2107,21 @@ function drawPlayer(){
  let wa=player.aim;
  let thrust=0;
 
- // 剣スキル：頭上で振りかぶり、着地時に縦〜斜めへ振り下ろす。
+ // 剣スキル：3回とも高速の薙ぎ払い。
  if(player.skillKind==='sword'&&player.skillT>0){
-   const st=player.skillElapsed;
-   if(st<.43){
-     wa=player.skillBase-1.38;
-   }else if(st<.59){
-     const q=Math.max(0,Math.min(1,(st-.43)/.16));
-     wa=(player.skillBase-1.38)+2.48*q;
-   }else{
-     wa=player.skillBase+1.10;
-   }
+   const ph=Math.min(2,Math.floor(player.skillElapsed/.20));
+   const q=Math.max(0,Math.min(1,(player.skillElapsed-ph*.20)/.16));
+   wa=player.skillBase-.95+q*1.9;
  }
-
- // 槍スキル：前進側の着地だけ斜め前へ槍を向ける。
+ // 槍スキル：前半は風車回転、後半は前方へ突く。
  if(player.skillKind==='spear'&&player.skillT>0){
-   if(player.skillElapsed>=.42&&player.skillElapsed<.58){
-     wa=player.skillBase+.72;thrust=10;
-   }else{
-     wa=player.skillBase;
-   }
+   if(player.skillElapsed<.46)wa=player.skillBase+player.skillElapsed*18;
+   else {wa=player.skillBase;thrust=Math.sin(Math.min(1,(player.skillElapsed-.46)/.26)*Math.PI)*26}
+ }
+ // ジャンプ通常攻撃：剣/槍は下突き、ハンマーは着地へ振り下ろす。
+ if(player.airAttack&&player.jumpT>0){
+   if(player.weapon===0||player.weapon===1){wa=Math.PI/2;thrust=18}
+   else if(player.weapon===2){const jp=1-player.jumpT/player.jumpDur;wa=player.aim-1.25+Math.max(0,(jp-.65)/.35)*2.4}
  }
 
  // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
@@ -2211,9 +2212,7 @@ function drawPlayer(){
    drawWeapon(handR.x,handR.y,wa,thrust);
    drawShield(sx,sy,a,player.shield,false);
  }
- if(player.skillKind==='sword'&&player.skillElapsed>=.43&&player.skillElapsed<.59){
-   drawSwordDropSlash(player.skillBase,(player.skillElapsed-.43)/.16);
- }
+ 
  if(player.attacking>0&&player.weapon===0)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===2)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===1)drawThrustStreak(player.aim);
