@@ -25,7 +25,7 @@ const weapons=[
 ];
 const player={x:800,y:580,r:28,speed:230,hp:100,maxHp:100,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0};
 
-// Prototype 25: 最初の浮遊草原ステージ
+// Prototype 26: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
