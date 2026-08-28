@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 83: 最初の浮遊草原ステージ
+// Prototype 84: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -210,7 +210,7 @@ const stage7Geo={
   {x:10120,y:300,w:500,h:190},         // 上ルート
   {x:10120,y:590,w:500,h:190},         // 下ルート
   {x:10530,y:300,w:560,h:480},         // 合流エリア
-  {x:11010,y:330,w:700,h:430}          // ボス広場
+  {x:11010,y:330,w:735,h:430}          // ボス広場：小島コースへの踏切まで
  ],
  bridge:{x1:9435,y1:545,x2:9580,y2:545}
 };
@@ -1414,6 +1414,15 @@ function update(dt){
  };
  // 地面の見た目に使う矩形と、落下判定に使う矩形を同じ定義から取る。
  let safe=pointSupportedByGround(player.x,player.y,groundSupport);
+ // 岩クルミ後の跳び石区間：ジャンプ中は短い隙間を空中移動できる。
+ // 従来は地面判定が切れた瞬間に崖際処理が発動し、ジャンプしても引っ掛かっていた。
+ if(rockBossDefeated&&player.jumpT>0&&player.x>=11670&&player.x<=13490){
+   const nearIsland=visibleGroundRects().some(r=>{
+     const cx=clamp(player.x,r.x,r.x+r.w),cy=clamp(player.y,r.y,r.y+r.h);
+     return Math.hypot(player.x-cx,player.y-cy)<=110;
+   });
+   if(nearIsland)safe=true;
+ }
  if(stage.bridgeOpen){
    const bx1=Math.min(stageGeo.bridge.x1,stageGeo.bridge.x2)-25,bx2=Math.max(stageGeo.bridge.x1,stageGeo.bridge.x2)+25;
    const by=stageGeo.bridge.y1;
@@ -1923,7 +1932,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
  // 岩ボス撃破後：橋ではなく、小島をジャンプで渡る次コース。
- if(rockBossDefeated&&player.x>11690&&!stage8Started){
+ if(rockBossDefeated&&player.x>11620&&!stage8Started){
    stage8Started=true;currentStage=8;stage.checkpoint={x:11870,y:545};
    say('跳び石群島：短い隙間はジャンプで！');
  }
@@ -2902,34 +2911,15 @@ function drawPlayer(){
  if(player.charging){
    const held=performance.now()/1000-player.chargeStart;
    const ready=held>=.42;
-   // 輪っかではなく、溜まるほど身体と武器がほんのり発光する。
-   ctx.save();
-   ctx.globalCompositeOperation='screen';
    const pulse=.5+.5*Math.sin(performance.now()*.012);
-   // 白い剣・槍でも一目で分かるよう、無属性武器は水色～青の発光にする。
-   const neutralGlow=player.weapon<=2?'#45cfff':(player.weapon===4?'#66ddff':'#ff704d');
-   ctx.globalAlpha=ready?(.28+pulse*.10):Math.min(.18,.06+held*.22);
-   ctx.fillStyle=neutralGlow;
-   ctx.beginPath();ctx.ellipse(0,-8,34,42,0,0,Math.PI*2);ctx.fill();
-   // 成立後は身体の中心にも小さな明滅を重ねる。黄色い輪は使わない。
+   // チャージ表示は身体だけ。武器側には一切発光を足さない。
+   ctx.save();ctx.globalCompositeOperation='screen';
+   ctx.fillStyle=player.weapon===3?'#ff765d':(player.weapon===4?'#5fdcff':'#48cfff');
+   ctx.globalAlpha=ready?(.30+pulse*.12):Math.min(.17,.05+held*.20);
+   ctx.beginPath();ctx.ellipse(0,-8,36,45,0,0,Math.PI*2);ctx.fill();
    if(ready){
-     ctx.globalAlpha=.16+pulse*.10;ctx.fillStyle='#ffffff';
-     ctx.beginPath();ctx.ellipse(0,-8,25,34,0,0,Math.PI*2);ctx.fill();
-   }
-   ctx.globalAlpha=ready?(.62+pulse*.18):.28;
-   ctx.strokeStyle=neutralGlow;
-   ctx.lineWidth=ready?12:8;ctx.lineCap='round';
-   // drawPlayer内ではwx/wyは存在しないため、実際の武器手座標を使う。
-   const glowX=handR.x,glowY=handR.y;
-   ctx.beginPath();
-   ctx.moveTo(glowX,glowY);
-   ctx.lineTo(glowX+Math.cos(wa)*(player.weapon===1?72:54),glowY+Math.sin(wa)*(player.weapon===1?72:54));
-   ctx.stroke();
-   if(ready){
-     const glen=player.weapon===1?72:54;
-     const tx=glowX+Math.cos(wa)*glen,ty=glowY+Math.sin(wa)*glen;
-     ctx.globalAlpha=.45+pulse*.35;ctx.fillStyle=neutralGlow;
-     ctx.beginPath();ctx.arc(tx,ty,6+pulse*3,0,Math.PI*2);ctx.fill();
+     ctx.globalAlpha=.13+pulse*.08;ctx.fillStyle='#fff';
+     ctx.beginPath();ctx.ellipse(0,-8,27,36,0,0,Math.PI*2);ctx.fill();
    }
    ctx.restore();
  }
