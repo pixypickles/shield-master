@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 96: 最初の浮遊草原ステージ
+// Prototype 97: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -107,9 +107,9 @@ const props={
  water:{x:260,y:590,w:300,h:105,frozen:0},
  // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
  shallowWater:{x:620,y:610,w:530,h:72,flowX:34,flowY:0},
- spring:{x:620,y:646,r:36},
+ spring:{x:620,y:646,r:36,cloudX:620,cloudY:455},
  // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
- upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0},
+ upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0,cloudX:1355,cloudY:165},
  waterfall:{x:1396,y:454,w:72,h:390,flowX:0,flowY:58},
  smallTrees:[
   // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
@@ -146,6 +146,11 @@ const currentStreams=[
  {id:'cloudUpperB',source:'cloud',cloudX:6350,cloudY:-40,width:86,speed:188,frozen:0,pts:[{x:6350,y:55},{x:6350,y:125},{x:6160,y:155},{x:5700,y:155},{x:5580,y:230},{x:5580,y:390}]},
  {id:'cloudUpperC',source:'cloud',cloudX:3050,cloudY:-45,width:80,speed:72,frozen:0,pts:[{x:3050,y:55},{x:3050,y:130},{x:2890,y:155},{x:2460,y:155},{x:2350,y:230},{x:2350,y:390}]}
 ];
+const cloudJumpPads=[
+ {x:620,y:455,r:54},{x:1355,y:165,r:58},{x:2440,y:280,r:52},
+ {x:5480,y:315,r:52},{x:10720,y:280,r:52},{x:-1110,y:150,r:52}
+];
+
 
 function nearestStreamSegment(st,x,y,pad=0){
  let best=null,bestD=1e18;
@@ -718,7 +723,7 @@ shortcutBtn.addEventListener('pointerup',releaseShortcut);
 shortcutBtn.addEventListener('pointercancel',ev=>{if(shortcutHoldTimer)clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null;shortcutPointer=null;shortcutLong=false;});
 
 
-function jump(){if(player.jumpT<=0){player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+function jump(){if(player.jumpT<=0){player.jumpDur=.62;player.jumpHeight=105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
 function steerAngle(current,target,maxStep){
  const d=angleDiff(target,current);
@@ -1627,7 +1632,9 @@ function update(dt){
  for(const st of currentStreams){
    st.frozen=Math.max(0,st.frozen-dt);
    const seg=nearestStreamSegment(st,player.x,player.y,player.r*.55);
-   if(seg&&st.frozen<=0){
+   const visibleHere=pointSupportedByGround(player.x,player.y,player.r*.35);
+   const visibleWater=seg&&pointSupportedByGround(seg.px,seg.py,6);
+   if(seg&&visibleHere&&visibleWater&&st.frozen<=0){
      const nx=seg.dx/(seg.len||1),ny=seg.dy/(seg.len||1);
      player.x+=nx*st.speed*dt;player.y+=ny*st.speed*dt;
    }
@@ -1781,6 +1788,17 @@ function update(dt){
    }
  }
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
+  player.cloudBounceCd=Math.max(0,(player.cloudBounceCd||0)-dt);
+  if(player.jumpT>0&&player.cloudBounceCd<=0){
+    const lift=jumpLift();
+    for(const c of cloudJumpPads){
+      if(dist(player.x,player.y-lift,c.x,c.y)<c.r+player.r*.65 && player.y-lift<c.y+12){
+        player.jumpDur=.92;player.jumpHeight=185;player.jumpT=.92;player.cloudBounceCd=.7;
+        particle(c.x,c.y-35,'ボヨン！','#fff',.45,17);break;
+      }
+    }
+  }
+
  if(player.shield&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+shields[player.shieldType].heal*dt)}
 
 
@@ -2644,36 +2662,17 @@ function drawWorld(){
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
 
- // 水系A：湧き水→浅い小川。継ぎ目のない1本の形として描く。
- const sw=props.shallowWater,sp=props.spring;
+ // 水系A：低い雲の豪雨→浅い小川。
+ const sw=props.shallowWater,sp=props.spring,scx=sp.cloudX,scy=sp.cloudY;
  ctx.save();
- ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.lineJoin='round';
- ctx.beginPath();
- ctx.moveTo(sp.x,sw.y);
- ctx.lineTo(sw.x+sw.w-22,sw.y);
- ctx.quadraticCurveTo(sw.x+sw.w,sw.y,sw.x+sw.w,sw.y+22);
- ctx.lineTo(sw.x+sw.w,sw.y+sw.h-22);
- ctx.quadraticCurveTo(sw.x+sw.w,sw.y+sw.h,sw.x+sw.w-22,sw.y+sw.h);
- ctx.lineTo(sp.x,sw.y+sw.h);
- ctx.bezierCurveTo(sp.x-48,sw.y+sw.h,sp.x-48,sw.y,sp.x,sw.y);
- ctx.closePath();ctx.fill();ctx.stroke();
- // 湧水の中心は、全周に回る渦で「地面から水が溢れている」感じを出す。
- const whirl=performance.now()*.0024;
- ctx.save();ctx.translate(sp.x,sp.y);ctx.rotate(whirl);
- ctx.fillStyle='rgba(235,253,255,.86)';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();
- for(let i=0;i<3;i++){
-   const rr=15+i*9;
-   ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=3;
-   ctx.beginPath();ctx.arc(0,0,rr,.2+i*.35,Math.PI*1.55+i*.35);ctx.stroke();
-   ctx.beginPath();ctx.arc(0,0,rr,-Math.PI*.8+i*.35,-.1+i*.35);ctx.stroke();
- }
- // 渦の流れ方向が分かる小さな白い泡。
- for(let i=0;i<3;i++){
-   const a=whirl*1.6+i*Math.PI*2/3,rr=24+i*3;
-   circle(Math.cos(a)*rr,Math.sin(a)*rr,4,'rgba(245,255,255,.9)','transparent',0);
- }
- ctx.restore();
- for(let x=sp.x+70;x<sw.x+sw.w-18;x+=54){line(x,sw.y+22,x+26,sw.y+22,3,'rgba(255,255,255,.72)');line(x+9,sw.y+50,x+34,sw.y+50,3,'rgba(255,255,255,.55)')}
+ circle(scx-40,scy+18,31,'#eef5f8','#111',5);circle(scx,scy,42,'#f8fcfe','#111',5);circle(scx+43,scy+20,32,'#e7f1f5','#111',5);
+ const rt=performance.now()*.018;
+ for(let i=0;i<11;i++){const xx=scx-58+i*12,yy=scy+42+((rt*26+i*23)%145);line(xx,yy,xx,yy+23,5,'#45aef0')}
+ ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.lineJoin='round';ctx.beginPath();
+ ctx.moveTo(sp.x,sw.y);ctx.lineTo(sw.x+sw.w-22,sw.y);ctx.quadraticCurveTo(sw.x+sw.w,sw.y,sw.x+sw.w,sw.y+22);
+ ctx.lineTo(sw.x+sw.w,sw.y+sw.h-22);ctx.quadraticCurveTo(sw.x+sw.w,sw.y+sw.h,sw.x+sw.w-22,sw.y+sw.h);
+ ctx.lineTo(sp.x,sw.y+sw.h);ctx.bezierCurveTo(sp.x-48,sw.y+sw.h,sp.x-48,sw.y,sp.x,sw.y);ctx.closePath();ctx.fill();ctx.stroke();
+ for(let x=sp.x+25;x<sw.x+sw.w-18;x+=54)line(x,sw.y+22,x+26,sw.y+22,3,'rgba(255,255,255,.72)');
  ctx.restore();
 
  // 小川の終点は島の縁から細い水膜になって落ちる。下ほど薄く細くなり、雲へ溶ける。
@@ -2685,8 +2684,12 @@ function drawWorld(){
  // 水を受ける小さな雲
  ctx.globalAlpha=.72;circle(sx+29,spillTop+220,24,'#f4fbff','transparent',0);circle(sx+9,spillTop+226,16,'#f4fbff','transparent',0);circle(sx+49,spillTop+227,17,'#f4fbff','transparent',0);ctx.globalAlpha=1;
 
- // 水系B：高台の池→滝。池の水面から直接あふれ、緑や四角い継ぎ目を挟まない。
- const up=props.upperPond,wf=props.waterfall;
+ // 水系B：低い雲の豪雨→高台の池→滝。
+ const up=props.upperPond,wf=props.waterfall,ucx=up.cloudX,ucy=up.cloudY;
+ circle(ucx-46,ucy+20,34,'#eef5f8','#111',5);circle(ucx,ucy,46,'#f8fcfe','#111',5);circle(ucx+48,ucy+22,34,'#e7f1f5','#111',5);
+ const urt=performance.now()*.02;
+ for(let i=0;i<12;i++){const xx=ucx-66+i*12,yy=ucy+48+((urt*28+i*19)%150);line(xx,yy,xx,Math.min(yy+25,up.y+15),5,'#45aef0')}
+
  // 滝本体を先に描く。上端は池の内部まで差し込む。
  const wgrad=ctx.createLinearGradient(0,wf.y,0,wf.y+wf.h);
  wgrad.addColorStop(0,'rgba(137,221,246,.92)');wgrad.addColorStop(.78,'rgba(137,221,246,.72)');wgrad.addColorStop(1,'rgba(137,221,246,.18)');
@@ -3197,6 +3200,9 @@ function drawWorld(){
    ctx.moveTo(0,-38);ctx.quadraticCurveTo(38,-28,34,8);ctx.quadraticCurveTo(28,38,0,52);ctx.quadraticCurveTo(-28,38,-34,8);ctx.quadraticCurveTo(-38,-28,0,-38);ctx.fill();ctx.stroke();
    ctx.strokeStyle='#fff';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-15,5);ctx.lineTo(-4,17);ctx.lineTo(18,-10);ctx.stroke();ctx.restore();
  }
+
+ // 低い雨雲は乗れることが分かるよう上面を白く強調。
+ for(const c of cloudJumpPads){ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(c.x,c.y-17,c.r*.72,c.r*.24,0,0,Math.PI*2);ctx.stroke();}
 
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
