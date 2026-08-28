@@ -237,9 +237,10 @@ const stage8Geo={path:[
  {x:13155,y:455,w:330,h:255}
 ]};
 const stage8Enemies=[
- {x:12170,y:445,r:25,hp:2,maxHp:2,type:'dandelion',attackCd:1.8,flash:0,dead:false},
- {x:12585,y:425,r:25,hp:2,maxHp:2,type:'fanleaf',attackCd:1.7,flash:0,dead:false},
- {x:13010,y:415,r:25,hp:2,maxHp:2,type:'dandelion',attackCd:1.9,flash:0,dead:false}
+ // 着地点を塞ぐ回転花。接触ダメージあり。槍の中心突きでのみ倒せる。
+ {x:12172,y:448,r:34,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:0},
+ {x:12586,y:428,r:34,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:1.2},
+ {x:13012,y:418,r:34,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:2.4}
 ];
 let stage8Started=false;
 
@@ -358,7 +359,21 @@ function releaseAttack(){if(!player.charging)return;let held=performance.now()/1
 attackBtn.addEventListener('pointerup',releaseAttack);attackBtn.addEventListener('pointercancel',releaseAttack);attackBtn.addEventListener('pointerleave',releaseAttack);
 
 document.getElementById('jumpBtn').addEventListener('pointerdown',()=>jump());
-document.getElementById('skillBtn').addEventListener('pointerdown',()=>skill());
+const skillBtn=document.getElementById('skillBtn');
+skillBtn.addEventListener('pointerdown',e=>{
+ e.preventDefault();
+ if(player.weapon===1)player.spearSkillHeld=true;
+ skill();skillBtn.classList.add('active');
+});
+function releaseSkill(){
+ skillBtn.classList.remove('active');
+ if(player.skillKind==='spear'&&player.spearSkillHeld){
+   player.spearSkillHeld=false;
+   // 離した瞬間から突きフェーズへ。
+   player.skillElapsed=.46;player.skillT=.26;
+ }
+}
+for(const ev of ['pointerup','pointercancel','pointerleave'])skillBtn.addEventListener(ev,releaseSkill);
 document.getElementById('changeBtn').addEventListener('pointerdown',()=>openEquipPanel());
 
 
@@ -470,7 +485,8 @@ function skill(){
  }else if(player.weapon===1){
    // 槍：風車のように回して周囲を攻撃→最後に一歩踏み込み突き。
    player.skillKind='spear';
-   player.skillT=.72;
+   player.spearSkillHeld=true;
+   player.skillT=999;
    player.spiral=0;
    particle(player.x,player.y,'風車突き！','#2f6db0',.4,18);
 
@@ -652,6 +668,19 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
  }
 }
 
+
+
+function hitStage8Spinner(range,base){
+ if(!stage8Started)return;
+ const fx=Math.cos(base),fy=Math.sin(base);
+ for(const e of stage8Enemies){
+   if(e.dead||e.type!=='spinnerflower')continue;
+   const dx=e.x-player.x,dy=e.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+   if(along>0&&along<range+e.r+18&&side<22){
+     e.hp=0;e.dead=true;e.flash=.2;particle(e.x,e.y-25,'中心！','#fff',.38,16);particle(e.x,e.y,'パァン！','#fff',.4,15);
+   }
+ }
+}
 
 function hitStage45(damage,range,base,cone,weapon){
  damage=damage;
@@ -1008,12 +1037,9 @@ function update(dt){
    }else if(player.skillKind==='spear'){
      const sa=player.skillBase;
      player.aim=sa;player.face=faceFromVec(Math.cos(sa),Math.sin(sa));player.skillZ=0;
-     if(t<.46){
-       mx=0;my=0;speed=0;
-       // 回転スキルではチャージ槍用の巨大な空気スパイラルを出さない。
-       // 見えるのは中央持ちで回っている槍そのものだけ。
-       player.spiral=0;
-       // 回転中は周囲に当たり判定。敵ごとに短い間隔で最大2ヒット。
+     if(player.spearSkillHeld){
+       mx=0;my=0;speed=0;player.spiral=0;
+       // 押している間は何周でも回転。敵弾もこの間ずっと弾く。
        const tick=Math.floor(t/.20);
        const key='p'+tick;
        if(!player.skillHit.has(key)){
@@ -1022,13 +1048,13 @@ function update(dt){
          for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<76+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
-       // 最後に一歩踏み込んで強い突き。
+       // ボタンを離したら一歩踏み込んで強い突き。
        const p=(t-.46)/.26;
        if(p<.62){mx=Math.cos(sa);my=Math.sin(sa);speed=440}else{mx=0;my=0;speed=0}
        if(p>.35&&!player.skillHit.has('finish')){
          player.skillHit.add('finish');
          particle(player.x+Math.cos(sa)*90,player.y+Math.sin(sa)*90,'ズドッ！','#fff',.3,17);
-         hitBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);
+         hitBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
          for(const e of enemies){if(e.dead)continue;const dx=e.x-player.x,dy=e.y-player.y,along=dx*Math.cos(sa)+dy*Math.sin(sa),side=Math.abs(dx*Math.sin(sa)-dy*Math.cos(sa));if(along>0&&along<165&&side<35+e.r*.4){e.hp-=6;e.flash=.18;enemyHitReact(e,70);if(e.hp<=0)e.dead=true}}
        }
      }
@@ -1279,7 +1305,7 @@ function update(dt){
    // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
    if(pr.enemyShot){
      // 槍スキルの風車回転中は、槍そのものが弾を弾く。
-     if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed<.46&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
+     if(player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
        pr.hit=true;particle(pr.x,pr.y,'キン！','#fff',.28,14);continue;
      }
      if(dist(pr.x,pr.y,player.x,player.y)<pr.r+player.r){
@@ -1676,11 +1702,11 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
  if(stage8Started){
    for(const e of stage8Enemies){
-     if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
-     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
-     if(e.attackCd<=0&&d<320){
-       e.attackCd=e.type==='dandelion'?1.9:1.7;const a=Math.atan2(dy,dx);
-       projectiles.push({x:e.x,y:e.y-8,vx:Math.cos(a)*165,vy:Math.sin(a)*165,r:10,life:2,kind:'wind',damage:4,enemyShot:true,hit:false});
+     if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.petalA=(e.petalA||0)+dt*5.6;
+     const d=dist(player.x,player.y,e.x,e.y);
+     if(d<player.r+e.r+12&&player.jumpT<=0&&player.inv<=0){
+       const got=takeDamage(4);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+       const a=Math.atan2(player.y-e.y,player.x-e.x);player.x+=Math.cos(a)*18;player.y+=Math.sin(a)*18;
      }
    }
  }
@@ -2163,9 +2189,9 @@ function drawWorld(){
    for(const e of stage8Enemies){
      if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);
      if(e.flash>0){ctx.fillStyle='rgba(255,80,80,.45)';ctx.beginPath();ctx.arc(0,0,e.r+7,0,Math.PI*2);ctx.fill()}
-     line(0,5,0,30,10,'#111');line(0,5,0,30,5,'#4a9d49');
-     for(let i=0;i<7;i++){const a=i*Math.PI*2/7;circle(Math.cos(a)*18,Math.sin(a)*18-8,9,e.type==='dandelion'?'#eef8e8':'#8ddc72','#111',3)}
-     circle(0,-8,12,'#d9a94d','#111',4);ctx.restore();
+     ctx.save();ctx.rotate(e.petalA||0);
+     for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.save();ctx.rotate(a);ctx.translate(27,0);ctx.fillStyle=i%2?'#f08acb':'#ffb0dc';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,17,9,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+     ctx.restore();circle(0,0,13,'#ffd85a','#111',5);line(0,12,0,31,8,'#111');line(0,12,0,31,4,'#4fae52');ctx.restore();
    }
  }
  drawPlayer();
@@ -2314,7 +2340,7 @@ function drawPlayer(){
  }
  // 槍スキル：前半は風車回転、後半は前方へ突く。
  if(player.skillKind==='spear'&&player.skillT>0){
-   if(player.skillElapsed<.46){
+   if(player.spearSkillHeld){
      // 槍の中央を握って回すための角度。通常の「柄の端を持つ」描画は後段で差し替える。
      wa=player.skillBase+player.skillElapsed*20;
      thrust=0;
@@ -2430,7 +2456,7 @@ function drawPlayer(){
 function drawActiveWeapon(wx,wy,wa,thrust){
  // 槍スキル前半：槍の「真ん中」を手で持つ。
  // 槍全長が回転円の直径になる。手から穂先までが半径ではない。
- if(player.skillKind==='spear'&&player.skillT>0&&player.skillElapsed<.46){
+ if(player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld){
    ctx.save();ctx.translate(wx,wy);ctx.rotate(wa);
    const half=68;
    // 回転中も通常時と同じ金属柄。白い棒にはしない。
