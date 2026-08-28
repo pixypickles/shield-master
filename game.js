@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 76: 最初の浮遊草原ステージ
+// Prototype 77: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -388,9 +388,25 @@ const shieldBtn=document.getElementById('shieldBtn'), attackBtn=document.getElem
 shieldBtn.addEventListener('pointerdown',e=>{e.preventDefault();player.shield=true;player.dashShieldHit=new Set();shieldBtn.classList.add('active')});
 for(const ev of ['pointerup','pointercancel','pointerleave']) shieldBtn.addEventListener(ev,()=>{player.shield=false;shieldBtn.classList.remove('active')});
 
-attackBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(player.attackCooldown<=0){player.charging=true;player.chargeStart=performance.now()/1000;attackBtn.classList.add('active')}});
-function releaseAttack(){if(!player.charging)return;let held=performance.now()/1000-player.chargeStart;player.charging=false;attackBtn.classList.remove('active');doAttack(held>.42)}
-attackBtn.addEventListener('pointerup',releaseAttack);attackBtn.addEventListener('pointercancel',releaseAttack);attackBtn.addEventListener('pointerleave',releaseAttack);
+let attackPointerId=null;
+attackBtn.addEventListener('pointerdown',e=>{
+ e.preventDefault();
+ if(player.attackCooldown<=0&&!player.charging){
+   attackPointerId=e.pointerId;
+   try{attackBtn.setPointerCapture(e.pointerId)}catch(_){}
+   player.charging=true;player.chargeStart=performance.now()/1000;
+   attackBtn.classList.add('active');
+ }
+});
+function releaseAttack(e){
+ if(!player.charging)return;
+ if(e&&attackPointerId!==null&&e.pointerId!==attackPointerId)return;
+ let held=performance.now()/1000-player.chargeStart;
+ player.charging=false;attackPointerId=null;attackBtn.classList.remove('active');
+ doAttack(held>=.42);
+}
+attackBtn.addEventListener('pointerup',releaseAttack);
+attackBtn.addEventListener('pointercancel',releaseAttack);
 
 document.getElementById('jumpBtn').addEventListener('pointerdown',()=>jump());
 const skillBtn=document.getElementById('skillBtn');
@@ -2752,7 +2768,21 @@ function drawPlayer(){
  if(player.attacking>0&&player.weapon===0)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===2)drawAttackArc(player.aim);
  if(player.attacking>0&&player.weapon===1)drawThrustStreak(player.aim);
- if(player.charging){ctx.strokeStyle='#ffe551';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,-5,43,0,Math.PI*2);ctx.stroke()}
+ if(player.charging){
+   const held=performance.now()/1000-player.chargeStart;
+   const ready=held>=.42;
+   // 輪っかではなく、溜まるほど身体と武器がほんのり発光する。
+   ctx.save();
+   ctx.globalCompositeOperation='screen';
+   ctx.globalAlpha=ready?.18:Math.min(.10,.025+held*.12);
+   ctx.fillStyle=player.weapon===4?'#aeeeff':(player.weapon===3?'#ffb08b':'#d9f3ff');
+   ctx.beginPath();ctx.ellipse(0,-8,31,39,0,0,Math.PI*2);ctx.fill();
+   ctx.globalAlpha=ready?.24:.08;
+   ctx.strokeStyle=player.weapon===4?'#dffaff':(player.weapon===3?'#ffd6c2':'#eefaff');
+   ctx.lineWidth=7;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+Math.cos(wa)*(player.weapon===1?72:54),wy+Math.sin(wa)*(player.weapon===1?72:54));ctx.stroke();
+   ctx.restore();
+ }
  ctx.restore();
 }
 
