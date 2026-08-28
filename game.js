@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 95: 最初の浮遊草原ステージ
+// Prototype 96: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -126,25 +126,25 @@ const startRockWall={x:125,y:525,w:76,h:360,hp:1,dead:false};
 // 大陸を横切る水流。速度差・曲がり・岩の湧き口を混ぜる。
 // flow は px/sec。frozen>0 の間は青杖で凍結して流れが完全停止する。
 const currentStreams=[
- {id:'s1cross',source:'edge',width:72,speed:62,frozen:0,
-  pts:[{x:1010,y:330},{x:1015,y:500},{x:1065,y:610},{x:1060,y:730}]},
- {id:'s2rock',source:'rock',width:68,speed:118,frozen:0,
-  pts:[{x:2440,y:430},{x:2520,y:455},{x:2610,y:520},{x:2725,y:515}]},
- {id:'s3bend',source:'edge',width:78,speed:46,frozen:0,
-  pts:[{x:3820,y:340},{x:3820,y:475},{x:3920,y:520},{x:4060,y:520}]},
- {id:'s4fast',source:'rock',width:74,speed:176,frozen:0,
-  pts:[{x:5480,y:465},{x:5600,y:465},{x:5690,y:530},{x:5810,y:610}]},
- {id:'s6wind',source:'edge',width:82,speed:96,frozen:0,
-  pts:[{x:8610,y:330},{x:8610,y:470},{x:8720,y:520},{x:8880,y:520}]},
- {id:'s7rock',source:'rock',width:76,speed:145,frozen:0,
-  pts:[{x:10720,y:430},{x:10810,y:480},{x:10860,y:590},{x:10980,y:650}]},
- {id:'upper',source:'rock',width:64,speed:82,frozen:0,
-  pts:[{x:7560,y:85},{x:7460,y:115},{x:7350,y:150},{x:7240,y:150}]},
- {id:'leftfire',source:'edge',width:72,speed:132,frozen:0,
-  pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-890,y:560}]},
- {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9470,y:155}]},
- {id:'cloudUpperB',source:'cloud',cloudX:6350,cloudY:-40,width:86,speed:188,frozen:0,pts:[{x:6350,y:55},{x:6350,y:125},{x:6160,y:155},{x:5860,y:155}]},
- {id:'cloudUpperC',source:'cloud',cloudX:3050,cloudY:-45,width:80,speed:72,frozen:0,pts:[{x:3050,y:55},{x:3050,y:130},{x:2890,y:155},{x:2620,y:155}]}
+ {id:'s1cross',source:'cloud',cloudX:1010,cloudY:180,width:72,speed:62,frozen:0,
+  pts:[{x:1010,y:330},{x:1015,y:500},{x:1065,y:610},{x:1060,y:730},{x:1060,y:900}]},
+ {id:'s2rock',source:'cloud',cloudX:2440,cloudY:280,width:68,speed:118,frozen:0,
+  pts:[{x:2440,y:430},{x:2520,y:455},{x:2610,y:520},{x:2840,y:560},{x:3020,y:760}]},
+ {id:'s3bend',source:'cloud',cloudX:3820,cloudY:190,width:78,speed:46,frozen:0,
+  pts:[{x:3820,y:340},{x:3820,y:475},{x:3920,y:520},{x:4210,y:570},{x:4210,y:820}]},
+ {id:'s4fast',source:'cloud',cloudX:5480,cloudY:315,width:74,speed:176,frozen:0,
+  pts:[{x:5480,y:465},{x:5600,y:465},{x:5690,y:530},{x:5900,y:690},{x:5900,y:900}]},
+ {id:'s6wind',source:'cloud',cloudX:8610,cloudY:180,width:82,speed:96,frozen:0,
+  pts:[{x:8610,y:330},{x:8610,y:470},{x:8720,y:520},{x:9000,y:590},{x:9000,y:850}]},
+ {id:'s7rock',source:'cloud',cloudX:10720,cloudY:280,width:76,speed:145,frozen:0,
+  pts:[{x:10720,y:430},{x:10810,y:480},{x:10860,y:590},{x:11030,y:735},{x:11030,y:930}]},
+ {id:'upper',source:'cloud',cloudX:7560,cloudY:-65,width:64,speed:82,frozen:0,
+  pts:[{x:7560,y:85},{x:7460,y:115},{x:7350,y:150},{x:7100,y:150},{x:7000,y:220},{x:7000,y:390}]},
+ {id:'leftfire',source:'cloud',cloudX:-1110,cloudY:150,width:72,speed:132,frozen:0,
+  pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-790,y:640},{x:-790,y:880}]},
+ {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9300,y:155},{x:9200,y:235},{x:9200,y:390}]},
+ {id:'cloudUpperB',source:'cloud',cloudX:6350,cloudY:-40,width:86,speed:188,frozen:0,pts:[{x:6350,y:55},{x:6350,y:125},{x:6160,y:155},{x:5700,y:155},{x:5580,y:230},{x:5580,y:390}]},
+ {id:'cloudUpperC',source:'cloud',cloudX:3050,cloudY:-45,width:80,speed:72,frozen:0,pts:[{x:3050,y:55},{x:3050,y:130},{x:2890,y:155},{x:2460,y:155},{x:2350,y:230},{x:2350,y:390}]}
 ];
 
 function nearestStreamSegment(st,x,y,pad=0){
@@ -2588,16 +2588,15 @@ function drawWorld(){
    ctx.strokeStyle=active?'#82d7fa':'#e9fbff';ctx.lineWidth=st.width-7;ctx.stroke();
 
    // 岩から発生するタイプは、水源を岩の割れ目として見せる。
-   if(st.source==='rock'){
-     const p=st.pts[0];
-     for(let i=-2;i<=2;i++)circle(p.x+i*17,p.y-10+Math.abs(i)*5,22,'#858781','#111',5);
-     circle(p.x,p.y+3,15,active?'#55bff3':'#d9f5ff','#111',4);
-   }
    if(st.source==='cloud'){
      const cx=st.cloudX,cy=st.cloudY;
      circle(cx-42,cy+22,32,'#eef5f8','#111',5);circle(cx,cy+8,42,'#f7fbfd','#111',5);circle(cx+43,cy+24,31,'#e7f1f5','#111',5);
      const rainT=performance.now()*.012*(st.speed/100);
-     for(let i=0;i<7;i++){const yy=cy+48+((rainT*18+i*29)%88);line(cx-48+i*16,yy,cx-48+i*16,yy+16,4,active?'#45aef0':'#d9f6ff')}
+     const first=st.pts[0],rainBottom=Math.max(cy+85,first.y+12),rainSpan=Math.max(70,rainBottom-(cy+48));
+     for(let i=0;i<7;i++){
+       const yy=cy+48+((rainT*18+i*29)%rainSpan);
+       line(cx-48+i*16,yy,cx-48+i*16,Math.min(yy+18,rainBottom),4,active?'#45aef0':'#d9f6ff');
+     }
    }
 
    // 曲線上を流れる白い短線。speedが大きいほど移動が速い。
