@@ -24,9 +24,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 92: 最初の浮遊草原ステージ
+// Prototype 94: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -122,6 +122,49 @@ const props={
 
 // スタート地点の左にある、後でハンマーを取って戻って壊す岩壁。
 const startRockWall={x:125,y:525,w:76,h:360,hp:1,dead:false};
+
+// 大陸を横切る水流。速度差・曲がり・岩の湧き口を混ぜる。
+// flow は px/sec。frozen>0 の間は青杖で凍結して流れが完全停止する。
+const currentStreams=[
+ {id:'s1cross',source:'edge',width:72,speed:62,frozen:0,
+  pts:[{x:1010,y:330},{x:1015,y:500},{x:1065,y:610},{x:1060,y:730}]},
+ {id:'s2rock',source:'rock',width:68,speed:118,frozen:0,
+  pts:[{x:2440,y:430},{x:2520,y:455},{x:2610,y:520},{x:2725,y:515}]},
+ {id:'s3bend',source:'edge',width:78,speed:46,frozen:0,
+  pts:[{x:3820,y:340},{x:3820,y:475},{x:3920,y:520},{x:4060,y:520}]},
+ {id:'s4fast',source:'rock',width:74,speed:176,frozen:0,
+  pts:[{x:5480,y:465},{x:5600,y:465},{x:5690,y:530},{x:5810,y:610}]},
+ {id:'s6wind',source:'edge',width:82,speed:96,frozen:0,
+  pts:[{x:8610,y:330},{x:8610,y:470},{x:8720,y:520},{x:8880,y:520}]},
+ {id:'s7rock',source:'rock',width:76,speed:145,frozen:0,
+  pts:[{x:10720,y:430},{x:10810,y:480},{x:10860,y:590},{x:10980,y:650}]},
+ {id:'upper',source:'rock',width:64,speed:82,frozen:0,
+  pts:[{x:7560,y:85},{x:7460,y:115},{x:7350,y:150},{x:7240,y:150}]},
+ {id:'leftfire',source:'edge',width:72,speed:132,frozen:0,
+  pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-890,y:560}]}
+];
+
+function nearestStreamSegment(st,x,y,pad=0){
+ let best=null,bestD=1e18;
+ for(let i=0;i<st.pts.length-1;i++){
+   const a=st.pts[i],b=st.pts[i+1],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1;
+   const t=clamp(((x-a.x)*dx+(y-a.y)*dy)/l2,0,1);
+   const px=a.x+dx*t,py=a.y+dy*t,dd=(x-px)**2+(y-py)**2;
+   if(dd<bestD){bestD=dd;best={d:Math.sqrt(dd),dx,dy,len:Math.sqrt(l2),px,py}}
+ }
+ return best&&best.d<=st.width*.5+pad?best:null;
+}
+function freezeStreamsAt(x,y,rad=100){
+ let froze=false;
+ for(const st of currentStreams){
+   if(nearestStreamSegment(st,x,y,rad)){
+     st.frozen=Math.max(st.frozen,5.5);froze=true;
+     particle(x,y,'カチン！','#167bad',.4,15);
+   }
+ }
+ return froze;
+}
+
 
 // 岩壁の向こう側。ハンマーを持って戻ると開く、スタート左の寄り道エリア。
 const leftZoneGeo={
@@ -1525,6 +1568,7 @@ function update(dt){
      }
    }
  }
+ if(player.falling){mx=0;my=0;}
  const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,world.minX+45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
  for(const o of elementalObstacles){if(o.type==='regenVine'&&!o.dead)o.wiggle=(o.wiggle||0)+dt*7;}
@@ -1560,6 +1604,15 @@ function update(dt){
  for(const wa of [props.shallowWater,props.upperPond,props.waterfall]){
    if(player.x>wa.x&&player.x<wa.x+wa.w&&player.y>wa.y&&player.y<wa.y+wa.h){
      player.x+=wa.flowX*dt;player.y+=wa.flowY*dt;
+   }
+ }
+ // 横断水流は中心線に沿って押す。速い流れほど波も速く動く。
+ for(const st of currentStreams){
+   st.frozen=Math.max(0,st.frozen-dt);
+   const seg=nearestStreamSegment(st,player.x,player.y,player.r*.55);
+   if(seg&&st.frozen<=0){
+     const nx=seg.dx/(seg.len||1),ny=seg.dy/(seg.len||1);
+     player.x+=nx*st.speed*dt;player.y+=ny*st.speed*dt;
    }
  }
  // 序盤の岩も最初は越えられない。ハンマー入手後に戻れば壊せる。
@@ -1632,31 +1685,42 @@ function update(dt){
    if(stage3BridgeOpen&&player.x>=4770&&player.x<=4980&&Math.abs(player.y-570)<105)safe=true;
    if(stage4BridgeOpen&&player.x>=6100&&player.x<=6280&&Math.abs(player.y-570)<105)safe=true;
  }
- // 浮遊大陸の縁では、まずアニメのように踏ん張る。
+ // 地面を外れたら、その地点から実際に落ちる演出へ。
+ // 以前の「おっと！」連打式の崖粘りは廃止。復帰先はチェックポイントではなく、
+ // 落ちた場所から最も近い安全な地面なので、滝から落ちてもスタートへ飛ばされない。
  const inWaterfall=player.x>props.waterfall.x&&player.x<props.waterfall.x+props.waterfall.w&&player.y>props.waterfall.y;
- if(safe){player.ledgeT=0;}
- else if(inWaterfall&&player.y>stageGeo.path[0].y+stageGeo.path[0].h-20){
-   // 滝の流れに任せた時だけは崖で粘らず、そのまま落下。
-   if(floatLeafStock>0){floatLeafStock--;particle(player.x,player.y-35,'ふわっ！','#7edb72',.55,18);say(`羽の葉っぱで助かった！ 残り${floatLeafStock}`)}
-   else{const got=takeDamage(3);particle(player.x,player.y-35,`落下 -${got}`,'#c11',.55,17)}
-   player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;player.inv=.65;player.ledgeT=0;
- }
- else{
-   const grounds=visibleGroundRects();let best=null,bestD=1e9;
-   for(const r of grounds){const rx=clamp(player.x,r.x+8,r.x+r.w-8),ry=clamp(player.y,r.y+8,r.y+r.h-8),dd=(rx-player.x)**2+(ry-player.y)**2;if(dd<bestD){bestD=dd;best={x:rx,y:ry}}}
-   if(player.ledgeT<=0){
-     player.ledgeT=.72;player.ledgeX=best?best.x:prevX;player.ledgeY=best?best.y:prevY;player.x=prevX;player.y=prevY;particle(player.x,player.y-35,'おっと！','#fff',.45,16);
-   }else{
-     player.ledgeT-=dt;const ix=player.ledgeX-player.x,iy=player.ledgeY-player.y,id=Math.hypot(ix,iy)||1;
-     const inward=(mx*ix+my*iy)/id;player.x=prevX;player.y=prevY;
-     if(inward>.18){player.x=player.ledgeX;player.y=player.ledgeY;player.ledgeT=0;particle(player.x,player.y-25,'セーフ！','#fff',.28,14)}
-     else if(player.ledgeT<=0){
-       if(floatLeafStock>0){floatLeafStock--;particle(player.x,player.y-40,'ふわっ！','#7edb72',.55,18);say(`羽の葉っぱで助かった！ 残り${floatLeafStock}`)}
-       else{const got=takeDamage(3);particle(player.x,player.y-40,`落下 -${got}`,'#c11',.55,17)}
-       player.x=player.ledgeX;player.y=player.ledgeY;player.inv=.65;player.ledgeT=0;
-       if(player.skillT>0){player.skillT=0;player.skillKind='';player.skillZ=0}
+ if(player.falling){
+   player.inv=Math.max(player.inv,.2);
+   player.fallT+=dt;
+   // 落下中は移動でキャンセルできない。
+   player.x=player.fallFromX;player.y=player.fallFromY;
+   if(player.fallT>=player.fallDur){
+     if(floatLeafStock>0){
+       floatLeafStock--;particle(player.fallReturnX,player.fallReturnY-35,'ふわっ！','#7edb72',.55,18);
+       say(`羽の葉っぱで助かった！ 残り${floatLeafStock}`);
+     }else{
+       const got=takeDamage(3);particle(player.fallReturnX,player.fallReturnY-35,`落下 -${got}`,'#c11',.5,16);
      }
+     player.x=player.fallReturnX;player.y=player.fallReturnY;
+     player.falling=false;player.fallT=0;player.inv=.65;player.ledgeT=0;
+     if(player.skillT>0){player.skillT=0;player.skillKind='';player.skillZ=0}
    }
+ }else if(!safe){
+   const grounds=visibleGroundRects();let best=null,bestD=1e18;
+   // 直前の位置を最優先候補にしつつ、現在地点に最も近い地面内側へ戻す。
+   for(const r of grounds){
+     const rx=clamp(player.x,r.x+player.r+5,r.x+r.w-player.r-5);
+     const ry=clamp(player.y,r.y+player.r+5,r.y+r.h-player.r-5);
+     const dd=(rx-player.x)**2+(ry-player.y)**2;
+     if(dd<bestD){bestD=dd;best={x:rx,y:ry}}
+   }
+   player.falling=true;player.fallT=0;
+   player.fallFromX=player.x;player.fallFromY=player.y;
+   player.fallReturnX=best?best.x:prevX;player.fallReturnY=best?best.y:prevY;
+   player.shield=false;player.charging=false;
+   if(player.skillT>0){player.skillT=0;player.skillKind='';player.skillZ=0}
+ }else{
+   player.ledgeT=0;
  }
 
   // 大型ボスの中心には入り込めない。接触自体は攻撃ではない。
@@ -1693,7 +1757,10 @@ function update(dt){
      }for(const e of stage4Enemies)hit(e);for(const e of stage6Enemies)hit(e);for(const e of bossWalnuts)hit(e);
      hit(boss);hit(seedBoss);hit(grassFinalBoss);hit(rockBoss);
      if(m.kind==='fire'){for(const g of props.grass){if(!g.dead&&dist(m.x,m.y,g.x,g.y)<95){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}}}
-     else {const wa=props.water;if(m.x>wa.x-80&&m.x<wa.x+wa.w+80&&m.y>wa.y-80&&m.y<wa.y+wa.h+80)wa.frozen=5}
+     else {
+       const wa=props.water;if(m.x>wa.x-80&&m.x<wa.x+wa.w+80&&m.y>wa.y-80&&m.y<wa.y+wa.h+80)wa.frozen=5;
+       freezeStreamsAt(m.x,m.y,95);
+     }
    }
  }
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
@@ -1717,6 +1784,7 @@ function update(dt){
  player.fireTrail=player.fireTrail.filter(f=>f.life>0);
  for(const f of player.iceTrail)f.life-=dt;
  player.iceTrail=player.iceTrail.filter(f=>f.life>0);
+ if(player.skillKind==='ice'&&player.skillT>0)freezeStreamsAt(player.x,player.y,72);
  // magic projectiles
  for(const pr of projectiles){
    if(pr.hit)continue;
@@ -1749,7 +1817,9 @@ function update(dt){
    if(pr.kind==='fire'){
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
    }else{
-     const wa=props.water;if(pr.x>wa.x-pr.r&&pr.x<wa.x+wa.w+pr.r&&pr.y>wa.y-pr.r&&pr.y<wa.y+wa.h+pr.r){wa.frozen=5;particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
+     const wa=props.water;
+     if(pr.x>wa.x-pr.r&&pr.x<wa.x+wa.w+pr.r&&pr.y>wa.y-pr.r&&pr.y<wa.y+wa.h+pr.r){wa.frozen=5;particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
+     if(!pr.hit&&freezeStreamsAt(pr.x,pr.y,pr.r+16))pr.hit=true;
    }
    if(pr.hit)continue;
    if(pr.kind==='fire'||pr.kind==='ice'){
@@ -2481,6 +2551,52 @@ function drawWorld(){
  ctx.save();ctx.beginPath();ctx.roundRect(s1.x,s1.y,s1.w,s1.h,58);ctx.clip();
  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=245;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  ctx.restore();
+
+ // 大陸を横切る水流。白い波紋の移動速度で流速が読める。
+ for(const st of currentStreams){
+   const active=st.frozen<=0;
+   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+   ctx.strokeStyle=active?'#43aaf0':'#bdeeff';ctx.lineWidth=st.width+8;
+   ctx.beginPath();ctx.moveTo(st.pts[0].x,st.pts[0].y);
+   for(let i=1;i<st.pts.length;i++)ctx.lineTo(st.pts[i].x,st.pts[i].y);
+   ctx.stroke();
+   ctx.strokeStyle=active?'#82d7fa':'#e9fbff';ctx.lineWidth=st.width-7;ctx.stroke();
+
+   // 岩から発生するタイプは、水源を岩の割れ目として見せる。
+   if(st.source==='rock'){
+     const p=st.pts[0];
+     for(let i=-2;i<=2;i++)circle(p.x+i*17,p.y-10+Math.abs(i)*5,22,'#858781','#111',5);
+     circle(p.x,p.y+3,15,active?'#55bff3':'#d9f5ff','#111',4);
+   }
+
+   // 曲線上を流れる白い短線。speedが大きいほど移動が速い。
+   if(active){
+     const tm=performance.now()/1000*st.speed*.72;
+     for(let i=0;i<st.pts.length-1;i++){
+       const a=st.pts[i],b=st.pts[i+1],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+       const nx=dx/len,ny=dy/len,px=-ny,py=nx;
+       const spacing=58;
+       for(let q=((tm+i*19)%spacing)-spacing;q<len;q+=spacing){
+         if(q<0)continue;
+         const side=((Math.floor(q/spacing)+i)%3-1)*st.width*.18;
+         const x=a.x+nx*q+px*side,y=a.y+ny*q+py*side;
+         ctx.strokeStyle='rgba(255,255,255,.88)';ctx.lineWidth=4;
+         ctx.beginPath();ctx.moveTo(x-nx*13,y-ny*13);ctx.lineTo(x+nx*13,y+ny*13);ctx.stroke();
+       }
+     }
+   }else{
+     // 凍結時は流れる波を止め、氷の亀裂に切り替える。
+     ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
+     for(let i=0;i<st.pts.length-1;i++){
+       const a=st.pts[i],b=st.pts[i+1];
+       for(let t=.18;t<1;t+=.28){
+         const x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
+         line(x-11,y-7,x+9,y+8,3,'rgba(255,255,255,.9)');
+       }
+     }
+   }
+   ctx.restore();
+ }
  // 丸い模様：緑丸は外枠の黒線より内側に完全に収まる場合だけ描く。
  // 中心だけ地面判定にすると崖から半分はみ出すため、円周8方向も確認する。
  for(let x=world.minX+80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
@@ -3150,6 +3266,13 @@ function drawPlayer(){
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
  ctx.save();ctx.translate(player.x,player.y-lift-bounce);
+ if(player.falling){
+   const ft=clamp(player.fallT/player.fallDur,0,1);
+   const sc=1-ft*.78;
+   ctx.globalAlpha=1-ft*.82;
+   ctx.scale(sc,sc);
+   ctx.rotate(ft*.55);
+ }
  if(player.skillKind==='hammer'&&player.skillT>0){ctx.rotate(player.hammerSpin||0);}
  if(player.skillKind==='hammer'&&player.skillT>0){
    ctx.save();
