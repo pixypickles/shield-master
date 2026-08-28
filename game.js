@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 99: 最初の浮遊草原ステージ
+// Prototype 101: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -230,7 +230,7 @@ function spawnStage2Enemy(x,y,type='seedpod'){
  stage2Enemies.push({
   x,y,type,
   // 見た目の花びらまで含めて、少し大きめの当たり判定。
-  r:type==='seedflower'?38:32,
+  r:type==='seedflower'?46:40,
   hp:type==='seedflower'?3:2,maxHp:type==='seedflower'?3:2,
   attackCd:.8+Math.random()*.7,flash:0,dead:false
  });
@@ -942,7 +942,7 @@ function hitStage2(damage,range,base,cone){
    if(e.dead)continue;
    const d=dist(player.x,player.y,e.x,e.y);
    const a=Math.atan2(e.y-player.y,e.x-player.x);
-   if(d<=range+e.r+6&&Math.abs(angleDiff(a,base))<=cone/2){
+   if(d<=range+e.r+18&&Math.abs(angleDiff(a,base))<=cone/2+.14){
      e.hp-=damage;e.flash=.26;particle(e.x,e.y-25,`-${damage}`,'#b31313',.4,15);
      if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パサッ','#fff',.4,15);killDrop(e,.5)}
    }
@@ -2834,8 +2834,10 @@ function drawWorld(){
      ctx.fillStyle=e.type==='seedflower'?'#ffa65b':'#8ed35d';ctx.strokeStyle='#111';ctx.lineWidth=4;
      ctx.beginPath();ctx.ellipse(0,0,9,16,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
    }
-   circle(0,-10,15,'#6b8f32','#111',5);
-   ctx.fillStyle='#111';ctx.beginPath();ctx.ellipse(5,-9,6,4,0,0,Math.PI*2);ctx.fill();
+   // 種を撃つ花にも左右2つの目をはっきり描く。
+   circle(0,-10,19,'#d6c94d','#111',5);
+   circle(-7,-13,4,'#111','#111',1);circle(7,-13,4,'#111','#111',1);
+   ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.arc(0,-6,6,.25,Math.PI-.25);ctx.stroke();
    ctx.restore();
   }
 
@@ -3386,22 +3388,29 @@ function drawProjectile(pr){
 function drawEnemy(e){
  ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
  if(e.type==='grass'){
-   line(-7,12,-10,27,9,'#111');line(-7,12,-10,27,5,'#765038');
-   line(7,12,10,27,9,'#111');line(7,12,10,27,5,'#765038');
-   for(let i=-2;i<=2;i++){ctx.save();ctx.rotate(i*.27);ctx.fillStyle='#42b84e';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,-6,9,27,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
-   circle(-7,-3,3,'#111','#111',1);circle(7,-3,3,'#111','#111',1);line(-7,8,7,8,4,'#111');
+   // 最初の草敵：生き物っぽい黒い胴体をやめ、単純な二枚葉の雑草に。
+   // 足や口はなく、根元が少し揺れて近づいてくるだけ。
+   ctx.fillStyle='#45bf45';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.lineJoin='round';
+   ctx.beginPath();ctx.moveTo(0,18);ctx.quadraticCurveTo(-7,-1,-31,-15);ctx.quadraticCurveTo(-27,10,-5,13);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.moveTo(0,18);ctx.quadraticCurveTo(7,-5,31,-18);ctx.quadraticCurveTo(28,9,5,13);ctx.closePath();ctx.fill();ctx.stroke();
+   line(0,18,0,29,7,'#111');line(0,18,0,29,3,'#3d9d3f');
+   // 葉脈だけ。顔は付けない。
+   line(-4,10,-23,-9,2,'#2e8f39');line(4,9,23,-12,2,'#2e8f39');
  }else{
-   line(0,5,0,24,10,'#111');line(0,5,0,24,5,'#4fae52');
-   line(-2,21,-12,31,8,'#111');line(-2,21,-12,31,4,'#765038');
-   line(2,21,12,31,8,'#111');line(2,21,12,31,4,'#765038');
-   for(let i=0;i<8;i++){const aa=i*Math.PI/4;ctx.save();ctx.translate(Math.cos(aa)*18,Math.sin(aa)*18-8);ctx.rotate(aa);ctx.fillStyle='#f49ad0';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,9,15,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
-   circle(0,-8,15,'#ffd85a','#111',5);circle(-5,-11,2.5,'#111','#111',1);circle(5,-11,2.5,'#111','#111',1);line(-6,-2,6,-2,3,'#111');
+   // ピンク花：中心を大きくして「顔」を明確に。黒い目を左右に2つ。
+   line(0,6,0,27,10,'#111');line(0,6,0,27,5,'#4fae52');
+   ctx.fillStyle='#45b84e';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.ellipse(-11,23,13,7,-.45,0,Math.PI*2);ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.ellipse(11,23,13,7,.45,0,Math.PI*2);ctx.fill();ctx.stroke();
+   for(let i=0;i<8;i++){const aa=i*Math.PI/4;ctx.save();ctx.translate(Math.cos(aa)*20,Math.sin(aa)*20-9);ctx.rotate(aa);ctx.fillStyle='#f49ad0';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,10,16,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+   circle(0,-9,18,'#ffd85a','#111',5);
+   circle(-7,-12,3.8,'#111','#111',1);circle(7,-12,3.8,'#111','#111',1);
+   // 小さな口で上下を分かりやすく。
+   ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.arc(0,-5,6,.25,Math.PI-.25);ctx.stroke();
  }
  if(e.attackAnim>0){
-   ctx.save();ctx.globalAlpha=Math.min(1,e.attackAnim/.12);
-   ctx.strokeStyle='#43a84d';ctx.lineWidth=8;ctx.lineCap='round';
-   ctx.beginPath();ctx.arc(0,-2,35,-.8,.8);ctx.stroke();
-   ctx.restore();
+   ctx.save();ctx.globalAlpha=Math.min(1,e.attackAnim/.12);ctx.strokeStyle='#43a84d';ctx.lineWidth=8;ctx.lineCap='round';
+   ctx.beginPath();ctx.arc(0,-2,35,-.8,.8);ctx.stroke();ctx.restore();
  }
  ctx.restore();
 }
