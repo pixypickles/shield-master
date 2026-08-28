@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 102: 最初の浮遊草原ステージ
+// Prototype 103: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -2760,8 +2760,6 @@ function drawWorld(){
  grad.addColorStop(0,'rgba(151,229,245,.88)');grad.addColorStop(.72,'rgba(151,229,245,.42)');grad.addColorStop(1,'rgba(151,229,245,0)');
  ctx.fillStyle=grad;ctx.beginPath();
  ctx.moveTo(sx,spillTop);ctx.lineTo(sx+58,spillTop);ctx.lineTo(sx+45,spillTop+230);ctx.lineTo(sx+14,spillTop+230);ctx.closePath();ctx.fill();
- // 水を受ける小さな雲
- ctx.globalAlpha=.72;circle(sx+29,spillTop+220,24,'#f4fbff','transparent',0);circle(sx+9,spillTop+226,16,'#f4fbff','transparent',0);circle(sx+49,spillTop+227,17,'#f4fbff','transparent',0);ctx.globalAlpha=1;
 
  // 水系B：低い雲の豪雨→高台の池→滝。
  const up=props.upperPond,wf=props.waterfall,ucx=up.cloudX,ucy=up.cloudY;
@@ -2769,13 +2767,20 @@ function drawWorld(){
  const urt=performance.now()*.02;
  for(let i=0;i<12;i++){const xx=ucx-66+i*12,yy=ucy+48+((urt*28+i*19)%150);line(xx,yy,xx,Math.min(yy+25,up.y+15),5,'#45aef0')}
 
- // 滝本体を先に描く。上端は池の内部まで差し込む。
+ // 元々の滝も、雲水流と同じ青・白い流線の表現へ統一。
  const wgrad=ctx.createLinearGradient(0,wf.y,0,wf.y+wf.h);
- wgrad.addColorStop(0,'rgba(137,221,246,.92)');wgrad.addColorStop(.78,'rgba(137,221,246,.72)');wgrad.addColorStop(1,'rgba(137,221,246,.18)');
+ wgrad.addColorStop(0,'rgba(70,174,240,.88)');
+ wgrad.addColorStop(.72,'rgba(95,190,242,.68)');
+ wgrad.addColorStop(1,'rgba(95,190,242,.10)');
  ctx.fillStyle=wgrad;ctx.beginPath();
  ctx.moveTo(wf.x,wf.y-18);ctx.lineTo(wf.x+wf.w,wf.y-18);
  ctx.lineTo(wf.x+wf.w-7,wf.y+wf.h);ctx.lineTo(wf.x+7,wf.y+wf.h);ctx.closePath();ctx.fill();
- for(let x=wf.x+16;x<wf.x+wf.w-6;x+=20)line(x,wf.y+4,x,wf.y+wf.h-20,3,'rgba(255,255,255,.66)');
+ ctx.strokeStyle='#159fe9';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(wf.x,wf.y-12);ctx.lineTo(wf.x+5,wf.y+wf.h-5);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(wf.x+wf.w,wf.y-12);ctx.lineTo(wf.x+wf.w-5,wf.y+wf.h-5);ctx.stroke();
+ const wtm=performance.now()*.16;
+ for(let y=wf.y+18+wtm%62;y<wf.y+wf.h-18;y+=62){
+   line(wf.x+18,y,wf.x+43,y+7,4,'rgba(255,255,255,.84)');
+ }
  // 高台は池の周囲だけ。滝口部分の下辺は水で覆い、緑の隙間を見せない。
  ctx.fillStyle='#6f9e55';ctx.strokeStyle='#111';ctx.lineWidth=5;
  ctx.beginPath();ctx.roundRect(up.x-22,up.y-24,up.w+44,up.h+46,28);ctx.fill();ctx.stroke();
@@ -2805,9 +2810,20 @@ function drawWorld(){
    ctx.restore();
  }
 
+ // 川は地面の上、木・敵・プレイヤーの下に描く。
+ // これで川がキャラクターや植物を覆う最前面レイヤーにならない。
+ drawSurfaceStreams();
+
  // 剣で切らないと通れない小木
  for(const tr of props.smallTrees){
   if(tr.dead)continue;
+  // 雨雲の真下に木が重なると「雲から木が生えている」ように見えるので空ける。
+  let underCloud=false;
+  for(const st of currentStreams){
+    if(st.source==='cloud'&&Math.abs(tr.x-st.cloudX)<105&&tr.y>st.cloudY-15&&tr.y<st.pts[0].y+145){underCloud=true;break}
+  }
+  if(Math.abs(tr.x-props.upperPond.cloudX)<110&&tr.y>props.upperPond.cloudY-15&&tr.y<props.upperPond.y+145)underCloud=true;
+  if(underCloud)continue;
   ctx.save();ctx.translate(tr.x,tr.y);
   line(0,12,0,37,12,'#111');line(0,12,0,37,6,'#7b4d2a');
   circle(-14,-2,18,'#4fae52','#111',5);circle(12,-6,20,'#56bc5d','#111',5);circle(0,-22,21,'#63c969','#111',5);
@@ -2856,10 +2872,13 @@ function drawWorld(){
      ctx.fillStyle=i%2?'#ff9d4d':'#ffd35c';ctx.strokeStyle='#111';ctx.lineWidth=6;
      ctx.beginPath();ctx.ellipse(0,0,17,31,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
    }
-   circle(0,-18,38,'#738e32','#111',7);
-   // 大きな種発射口
-   ctx.fillStyle='#17120c';ctx.beginPath();ctx.ellipse(12,-16,13,9,0,0,Math.PI*2);ctx.fill();
-   circle(-12,-26,5,'#111','#111',1);
+   // 顔：左右2つの目を同じ高さに置き、中央下に種を吹く口。
+   circle(0,-18,38,'#91ad3f','#111',7);
+   circle(-13,-27,5.5,'#111','#111',1);
+   circle(13,-27,5.5,'#111','#111',1);
+   ctx.fillStyle='#17120c';ctx.strokeStyle='#111';ctx.lineWidth=3;
+   ctx.beginPath();ctx.ellipse(0,-10,11,8,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+   ctx.globalAlpha=.45;circle(-11,-29,1.7,'#fff','transparent',0);circle(11,-29,1.7,'#fff','transparent',0);ctx.globalAlpha=1;
    ctx.restore();
    ctx.fillStyle='#111';ctx.fillRect(seedBoss.x-92,seedBoss.y-110,184,16);
    ctx.fillStyle='#e84a3a';ctx.fillRect(seedBoss.x-88,seedBoss.y-106,176*Math.max(0,seedBoss.hp/seedBoss.maxHp),8);
@@ -3250,9 +3269,6 @@ function drawWorld(){
    circle(br.x,br.y-br.z*.45,br.r,'#858781','#111',5);
    line(br.x-7,br.y-br.z*.45-4,br.x+7,br.y-br.z*.45-10,3,'#666');
  }
-
- // 全ての大陸を描いたあと、水面だけ地面上に重ねる。
- drawSurfaceStreams();
 
  // 岩壁の奥には、最初から岩盤の道が続いて見える。
  // 「壁の向こうがただの空」ではなく、塞がれた岩道だと分かる見た目。
