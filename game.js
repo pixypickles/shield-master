@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={minX:-1500,minY:-1850,w:15050,h:1100};
+const world={minX:-1500,minY:-3900,w:15050,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 108: 最初の浮遊草原ステージ
+// Prototype 110: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -106,11 +106,11 @@ const props={
  rocks:[],
  water:{x:260,y:590,w:300,h:105,frozen:0},
  // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
- shallowWater:{x:620,y:610,w:530,h:72,flowX:34,flowY:0},
+ shallowWater:{x:620,y:610,w:530,h:72,flowX:34,flowY:0,frozen:0},
  spring:{x:620,y:646,r:36,cloudX:620,cloudY:455},
  // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
- upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0,cloudX:1355,cloudY:165},
- waterfall:{x:1396,y:454,w:72,h:390,flowX:0,flowY:58},
+ upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0,cloudX:1355,cloudY:165,frozen:0},
+ waterfall:{x:1396,y:454,w:72,h:390,flowX:0,flowY:58,frozen:0},
  smallTrees:[
   // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
@@ -150,6 +150,16 @@ const cloudJumpPads=[
 ];
 
 
+function freezeLegacyWaterAt(x,y,rad=60){
+ let hit=false;
+ for(const wa of [props.water,props.shallowWater,props.upperPond,props.waterfall]){
+   const cx=clamp(x,wa.x,wa.x+wa.w),cy=clamp(y,wa.y,wa.y+wa.h);
+   if(Math.hypot(x-cx,y-cy)<=rad){
+     wa.frozen=Math.max(wa.frozen||0,5.5);hit=true;
+   }
+ }
+ return hit;
+}
 function nearestStreamSegment(st,x,y,pad=0){
  let best=null,bestD=1e18;
  for(let i=0;i<st.pts.length-1;i++){
@@ -208,7 +218,12 @@ const postFireGeo={
    {x:-1080,y:-590,w:420,h:360},
    {x:-1030,y:-930,w:460,h:360},
    {x:-960,y:-1270,w:520,h:380},
-   {x:-860,y:-1630,w:680,h:420}
+   {x:-900,y:-1630,w:560,h:390},
+   {x:-820,y:-1990,w:600,h:390},
+   {x:-760,y:-2350,w:640,h:390},
+   {x:-700,y:-2710,w:680,h:390},
+   {x:-620,y:-3070,w:720,h:390},
+   {x:-540,y:-3430,w:820,h:430}
  ]
 };
 const iceRouteBlocks=[
@@ -216,12 +231,17 @@ const iceRouteBlocks=[
  {x:-1010,y:-470,r:44,hp:1,dead:false},
  {x:-960,y:-810,r:46,hp:1,dead:false},
  {x:-900,y:-1150,r:48,hp:1,dead:false},
- {x:-790,y:-1460,r:50,hp:1,dead:false}
+ {x:-840,y:-1490,r:50,hp:1,dead:false},
+ {x:-780,y:-1830,r:52,hp:1,dead:false},
+ {x:-720,y:-2170,r:54,hp:1,dead:false},
+ {x:-650,y:-2510,r:54,hp:1,dead:false},
+ {x:-580,y:-2850,r:56,hp:1,dead:false},
+ {x:-500,y:-3190,r:58,hp:1,dead:false}
 ];
 const iceBoss={
- x:-520,y:-1460,r:86,hp:48,maxHp:48,active:false,dead:false,flash:0,attackCd:1.05
+ x:-250,y:-3260,r:86,hp:48,maxHp:48,active:false,dead:false,flash:0,attackCd:1.05
 };
-const blueStaffPickup={x:-520,y:-1460,active:false,taken:false};
+const blueStaffPickup={x:-250,y:-3260,active:false,taken:false};
 
 const healShieldPickup={x:14060,y:555,active:false,taken:false};
 
@@ -846,7 +866,13 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
  if(hammerGuardian.active&&!hammerGuardian.dead)candidates.push(hammerGuardian);
  if(rockBoss.active&&!rockBoss.dead)candidates.push(rockBoss);
  if(islandBoss.active&&!islandBoss.dead)candidates.push(islandBoss);
+ if(fireBoss.active&&!fireBoss.dead)candidates.push(fireBoss);
+ if(iceBoss.active&&!iceBoss.dead)candidates.push(iceBoss);
+ if(stage10Started&&!rockThrower.dead)candidates.push(rockThrower);
  for(const e of bossWalnuts)if(!e.dead)candidates.push(e);
+ // 杖は敵だけでなく、属性ギミックや氷塊も「的」として補正対象にする。
+ for(const o of elementalObstacles)if(!o.dead)candidates.push(o);
+ for(const o of iceRouteBlocks)if(!o.dead)candidates.push(o);
 
  let best=null,bestScore=1e9,bestA=base;
  for(const e of candidates){
@@ -864,6 +890,9 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
 function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
 
 function fireMagic(w,charged,base){
+ // 杖は入力方向を優先しつつ、その方向にいる敵・的へ軽く吸い付く。
+ const magicSnap=skillAutoAim(base,charged?390:520,charged?.48:.62);
+ if(magicSnap.target)base=magicSnap.angle;
  // 杖チャージは「弾を大量に出す」のではなく、武器ごとの固有範囲技。
  if(charged){
    const kind=w===3?'fireCone':'blizzardCone';
@@ -922,8 +951,11 @@ function fireMagic(w,charged,base){
      }
      particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'ゴォォッ！','#e43',.4,18);
    }else{
-     // 青杖：前方の水流をまとめて凍結。
-     for(let d=55;d<=maxRange;d+=45)freezeStreamsAt(player.x+Math.cos(base)*d,player.y+Math.sin(base)*d,58);
+     // 青杖：前方の水流・池・滝をまとめて凍結。
+     for(let d=55;d<=maxRange;d+=45){
+       const fx=player.x+Math.cos(base)*d,fy=player.y+Math.sin(base)*d;
+       freezeStreamsAt(fx,fy,58);freezeLegacyWaterAt(fx,fy,58);
+     }
      particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'キィィン！','#eafaff',.4,18);
    }
    return;
@@ -935,7 +967,7 @@ function fireMagic(w,charged,base){
  if(player.face==='right'){hx=player.x+20;hy=player.y+13;}
  else if(player.face==='left'){hx=player.x-18;hy=player.y+12;}
  const tip=56,sx=hx+Math.cos(base)*tip,sy=hy+Math.sin(base)*tip;
- projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged:false,hit:false});
+ projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.18,kind:w===3?'fire':'ice',damage,charged:false,hit:false,magicPhase:Math.random()*Math.PI*2});
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
 
@@ -1736,8 +1768,9 @@ function update(dt){
    }
  }
  // 水色の浅瀬・小川・滝は侵入可能。流れの方向へ少しずつ押される。
+ for(const wa of [props.water,props.shallowWater,props.upperPond,props.waterfall])wa.frozen=Math.max(0,(wa.frozen||0)-dt);
  for(const wa of [props.shallowWater,props.upperPond,props.waterfall]){
-   if(player.x>wa.x&&player.x<wa.x+wa.w&&player.y>wa.y&&player.y<wa.y+wa.h){
+   if((wa.frozen||0)<=0&&player.x>wa.x&&player.x<wa.x+wa.w&&player.y>wa.y&&player.y<wa.y+wa.h){
      player.x+=wa.flowX*dt;player.y+=wa.flowY*dt;
    }
  }
@@ -1940,12 +1973,37 @@ function update(dt){
  player.fireTrail=player.fireTrail.filter(f=>f.life>0);
  for(const f of player.iceTrail)f.life-=dt;
  player.iceTrail=player.iceTrail.filter(f=>f.life>0);
- if(player.skillKind==='ice'&&player.skillT>0)freezeStreamsAt(player.x,player.y,72);
+ if(player.skillKind==='ice'&&player.skillT>0){freezeStreamsAt(player.x,player.y,72);freezeLegacyWaterAt(player.x,player.y,72)}
+ function iceHitTarget(pr,e){
+   if(!e||e.dead)return false;
+   if(dist(pr.x,pr.y,e.x,e.y)>=pr.r+(e.r||24))return false;
+   e.hp=(e.hp??1)-pr.damage;e.flash=.16;e.stagger=Math.max(e.stagger||0,.55);
+   if('attackCd' in e)e.attackCd+=.55;
+   particle(e.x,e.y-22,`-${pr.damage}`,'#d9f7ff',.4,15);
+   if(e.hp<=0)e.dead=true;
+   pr.hit=true;return true;
+ }
+ function iceHitAnything(pr){
+   const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,bossWalnuts];
+   for(const list of lists){
+     for(const e of list){
+       // 回転花も氷は有効。少し凍って動きを止める。
+       if(iceHitTarget(pr,e))return true;
+     }
+   }
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss]){
+     if(!b||b.dead||!b.active)continue;
+     if(iceHitTarget(pr,b))return true;
+   }
+   if(stage10Started&&!rockThrower.dead&&iceHitTarget(pr,rockThrower))return true;
+   return false;
+ }
+
  // magic projectiles
  for(const pr of projectiles){
    if(pr.hit)continue;
    pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
-   if(pr.life<=0||pr.x<world.minX||pr.y<0||pr.x>world.w||pr.y>world.h){pr.hit=true;continue}
+   if(pr.life<=0||pr.x<world.minX||pr.y<world.minY||pr.x>world.w||pr.y>world.h){pr.hit=true;continue}
 
    // 敵が撃った種・花粉弾は、プレイヤー専用の当たり判定。
    // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
@@ -1977,12 +2035,12 @@ function update(dt){
        }
      }
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
-   }else{
-     const wa=props.water;
-     if(pr.x>wa.x-pr.r&&pr.x<wa.x+wa.w+pr.r&&pr.y>wa.y-pr.r&&pr.y<wa.y+wa.h+pr.r){wa.frozen=5;particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
+   }else if(pr.kind==='ice'){
+     if(freezeLegacyWaterAt(pr.x,pr.y,pr.r+22)){particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
      if(!pr.hit&&freezeStreamsAt(pr.x,pr.y,pr.r+16))pr.hit=true;
    }
    if(pr.hit)continue;
+   if(pr.kind==='ice'&&iceHitAnything(pr))continue;
    if(pr.kind==='fire'||pr.kind==='fireWheel'||pr.kind==='ice'){
      for(const o of elementalObstacles){
        if(o.dead)continue;
@@ -2573,7 +2631,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
  // 灼熱花撃破後、上の氷ルートは任意攻略。右分岐は青杖なしでも通れる。
- if(fireBossDefeated&&!iceBoss.dead&&player.y<-1320&&player.x<-250){
+ if(fireBossDefeated&&!iceBoss.dead&&player.y<-3050&&player.x<100){
    iceBoss.active=true;
  }
  if(iceBoss.active&&!iceBoss.dead){
@@ -2891,7 +2949,7 @@ function drawWorld(){
  circle(scx-40,scy+18,31,'#eef5f8','#111',5);circle(scx,scy,42,'#f8fcfe','#111',5);circle(scx+43,scy+20,32,'#e7f1f5','#111',5);
  const rt=performance.now()*.018;
  for(let i=0;i<11;i++){const xx=scx-58+i*12,yy=scy+42+((rt*26+i*23)%145);line(xx,yy,xx,yy+23,5,'#45aef0')}
- ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.lineJoin='round';ctx.beginPath();
+ ctx.fillStyle=sw.frozen>0?'#d7f5ff':'#9fe5f5';ctx.strokeStyle=sw.frozen>0?'#8ddcf3':'#4ca6c8';ctx.lineWidth=4;ctx.lineJoin='round';ctx.beginPath();
  ctx.moveTo(sp.x,sw.y);ctx.lineTo(sw.x+sw.w-22,sw.y);ctx.quadraticCurveTo(sw.x+sw.w,sw.y,sw.x+sw.w,sw.y+22);
  ctx.lineTo(sw.x+sw.w,sw.y+sw.h-22);ctx.quadraticCurveTo(sw.x+sw.w,sw.y+sw.h,sw.x+sw.w-22,sw.y+sw.h);
  ctx.lineTo(sp.x,sw.y+sw.h);ctx.bezierCurveTo(sp.x-48,sw.y+sw.h,sp.x-48,sw.y,sp.x,sw.y);ctx.closePath();ctx.fill();ctx.stroke();
@@ -2913,9 +2971,11 @@ function drawWorld(){
 
  // 元々の滝も、雲水流と同じ青・白い流線の表現へ統一。
  const wgrad=ctx.createLinearGradient(0,wf.y,0,wf.y+wf.h);
- wgrad.addColorStop(0,'rgba(70,174,240,.88)');
- wgrad.addColorStop(.72,'rgba(95,190,242,.68)');
- wgrad.addColorStop(1,'rgba(95,190,242,.10)');
+ if(wf.frozen>0){
+   wgrad.addColorStop(0,'rgba(220,248,255,.94)');wgrad.addColorStop(.72,'rgba(180,232,248,.82)');wgrad.addColorStop(1,'rgba(180,232,248,.25)');
+ }else{
+   wgrad.addColorStop(0,'rgba(70,174,240,.88)');wgrad.addColorStop(.72,'rgba(95,190,242,.68)');wgrad.addColorStop(1,'rgba(95,190,242,.10)');
+ }
  ctx.fillStyle=wgrad;ctx.beginPath();
  ctx.moveTo(wf.x,wf.y-18);ctx.lineTo(wf.x+wf.w,wf.y-18);
  ctx.lineTo(wf.x+wf.w-7,wf.y+wf.h);ctx.lineTo(wf.x+7,wf.y+wf.h);ctx.closePath();ctx.fill();
@@ -3223,7 +3283,6 @@ function drawWorld(){
    ctx.restore();
    ctx.fillStyle='#111';ctx.fillRect(boss.x-90,boss.y-95,180,16);ctx.fillStyle='#e84a3a';ctx.fillRect(boss.x-86,boss.y-91,172*Math.max(0,boss.hp/boss.maxHp),8);
  }
- drawStaffSkillEffects();
  
  // ステージ8：虹橋より短い空白をジャンプで渡る小島の連続。
  if(rockBossDefeated){
@@ -3502,8 +3561,6 @@ function drawWorld(){
      ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();
      ctx.moveTo(hb.x+ox,hb.y2-8);ctx.quadraticCurveTo(hb.x+ox+6,290,hb.x+ox,hb.y1+10);ctx.stroke();
    });
-   ctx.strokeStyle='#111';ctx.lineWidth=5;
-   ctx.strokeRect(hb.x-hb.w/2,hb.y2-14,hb.w,hb.y1-hb.y2+28);
  }
 
  if(healShieldPickup.active&&!healShieldPickup.taken){
@@ -3512,6 +3569,9 @@ function drawWorld(){
    ctx.moveTo(0,-38);ctx.quadraticCurveTo(38,-28,34,8);ctx.quadraticCurveTo(28,38,0,52);ctx.quadraticCurveTo(-28,38,-34,8);ctx.quadraticCurveTo(-38,-28,0,-38);ctx.fill();ctx.stroke();
    ctx.strokeStyle='#fff';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-15,5);ctx.lineTo(-4,17);ctx.lineTo(18,-10);ctx.stroke();ctx.restore();
  }
+
+ // 杖スキルの炎輪・氷板は全地形の上、プレイヤーの直前に描く。
+ drawStaffSkillEffects();
 
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
@@ -3592,12 +3652,34 @@ function drawProjectile(pr){
    ctx.fillStyle='#65b84d';ctx.strokeStyle='#111';ctx.lineWidth=4;
    ctx.beginPath();ctx.moveTo(pr.r+5,0);ctx.quadraticCurveTo(0,-pr.r,-pr.r-5,0);ctx.quadraticCurveTo(0,pr.r,pr.r+5,0);ctx.fill();ctx.stroke();
    line(-pr.r-7,0,pr.r+2,0,3,'#397a35');
+ }else if(pr.kind==='fire'){
+   // 赤杖：ただの丸弾ではなく、尾を引く小さな魔法火炎。
+   const t=performance.now()*.018+(pr.magicPhase||0);
+   ctx.globalAlpha=.18;circle(-7,0,pr.r+16,'#ff9b32','transparent',0);ctx.globalAlpha=1;
+   // 二本の魔力の尾
+   ctx.strokeStyle='#ffb52e';ctx.lineWidth=6;ctx.lineCap='round';
+   for(let i=0;i<2;i++){
+     const yy=Math.sin(t+i*Math.PI)*6;
+     ctx.beginPath();ctx.moveTo(-pr.r-25,yy);ctx.quadraticCurveTo(-16,-yy,-5,yy*.25);ctx.stroke();
+   }
+   // 炎の先端
+   ctx.fillStyle='#ff542d';ctx.strokeStyle='#8b271c';ctx.lineWidth=3;
+   ctx.beginPath();ctx.moveTo(pr.r+10,0);ctx.quadraticCurveTo(0,-pr.r-8,-pr.r-9,0);ctx.quadraticCurveTo(0,pr.r+8,pr.r+10,0);ctx.fill();ctx.stroke();
+   ctx.fillStyle='#ffe56b';ctx.beginPath();ctx.moveTo(pr.r+3,0);ctx.quadraticCurveTo(-1,-7,-8,0);ctx.quadraticCurveTo(-1,7,pr.r+3,0);ctx.fill();
+   // 魔法の火花
+   ctx.fillStyle='#fff2a6';for(let i=0;i<3;i++){const xx=-13-i*8,yy=Math.sin(t*1.4+i*2)*9;ctx.fillRect(xx-2,yy-2,4,4);}
+ }else if(pr.kind==='ice'){
+   // 青杖：結晶核＋回転する魔法リング。綿毛弾と完全に別シルエット。
+   const t=performance.now()*.014+(pr.magicPhase||0);
+   ctx.globalAlpha=.20;circle(0,0,pr.r+17,'#9deaff','transparent',0);ctx.globalAlpha=1;
+   ctx.strokeStyle='#74dfff';ctx.lineWidth=4;
+   ctx.beginPath();ctx.ellipse(-5,0,pr.r+15,7,Math.sin(t)*.35,0,Math.PI*2);ctx.stroke();
+   ctx.rotate(-t*.35);
+   ctx.fillStyle='#dffbff';ctx.strokeStyle='#237da8';ctx.lineWidth=3;
+   ctx.beginPath();ctx.moveTo(pr.r+12,0);ctx.lineTo(2,-8);ctx.lineTo(-pr.r-7,0);ctx.lineTo(2,8);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-2,-7);ctx.lineTo(-2,7);ctx.moveTo(-9,0);ctx.lineTo(6,0);ctx.stroke();
  }else{
-   ctx.globalAlpha=.28;
-   circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':'#b8ecff','transparent',0);
-   ctx.globalAlpha=1;
-   circle(0,0,pr.r,pr.kind==='fire'?'#ff6247':'#63d7ff','#111',4);
-   line(-pr.r-12,0,-pr.r+1,0,7,pr.kind==='fire'?'#ffcf58':'#eafcff');
+   ctx.globalAlpha=.28;circle(0,0,pr.r+9,'#b8ecff','transparent',0);ctx.globalAlpha=1;circle(0,0,pr.r,'#63d7ff','#111',4);
  }
  ctx.restore();
 }
