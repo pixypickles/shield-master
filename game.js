@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 122: 最初の浮遊草原ステージ
+// Prototype 123: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -296,19 +296,22 @@ const vineSkyGeo={
  ],
  // 杖スキルの高速移動で踏み込むと、下から突き上げる特殊ジャンプ台。
  launchPads:[
-  {x:560,y:-670,r:48,dir:-1.42},
-  {x:1185,y:-1325,r:44,dir:-.22},
-  {x:2035,y:-1370,r:46,dir:.10},
+  {x:560,y:-670,r:48,dir:-1.42,tx:760,ty:-1110},
+  {x:1185,y:-1325,r:44,dir:-.22,tx:1570,ty:-1140},
+  {x:2035,y:-1370,r:46,dir:.10,tx:2440,ty:-1180},
   // ツタボス撃破後、右端から上空ルートへ復帰する打ち上げ台。
-  {x:3190,y:-790,r:50,dir:-1.57}
+  {x:3190,y:-790,r:50,dir:-1.57,tx:3240,ty:-1070}
  ],
  postBossIslands:[
   {x:3120,y:-1120,w:250,h:150},
   {x:2870,y:-1330,w:230,h:150}
  ],
  postBossClouds:[
-  {x:3070,y:-1255,r:66}
- ]
+  {x:3070,y:-1255,r:66},
+  // 上の小島側からボス跡地へ戻るための下降用雲。
+  {x:3260,y:-1035,r:62}
+ ],
+ postBossBridge:{x:3170,y:-1010,w:170,h:245}
 };
 
 const vineWalls=[
@@ -656,6 +659,7 @@ const floatLeafDrops=[];
 let floatLeafStock=0;
 const particles=[];
 const projectiles=[];
+const airMagicImpacts=[];
 function particle(x,y,text,color='#111',life=.55,size=20){particles.push({x,y,text,color,life,max:life,size})}
 function say(t){messageEl.textContent=t;messageEl.style.opacity=1;clearTimeout(say.t);say.t=setTimeout(()=>messageEl.style.opacity=.0,1800)}
 setTimeout(()=>messageEl.style.opacity=.0,2500);
@@ -703,7 +707,7 @@ function visibleGroundRects(){
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
-   if(vineBossDefeated)grounds.push(...vineSkyGeo.postBossIslands);
+   if(vineBossDefeated)grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge);
  }
  if(islandBossDefeated){
    grounds.push({
@@ -1727,6 +1731,7 @@ function resolveAirMagic(m){
  if(!m||m.done)return;
  m.done=true;
  particle(m.x,m.y,m.kind==='fire'?'ボォン！':'キィン！',m.kind==='fire'?'#e43':'#268bc1',.55,20);
+ airMagicImpacts.push({x:m.x,y:m.y,kind:m.kind,life:.52,max:.52});
  const rad=86,dmg=5;
  const hit=(e)=>{
    if(!e||e.dead)return;
@@ -2074,8 +2079,23 @@ function update(dt){
  }
  if((player.vineBound||0)>0){mx=0;my=0;player.shield=false;}
  if(player.falling){mx=0;my=0;}
+ if(player.launchTravel){mx=0;my=0;}
  const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,world.minX+45,world.w-45);player.y=clamp(player.y+my*speed*dt,world.minY+45,world.h-45);
+ // 打ち上げ台の飛行中は、画面外へ消えるほどの擬似高度ではなく島まで実際に移動する。
+ if(player.launchTravel){
+   const L=player.launchTravel;
+   L.t=Math.min(L.dur,L.t+dt);
+   const q=L.t/L.dur, ease=q*q*(3-2*q);
+   player.x=L.sx+(L.tx-L.sx)*ease;
+   player.y=L.sy+(L.ty-L.sy)*ease;
+   if(q>=1){
+     player.x=L.tx;player.y=L.ty;
+     player.launchTravel=null;
+     player.jumpT=Math.min(player.jumpT,.18);
+     player.fallGrace=Math.max(player.fallGrace||0,.9);
+   }
+ }
  for(const o of elementalObstacles){if(o.type==='regenVine'&&!o.dead)o.wiggle=(o.wiggle||0)+dt*7;}
  // 意味のない浅い水流。入っても通れるが、少しだけ流される。
  for(const a of ambientTerrain){
@@ -2256,6 +2276,9 @@ function update(dt){
    const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,minD=player.r+b.r*.72;
    if(d<minD){const push=minD-d;player.x+=dx/d*push;player.y+=dy/d*push}
  }
+
+ for(const fx of airMagicImpacts)fx.life-=dt;
+ for(let i=airMagicImpacts.length-1;i>=0;i--)if(airMagicImpacts[i].life<=0)airMagicImpacts.splice(i,1);
 
  // 杖ジャンプ弾は着地を待たず、約0.28秒で斜め下へ飛んで着弾する。
  if(player.airMagic&&!player.airMagic.done){
@@ -3029,13 +3052,15 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
   for(const p of vineSkyGeo.launchPads){
    if(p.x>3000&&!vineBossDefeated)continue;
    if(dist(player.x,player.y,p.x,p.y)<p.r+player.r+12){
-    // スキルの横方向の勢いをジャンプへ変換する。スキルはここで打ち上げへ移行。
+    // スキルの勢いを実座標の放物移動へ変換。巨大な見た目ジャンプだけにしない。
     player.skillT=0;
-    player.jumpDur=player.shieldType===4?1.42:1.16;
-    player.jumpHeight=player.shieldType===4?285:245;
-    player.jumpT=player.jumpDur;
-    player.launchPadCd=.9;
-    player.fallGrace=Math.max(player.fallGrace||0,1.2);
+    player.launchTravel={
+      sx:player.x,sy:player.y,tx:p.tx??p.x,ty:p.ty??(p.y-320),
+      t:0,dur:player.shieldType===4?.78:.68
+    };
+    player.jumpDur=.72;player.jumpHeight=player.shieldType===4?115:95;player.jumpT=.72;
+    player.launchPadCd=1.0;
+    player.fallGrace=Math.max(player.fallGrace||0,1.5);
     particle(p.x,p.y-35,'ドンッ！','#fff',.55,21);
     particle(player.x,player.y-70,'大ジャンプ！','#7adcf5',.55,18);
     break;
@@ -4055,6 +4080,9 @@ function drawWorld(){
    }
    // ボス撃破後だけ現れる、上空ルートへの帰り道。
    if(vineBossDefeated){
+    const br=vineSkyGeo.postBossBridge;
+    ctx.fillStyle='#77c96b';ctx.strokeStyle='#111';ctx.lineWidth=7;
+    ctx.beginPath();ctx.roundRect(br.x,br.y,br.w,br.h,35);ctx.fill();ctx.stroke();
     for(const q of vineSkyGeo.postBossIslands){
      ctx.fillStyle='#69bd61';ctx.strokeStyle='#111';ctx.lineWidth=7;
      ctx.beginPath();ctx.roundRect(q.x,q.y,q.w,q.h,42);ctx.fill();ctx.stroke();
@@ -4251,6 +4279,29 @@ function drawWorld(){
 
  // 杖スキルの炎輪・氷板は全地形の上、プレイヤーの直前に描く。
  drawStaffSkillEffects();
+
+ // 杖ジャンプ攻撃の着弾エフェクト。文字だけでなく火柱/氷柱を表示。
+ for(const fx of airMagicImpacts){
+   const q=1-fx.life/fx.max;
+   ctx.save();ctx.translate(fx.x,fx.y);
+   if(fx.kind==='fire'){
+     const grow=Math.sin(Math.min(1,q*1.7)*Math.PI*.5);
+     ctx.globalAlpha=Math.min(1,fx.life/.16);
+     ctx.fillStyle='rgba(255,95,35,.28)';ctx.beginPath();ctx.ellipse(0,-42,46,82*grow,0,0,Math.PI*2);ctx.fill();
+     ctx.fillStyle='#ff5a2d';ctx.strokeStyle='#111';ctx.lineWidth=5;
+     ctx.beginPath();ctx.moveTo(-30,12);ctx.quadraticCurveTo(-42,-40,-10,-92*grow);ctx.quadraticCurveTo(0,-60,13,-112*grow);ctx.quadraticCurveTo(46,-48,28,12);ctx.closePath();ctx.fill();ctx.stroke();
+     ctx.fillStyle='#ffd45a';ctx.beginPath();ctx.moveTo(-13,8);ctx.quadraticCurveTo(-15,-28,4,-70*grow);ctx.quadraticCurveTo(22,-28,15,8);ctx.closePath();ctx.fill();
+   }else{
+     ctx.globalAlpha=Math.min(1,fx.life/.15);
+     ctx.fillStyle='#c9f3ff';ctx.strokeStyle='#256e93';ctx.lineWidth=5;
+     for(const a of [-.8,-.35,0,.4,.82]){
+       ctx.save();ctx.rotate(a*.35);
+       ctx.beginPath();ctx.moveTo(-10,12);ctx.lineTo(0,-72*(1-q*.25));ctx.lineTo(12,12);ctx.closePath();ctx.fill();ctx.stroke();
+       ctx.restore();
+     }
+   }
+   ctx.restore();
+ }
 
  // 杖ジャンプ攻撃の弾。プレイヤーの高さから地面へ斜めに飛ぶ。
  if(player.airMagic&&!player.airMagic.done){
