@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 116: 最初の浮遊草原ステージ
+// Prototype 117: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -284,9 +284,20 @@ const vineAreaGeo={
  arena:{x:2750,y:-980,w:720,h:500}
 };
 const vineWalls=[
- {x:720,y:-690,r:52,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
- {x:1260,y:-760,r:55,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
- {x:1860,y:-700,r:58,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false}
+ {x:620,y:-690,r:48,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:720,y:-620,r:50,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:820,y:-735,r:50,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1030,y:-680,r:52,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1150,y:-785,r:52,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1270,y:-640,r:54,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1450,y:-720,r:54,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1580,y:-610,r:54,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1710,y:-780,r:56,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1840,y:-650,r:56,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:2280,y:-700,r:56,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:2390,y:-790,r:58,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:2500,y:-640,r:58,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:2610,y:-755,r:60,hp:5,maxHp:5,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false}
 ];
 const vineSeedFlowers=[
  {x:1040,y:-770,r:30,hp:4,maxHp:4,attackCd:1.2,flash:0,dead:false},
@@ -298,15 +309,15 @@ const whipVines=[
  {x:2350,y:-760,r:36,hp:7,maxHp:7,attackCd:1.15,flash:0,dead:false}
 ];
 const vineKnot=[
- {x:2020,y:-1020,r:35,hp:2,maxHp:2,dead:false,regenT:0},
- {x:2110,y:-1055,r:35,hp:2,maxHp:2,dead:false,regenT:0},
- {x:2200,y:-1020,r:35,hp:2,maxHp:2,dead:false,regenT:0}
+ {x:1970,y:-700,r:35,hp:2,maxHp:2,dead:false,regenT:0},
+ {x:2070,y:-735,r:35,hp:2,maxHp:2,dead:false,regenT:0},
+ {x:2170,y:-700,r:35,hp:2,maxHp:2,dead:false,regenT:0}
 ];
 let cloudShieldDropped=false;
-const cloudShieldPickup={x:2110,y:-1020,active:false,taken:false};
+const cloudShieldPickup={x:2070,y:-650,active:false,taken:false};
 
 const vineBoss={
- x:3110,y:-760,r:92,hp:58,maxHp:58,active:false,dead:false,attackCd:1.3,flash:0,whipT:0
+ x:3370,y:-730,r:105,hp:62,maxHp:62,active:false,dead:false,attackCd:1.25,flash:0,whipT:0,sweepDir:0
 };
 let vineBossDefeated=false;
 
@@ -1450,7 +1461,7 @@ function hitVineContent(damage,range,base,cone,kind='physical'){
    if(v.dead)continue;
    const d=dist(player.x,player.y,v.x,v.y),a=Math.atan2(v.y-player.y,v.x-player.x);
    if(d<=range+v.r&&Math.abs(angleDiff(a,base))<=cone/2+.15){
-     v.hp-=damage;if(v.hp<=0){v.dead=true;v.regenT=5;particle(v.x,v.y,'ブチッ！','#2e843a',.4,15);}
+     v.hp-=damage;if(v.hp<=0){v.dead=true;v.regenT=6;particle(v.x,v.y,'ブチッ！','#2e843a',.4,15);}
    }
  }
  if(vineBoss.active&&!vineBoss.dead){
@@ -2964,9 +2975,11 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    say('雲の盾：高く跳び、ゆっくり降りられる！');
  }
 
+ const inVineArea=fireBossDefeated && player.x>320 && player.y>-1120 && player.y<-420;
  // 種花とムチツタ。
  for(const e of vineSeedFlowers){
    if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   if(!inVineArea)continue;
    const d=dist(player.x,player.y,e.x,e.y);
    if(d<430&&e.attackCd<=0){
      const a=Math.atan2(player.y-e.y,player.x-e.x);
@@ -2976,6 +2989,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
  for(const e of whipVines){
    if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   if(!inVineArea)continue;
    const d=dist(player.x,player.y,e.x,e.y);
    if(d<180&&e.attackCd<=0){
      e.attackCd=1.55;
@@ -2986,19 +3000,40 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
- // ツタボス。ガードすると捕まるので、ジャンプ回避→空中攻撃が基本。
- if(!vineBoss.dead&&player.x>2740&&player.y<-520)vineBoss.active=true;
+ // ツタボス：右端に根を張り、前方（左側）を巨大なツタで薙ぎ払う。
+ // 背面は根と崖で塞ぎ、周り込み不可。ガードすると盾ごと絡め取られる。
+ if(!vineBoss.dead&&inVineArea&&player.x>2740)vineBoss.active=true;
  if(vineBoss.active&&!vineBoss.dead){
-   vineBoss.flash=Math.max(0,vineBoss.flash-dt);vineBoss.attackCd-=dt;vineBoss.whipT=Math.max(0,vineBoss.whipT-dt);
-   const d=dist(player.x,player.y,vineBoss.x,vineBoss.y);
-   if(vineBoss.attackCd<=0&&d<420){
-     vineBoss.attackCd=1.7;vineBoss.whipT=.42;
-     if(d<230&&player.jumpT<=0){
-       if(player.shield){player.vineBound=Math.max(player.vineBound||0,2.4);particle(player.x,player.y-42,'盾ごと絡まれた！','#256b38',.8,17);}
-       else if(player.inv<=0){const got=takeDamage(8);player.inv=.65;particle(player.x,player.y-40,`-${got}`,'#c11',.45,16);}
+   vineBoss.flash=Math.max(0,vineBoss.flash-dt);
+   vineBoss.attackCd-=dt;
+   vineBoss.whipT=Math.max(0,vineBoss.whipT-dt);
+
+   // 背面へ回り込めない。
+   if(player.x>vineBoss.x-72)player.x=Math.min(player.x,vineBoss.x-72);
+
+   const dx=player.x-vineBoss.x,dy=player.y-vineBoss.y,d=Math.hypot(dx,dy);
+   if(vineBoss.attackCd<=0&&d<520){
+     vineBoss.attackCd=2.0;
+     vineBoss.whipT=.62;
+     vineBoss.sweepDir=dy>=0?1:-1;
+
+     // 前方左側を大きく横薙ぎ。ジャンプ中だけ安全。
+     const inFront=dx<0 && Math.abs(dy)<210 && d<455;
+     if(inFront&&player.jumpT<=0){
+       if(player.shield){
+         player.vineBound=Math.max(player.vineBound||0,2.6);
+         particle(player.x,player.y-42,'盾ごと絡まれた！','#256b38',.85,17);
+       }else if(player.inv<=0){
+         const got=takeDamage(10);player.inv=.75;
+         particle(player.x,player.y-40,`-${got}`,'#c11',.45,16);
+         player.x-=26;
+       }
      }
    }
-   if(vineBoss.hp<=0){vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！');}
+   if(vineBoss.hp<=0){
+     vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;
+     particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！');
+   }
  }
  player.vineBound=Math.max(0,(player.vineBound||0)-dt);
 
@@ -3954,11 +3989,45 @@ function drawWorld(){
    }
    if(!vineBoss.dead){
      ctx.save();ctx.translate(vineBoss.x,vineBoss.y);if(vineBoss.flash>0)ctx.globalAlpha=.6;
-     ctx.strokeStyle='#163f22';ctx.lineWidth=20;for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(Math.cos(a+.6)*75,Math.sin(a+.6)*75,Math.cos(a)*115,Math.sin(a)*115);ctx.stroke()}
-     circle(0,0,48,'#5bb44c','#111',7);circle(-14,-8,5,'#111','transparent',0);circle(14,-8,5,'#111','transparent',0);
-     if(vineBoss.whipT>0){ctx.strokeStyle='#59c85c';ctx.lineWidth=14;ctx.beginPath();ctx.arc(0,0,175,-.8,.8);ctx.stroke();}
+
+     // 巨大な根株＋一本の主ツタ。クモ状にはしない。
+     ctx.strokeStyle='#123c20';ctx.lineCap='round';
+     ctx.lineWidth=34;ctx.beginPath();ctx.moveTo(70,95);ctx.bezierCurveTo(35,35,30,-55,-5,-105);ctx.stroke();
+     ctx.strokeStyle='#3f9f48';ctx.lineWidth=18;ctx.stroke();
+
+     // 右側へ食い込む根で背面を塞ぐ。
+     for(const off of [-80,-35,20,65]){
+       ctx.strokeStyle='#173f23';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(45,55);ctx.quadraticCurveTo(100+off*.25,95,130+off,120);ctx.stroke();
+       ctx.strokeStyle='#4aa64d';ctx.lineWidth=11;ctx.stroke();
+     }
+
+     // 花芯と大きな花弁。
+     for(let i=0;i<6;i++){
+       const a=i*Math.PI*2/6;ctx.save();ctx.rotate(a);ctx.translate(58,-28);
+       ctx.fillStyle='#7ad067';ctx.strokeStyle='#111';ctx.lineWidth=5;
+       ctx.beginPath();ctx.ellipse(0,0,18,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+     }
+     circle(-5,-28,58,'#5bbb50','#111',8);
+     circle(-20,-37,6,'#111','transparent',0);circle(10,-37,6,'#111','transparent',0);
+     line(-23,-5,14,-5,6,'#111');
+
+     // 攻撃中は前方へ一本の巨大ツタを横薙ぎ。
+     if(vineBoss.whipT>0){
+       const p=1-vineBoss.whipT/.62;
+       const sweep=-1.05+p*2.10;
+       const len=430;
+       ctx.save();ctx.translate(-35,-25);ctx.rotate(sweep);
+       ctx.strokeStyle='#102f19';ctx.lineWidth=30;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(-len*.45,-35,-len,0);ctx.stroke();
+       ctx.strokeStyle='#49b957';ctx.lineWidth=15;ctx.stroke();
+       for(let k=1;k<=5;k++)circle(-len*k/6,Math.sin(k)*8,12,'#69c966','#111',4);
+       ctx.restore();
+     }
      ctx.restore();
-     if(vineBoss.active){ctx.fillStyle='#111';ctx.fillRect(vineBoss.x-115,vineBoss.y-120,230,15);ctx.fillStyle='#55b94f';ctx.fillRect(vineBoss.x-111,vineBoss.y-116,222*Math.max(0,vineBoss.hp/vineBoss.maxHp),7);}
+
+     if(vineBoss.active){
+       ctx.fillStyle='#111';ctx.fillRect(vineBoss.x-250,vineBoss.y-170,250,16);
+       ctx.fillStyle='#55b94f';ctx.fillRect(vineBoss.x-246,vineBoss.y-166,242*Math.max(0,vineBoss.hp/vineBoss.maxHp),8);
+     }
    }
  }
 
