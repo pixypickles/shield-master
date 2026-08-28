@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 88: 最初の浮遊草原ステージ
+// Prototype 90: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -54,12 +54,38 @@ const unlockedShields=[true,false,false,false,false];
 
 let areaMapOpen=false,area1Cleared=false;
 const areaPanel=document.getElementById('areaPanel');
-function openAreaMap(){areaMapOpen=true;areaPanel.classList.remove('hidden')}
+const area1Btn=document.getElementById('area1Btn');
+const area2Btn=document.getElementById('area2Btn');
+
+function refreshAreaMap(){
+ // 草原群島は最初から選択可能。風の庭園は草原エリアを抜けた後だけ解放。
+ area1Cleared=grassAreaClear||stage6Started||stage7Started||rockBossDefeated||stage8Started||stage9Started||stage10Started;
+ const area2Unlocked=grassAreaClear||stage6Started||stage7Started||rockBossDefeated||stage8Started||stage9Started||stage10Started;
+ area1Btn.innerHTML=`エリア1　草原群島<br><small>${area1Cleared?'クリア済み・移動':'現在のエリア'}</small>`;
+ area2Btn.innerHTML=`エリア2　風の庭園<br><small>${area2Unlocked?'移動可能':'未到達'}</small>`;
+ area2Btn.classList.toggle('locked',!area2Unlocked);
+ area2Btn.disabled=!area2Unlocked;
+}
+function openAreaMap(){
+ if(player.charging){player.charging=false;attackBtn?.classList.remove('active')}
+ player.shield=false;
+ areaMapOpen=true;refreshAreaMap();areaPanel.classList.remove('hidden');
+}
 function closeAreaMap(){areaMapOpen=false;areaPanel.classList.add('hidden')}
-function travelArea1(){closeAreaMap();currentStage=1;player.x=250;player.y=545;stage.checkpoint={x:250,y:545};say('エリア1：草原群島')}
-function travelArea2(){closeAreaMap();stage6Started=true;currentStage=6;player.x=8170;player.y=545;stage.checkpoint={x:8170,y:545};say('エリア2：風の庭園')}
-document.getElementById('area1Btn').addEventListener('pointerdown',travelArea1);
-document.getElementById('area2Btn').addEventListener('pointerdown',travelArea2);
+function travelArea1(){
+ closeAreaMap();currentStage=1;player.x=250;player.y=545;stage.checkpoint={x:250,y:545};
+ say('エリア1：草原群島');
+}
+function travelArea2(){
+ const unlocked=grassAreaClear||stage6Started||stage7Started||rockBossDefeated||stage8Started||stage9Started||stage10Started;
+ if(!unlocked){say('まだ風の庭園には行けない');return}
+ closeAreaMap();stage6Started=true;currentStage=Math.max(currentStage,6);
+ player.x=8170;player.y=545;stage.checkpoint={x:8170,y:545};say('エリア2：風の庭園');
+}
+area1Btn.addEventListener('pointerdown',travelArea1);
+area2Btn.addEventListener('pointerdown',travelArea2);
+document.getElementById('mapBtn').addEventListener('pointerdown',openAreaMap);
+document.getElementById('areaMapClose').addEventListener('pointerdown',closeAreaMap);
 
 const enemies=[];
 function spawnEnemy(x,y,type='grass'){
@@ -267,14 +293,16 @@ const stage10Geo={
    {x:13915,y:20,w:340,h:190},    // 虹の着地点
    {x:13460,y:20,w:500,h:210},    // 左へ折れる高庭
    {x:12910,y:90,w:500,h:230},    // 少し下がる広場
-   {x:12380,y:35,w:475,h:230}     // 左奥の終点
+   {x:12380,y:35,w:475,h:230},    // 左奥
+   {x:12020,y:255,w:390,h:220},   // ここから下へ飛び降りて進む
+   {x:11620,y:430,w:430,h:250}    // 下側の次区間
  ]
 };
 let stage10Started=false;
 const stage10Enemies=[
  {x:13610,y:125,r:26,hp:3,maxHp:3,type:'fanleaf',attackCd:1.5,flash:0,dead:false},
  {x:13110,y:205,r:27,hp:3,maxHp:3,type:'dandelion',attackCd:1.8,flash:0,dead:false},
- {x:12580,y:145,r:28,hp:4,maxHp:4,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:.7}
+ {x:12580,y:145,r:30,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:.7}
 ];
 
 // 各エリアに「攻略とは無関係な自然物」を少量散らす。
@@ -526,8 +554,7 @@ function renderEquipPanel(){
      b.textContent=unlockedWeapons[i]?w.name:'？？？';
      if(unlockedWeapons[i])b.onclick=()=>{
        player.weapon=i;weaponNameEl.textContent=w.name;
-       shortcut={type:'weapon',index:i,returnType:'weapon',returnIndex:i};
-       updateShortcutLabel();say(`${w.name}を装備＋SHORT登録`);renderEquipPanel()
+       say(`${w.name}に持ち替え`);renderEquipPanel()
      };
      equipItems.appendChild(b);
    });
@@ -538,8 +565,7 @@ function renderEquipPanel(){
      b.textContent=unlockedShields[i]?sh.name:'？？？';
      if(unlockedShields[i])b.onclick=()=>{
        player.shieldType=i;
-       shortcut={type:'shield',index:i,returnType:'shield',returnIndex:i};
-       updateShortcutLabel();say(`${sh.name}を装備＋SHORT登録`);renderEquipPanel()
+       say(`${sh.name}に持ち替え`);renderEquipPanel()
      };
      equipItems.appendChild(b);
    });
@@ -556,15 +582,30 @@ function updateShortcutLabel(){
  if(shortcut.index<0){shortcutLabel.textContent='なし';return}
  shortcutLabel.textContent=shortcut.type==='weapon'?weapons[shortcut.index].name:shields[shortcut.index].name;
 }
+let shortcutHoldTimer=null,shortcutLong=false,shortcutPointer=null;
 shortcutBtn.addEventListener('pointerdown',(ev)=>{
- ev.preventDefault();
- if(shortcut.index<0){say('CHANGE→登録したい装備をタップ＝SHORT登録');return}
+ ev.preventDefault();shortcutPointer=ev.pointerId;shortcutLong=false;
+ try{shortcutBtn.setPointerCapture(ev.pointerId)}catch(_){}
+ shortcutHoldTimer=setTimeout(()=>{
+   shortcutLong=true;
+   // 長押し＝今使っている武器を登録。武器タブ/盾タブとは切り離す。
+   shortcut={type:'weapon',index:player.weapon,returnType:null,returnIndex:-1};
+   updateShortcutLabel();say(`${weapons[player.weapon].name}をSHORTに登録`);
+ },520);
+});
+function releaseShortcut(ev){
+ if(shortcutPointer!==null&&ev&&ev.pointerId!==shortcutPointer)return;
+ if(shortcutHoldTimer){clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null}
+ shortcutPointer=null;
+ if(shortcutLong){shortcutLong=false;return}
+ if(shortcut.index<0){say('SHORTを長押しすると、今の武器を登録できます');return}
  if(shortcut.type==='weapon'){
    if(player.weapon!==shortcut.index){
      shortcut.returnType='weapon';shortcut.returnIndex=player.weapon;
      player.weapon=shortcut.index;weaponNameEl.textContent=weapons[player.weapon].name;
    }else if(shortcut.returnType==='weapon'&&shortcut.returnIndex>=0&&unlockedWeapons[shortcut.returnIndex]){
-     const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;player.weapon=back;weaponNameEl.textContent=weapons[player.weapon].name;
+     const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;
+     player.weapon=back;weaponNameEl.textContent=weapons[player.weapon].name;
    }
  }else{
    if(player.shieldType!==shortcut.index){
@@ -573,7 +614,10 @@ shortcutBtn.addEventListener('pointerdown',(ev)=>{
      const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;player.shieldType=back;
    }
  }
-});
+}
+shortcutBtn.addEventListener('pointerup',releaseShortcut);
+shortcutBtn.addEventListener('pointercancel',ev=>{if(shortcutHoldTimer)clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null;shortcutPointer=null;shortcutLong=false;});
+
 
 function jump(){if(player.jumpT<=0){player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
@@ -809,7 +853,7 @@ function hitStage8Spinner(range,base){
  for(const list of lists)for(const e of list){
    if(e.dead||e.type!=='spinnerflower')continue;
    const dx=e.x-player.x,dy=e.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-   if(along>0&&along<range+e.r+18&&side<24){
+   if(along>0&&along<range+e.r+26&&side<34){
      e.hp=0;e.dead=true;e.flash=.2;particle(e.x,e.y-25,'中心！','#fff',.38,16);particle(e.x,e.y,'パァン！','#fff',.4,15);
    }
  }
@@ -929,7 +973,7 @@ function hitElementalObstacle(x,y,r,kind,power=1){
    const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(e.y-player.y,e.x-player.x);
    if(d>range+e.r||Math.abs(angleDiff(a,base))>cone/2)continue;
    if(e.type==='spinnerflower'){
-    if(weapon===1&&Math.abs(angleDiff(a,base))<.24){
+    if(weapon===1&&Math.abs(angleDiff(a,base))<.34){
       e.dead=true;e.hp=0;particle(e.x,e.y-22,'中心！','#fff',.38,16);
     }else particle(e.x,e.y-22,'キン！','#111',.28,13);
    }else{
@@ -1108,6 +1152,7 @@ function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
  return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
+ if(areaMapOpen)return;
  if(areaMapOpen)return;
  player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
@@ -1469,6 +1514,14 @@ function update(dt){
      return Math.hypot(player.x-cx,player.y-cy)<=110;
    });
    if(nearIsland)safe=true;
+ }
+ // 高庭の左端から下の足場へ飛び降りる区間も、ジャンプ中は短い空白を越えられる。
+ if(stage10Started&&player.jumpT>0&&player.x>=11570&&player.x<=12480&&player.y<=720){
+   const nearStage10=stage10Geo.path.some(r=>{
+     const cx=clamp(player.x,r.x,r.x+r.w),cy=clamp(player.y,r.y,r.y+r.h);
+     return Math.hypot(player.x-cx,player.y-cy)<=135;
+   });
+   if(nearStage10)safe=true;
  }
  if(stage.bridgeOpen){
    const bx1=Math.min(stageGeo.bridge.x1,stageGeo.bridge.x2)-25,bx2=Math.max(stageGeo.bridge.x1,stageGeo.bridge.x2)+25;
@@ -2782,7 +2835,7 @@ function drawObjectiveArrow(){
  else if(!rockBossDefeated){tx=rockBoss.x;ty=rockBoss.y;}
  else if(!islandBossDefeated){tx=islandBoss.x;ty=islandBoss.y;}
  else if(!stage10Started){tx=stage10Geo.bridge.x;ty=stage10Geo.bridge.y2;}
- else {tx=12480;ty=145;}
+ else {tx=11780;ty=545;}
 
  const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
  if(d<220)return;

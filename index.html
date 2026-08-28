@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <meta name="theme-color" content="#bfefff" />
-  <title>盾を構えとけば何とか凌げる - Prototype 88</title>
+  <title>盾を構えとけば何とか凌げる - Prototype 90</title>
   <link rel="stylesheet" href="style.css" />
 
 <style>
@@ -28,7 +28,7 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
 
 </head>
 <body>
-<div id="versionBadge">Prototype 88</div>
+<div id="versionBadge">Prototype 90</div>
 
   <main id="app">
     <canvas id="game" aria-label="game canvas"></canvas>
@@ -36,6 +36,7 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
     <div id="hud">
       <div class="hpbox"><span>HP</span><div class="hpbar"><i id="hpfill"></i></div></div>
       <div id="weaponName">剣</div><div id="leafStock">🍃 0</div>
+      <button id="mapBtn" class="mapBtn">マップへ</button>
     </div>
 
     <div id="controls">
@@ -73,7 +74,8 @@ font:700 14px/1.2 system-ui,sans-serif;padding:7px 10px;border-radius:9px;pointe
 <div id="areaPanel" class="areaPanel hidden"><div class="areaCard">
 <div class="areaTitle">浮遊大陸マップ</div><div class="areaSub">行き先を選択</div>
 <button id="area1Btn" class="areaBtn">エリア1　草原群島<br><small>クリア済み・戻る</small></button>
-<button id="area2Btn" class="areaBtn">エリア2　風の庭園<br><small>新しい大陸へ</small></button>
+<button id="area2Btn" class="areaBtn">エリア2　風の庭園<br><small>未到達</small></button>
+<button id="areaMapClose" class="areaClose">ゲームに戻る</button>
 </div></div>
 <script src="game.js" defer></script>
 
