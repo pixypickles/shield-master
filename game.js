@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 77: 最初の浮遊草原ステージ
+// Prototype 79: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -259,12 +259,80 @@ const islandBoss={
 let stage9Started=false;
 let islandBossDefeated=false;
 
+// 各エリアに「攻略とは無関係な地形」を少量散らす。
+// 段差・木・岩・浅い水流など、世界に生活感/自然さを出すための飾り。
+// 進行必須ギミックにはせず、基本は避けても無視してもよい。
+const ambientTerrain=[
+ // area 1
+ {kind:'step',x:420,y:390,w:170,h:78},{kind:'tree',x:1080,y:665},{kind:'rock',x:1450,y:410,r:24},
+ {kind:'stream',x:980,y:690,w:210,h:34,fx:18,fy:0},
+ // area 2
+ {kind:'step',x:2140,y:420,w:150,h:70},{kind:'tree',x:2470,y:640},{kind:'rock',x:2810,y:410,r:22},
+ {kind:'stream',x:2650,y:655,w:180,h:32,fx:-14,fy:0},
+ // area 3
+ {kind:'step',x:3720,y:430,w:145,h:68},{kind:'tree',x:4320,y:650},{kind:'rock',x:3990,y:445,r:24},
+ {kind:'stream',x:4460,y:675,w:150,h:30,fx:0,fy:-12},
+ // area 4
+ {kind:'step',x:5150,y:410,w:160,h:72},{kind:'tree',x:5590,y:655},{kind:'rock',x:5900,y:420,r:24},
+ {kind:'stream',x:5480,y:675,w:175,h:32,fx:16,fy:0},
+ // area 5
+ {kind:'step',x:6500,y:430,w:170,h:76},{kind:'tree',x:6930,y:660},{kind:'rock',x:7300,y:410,r:25},
+ {kind:'stream',x:6760,y:690,w:190,h:32,fx:-14,fy:0},
+ // area 6
+ {kind:'step',x:8270,y:415,w:160,h:72},{kind:'tree',x:8720,y:660},{kind:'rock',x:9140,y:415,r:24},
+ {kind:'stream',x:8860,y:675,w:190,h:32,fx:20,fy:0},
+ // area 7
+ {kind:'step',x:9730,y:380,w:150,h:70},{kind:'tree',x:10850,y:690},{kind:'rock',x:10300,y:690,r:23},
+ {kind:'stream',x:11100,y:705,w:180,h:30,fx:-16,fy:0},
+ // area 8
+ {kind:'step',x:13210,y:500,w:150,h:68},{kind:'tree',x:13390,y:650},{kind:'rock',x:13195,y:625,r:22},
+ // boss island
+ {kind:'step',x:13830,y:390,w:170,h:72},{kind:'tree',x:14300,y:680},{kind:'rock',x:13770,y:675,r:24},
+ {kind:'stream',x:14130,y:705,w:170,h:30,fx:14,fy:0}
+];
 
 
 
 
 
 
+
+
+
+
+
+function ambientZoneStyle(x){
+ if(x<3200)return {top:'#9ad57a',side:'#6fae58',tree:'#35b84d',tree2:'#57c969',rock:'#8f978d'};
+ if(x<4800)return {top:'#91cf73',side:'#669f54',tree:'#54b957',tree2:'#79c85e',rock:'#a18f72'};
+ if(x<6200)return {top:'#8bcf75',side:'#629f57',tree:'#4fae62',tree2:'#78c777',rock:'#87958a'};
+ if(x<7900)return {top:'#8ed26c',side:'#659e50',tree:'#4fb44a',tree2:'#79c84d',rock:'#a48c67'};
+ if(x<9500)return {top:'#9bd47c',side:'#719e5d',tree:'#62b85f',tree2:'#87ca79',rock:'#8c9994'};
+ if(x<11750)return {top:'#82b96a',side:'#5d8551',tree:'#668f55',tree2:'#87a967',rock:'#777b7b'};
+ return {top:'#86cf72',side:'#609d55',tree:'#3eb65a',tree2:'#64ca70',rock:'#8d9690'};
+}
+function ambientDrop(a){
+ if(a.dropDone)return;a.dropDone=true;
+ if(Math.random()<.14)floatLeafDrops.push({x:a.x+(a.w||0)/2,y:a.y-12,r:12,life:16,bob:Math.random()*6.28});
+ else if(Math.random()<.28)healDrops.push({x:a.x+(a.w||0)/2,y:a.y-12,r:10,life:10,bob:Math.random()*6.28});
+}
+function damageAmbient(a,weapon,power=1){
+ if(a.dead||!(a.kind==='tree'||a.kind==='rock'))return;
+ if(a.hp==null)a.hp=a.kind==='tree'?2:5;
+ if(a.kind==='tree'){
+   if(weapon===0||weapon===2){a.hp-=power}else if(weapon===1){a.hp-=Math.max(1,power)}
+ }else{
+   if(weapon===2)a.hp=0;
+   else if(weapon===1)a.hp-=power;
+   else return;
+ }
+ particle(a.x,a.y-18,a.hp<=0?(a.kind==='tree'?'バサッ！':'ガシャッ！'):'ガキン！','#555',.35,14);
+ if(a.hp<=0){a.dead=true;ambientDrop(a)}
+}
+function jumpLiftNow(){
+ if(player.jumpT<=0)return 0;
+ const p=1-player.jumpT/player.jumpDur;
+ return Math.sin(p*Math.PI)*player.jumpHeight*shields[player.shieldType].jump;
+}
 
 const guardRails=[
  // stage1: rocks / low trees along portions of cliff
@@ -925,12 +993,17 @@ function doAttack(charged=false){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
      const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-     if(along>0&&along<reach&&side<r.r+24)damageBreakableRock(r,1,1);
+     if(along>0&&along<reach&&side<r.r+24)damageBreakableRock(r,1,3);
    }
    for(const o of elementalObstacles){
      if(o.dead)continue;const dx=o.x-player.x,dy=o.y-player.y;
      const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-     if(along>0&&along<reach&&side<o.r+20)hitElementalObstacle(o.x,o.y,2,'spear',1);
+     if(along>0&&along<reach&&side<o.r+20)hitElementalObstacle(o.x,o.y,2,'spear',3);
+   }
+   for(const a of ambientTerrain){
+     if(a.dead||!(a.kind==='tree'||a.kind==='rock'))continue;
+     const dx=a.x-player.x,dy=a.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+     if(along>0&&along<reach&&side<44)damageAmbient(a,1,3);
    }
    return;
  }
@@ -949,6 +1022,12 @@ function doAttack(charged=false){
  if(w>=3){fireMagic(w,charged,base);return;}
 
  let cone=w===1?.34:1.05;
+ // 自然物も武器で壊せる。木・岩からは低確率で羽の葉っぱ/回復が出る。
+ for(const a of ambientTerrain){
+   if(a.dead||!(a.kind==='tree'||a.kind==='rock'))continue;
+   const d=dist(player.x,player.y,a.x,a.y),aa=Math.atan2(a.y-player.y,a.x-player.x);
+   if(d<range+38&&Math.abs(angleDiff(aa,base))<cone*.75)damageAmbient(a,w,1);
+ }
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
  hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
  hitStage2(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitStage3(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w,false);hitStage45(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w);
@@ -1036,6 +1115,9 @@ function update(dt){
      }
      for(const o of elementalObstacles){
        if(!o.dead&&dist(player.x,player.y,o.x,o.y)<155)hitElementalObstacle(o.x,o.y,2,'hammer',1);
+     }
+     for(const a of ambientTerrain){
+       if(!a.dead&&(a.kind==='tree'||a.kind==='rock')&&dist(player.x,player.y,a.x,a.y)<165)damageAmbient(a,2,5);
      }
      for(const e of enemies){
        if(e.dead)continue;
@@ -1264,6 +1346,27 @@ function update(dt){
  const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
  for(const o of elementalObstacles){if(o.type==='regenVine'&&!o.dead)o.wiggle=(o.wiggle||0)+dt*7;}
+ // 意味のない浅い水流。入っても通れるが、少しだけ流される。
+ for(const a of ambientTerrain){
+   if(a.kind!=='stream')continue;
+   if(player.x>a.x&&player.x<a.x+a.w&&player.y>a.y&&player.y<a.y+a.h){
+     player.x+=(a.fx||0)*dt;player.y+=(a.fy||0)*dt;
+   }
+ }
+ // 低い段差はジャンプで乗れる。地上歩行で側面へぶつかると止まり、
+ // ジャンプ中に十分な高さがあれば上面へ乗り移れる。
+ player.onAmbientStep=null;
+ for(const a of ambientTerrain){
+   if(a.kind!=='step')continue;
+   const inside=player.x>a.x-player.r*.55&&player.x<a.x+a.w+player.r*.55&&
+                player.y>a.y-player.r*.45&&player.y<a.y+a.h+player.r*.45;
+   if(!inside)continue;
+   if(jumpLiftNow()>=34||player.jumpT>0&&jumpLiftNow()>=24){
+     player.onAmbientStep=a;
+   }else{
+     player.x=prevX;player.y=prevY;
+   }
+ }
  // 属性障害物は壊すまで通行不可。
  for(const o of elementalObstacles){
    if(!o.dead&&dist(player.x,player.y,o.x,o.y)<player.r+o.r-4){
@@ -2117,9 +2220,22 @@ function drawWorld(){
  ctx.lineTo(sp.x,sw.y+sw.h);
  ctx.bezierCurveTo(sp.x-48,sw.y+sw.h,sp.x-48,sw.y,sp.x,sw.y);
  ctx.closePath();ctx.fill();ctx.stroke();
- // 湧水の泡・波紋だけを中に描く。境界線は増やさない。
- ctx.fillStyle='rgba(235,253,255,.88)';ctx.beginPath();ctx.arc(sp.x-8,sp.y-5,10,0,Math.PI*2);ctx.fill();
- for(let i=0;i<3;i++){ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(sp.x,sp.y,14+i*8,-2.75,-.35);ctx.stroke()}
+ // 湧水の中心は、全周に回る渦で「地面から水が溢れている」感じを出す。
+ const whirl=performance.now()*.0024;
+ ctx.save();ctx.translate(sp.x,sp.y);ctx.rotate(whirl);
+ ctx.fillStyle='rgba(235,253,255,.86)';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();
+ for(let i=0;i<3;i++){
+   const rr=15+i*9;
+   ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=3;
+   ctx.beginPath();ctx.arc(0,0,rr,.2+i*.35,Math.PI*1.55+i*.35);ctx.stroke();
+   ctx.beginPath();ctx.arc(0,0,rr,-Math.PI*.8+i*.35,-.1+i*.35);ctx.stroke();
+ }
+ // 渦の流れ方向が分かる小さな白い泡。
+ for(let i=0;i<3;i++){
+   const a=whirl*1.6+i*Math.PI*2/3,rr=24+i*3;
+   circle(Math.cos(a)*rr,Math.sin(a)*rr,4,'rgba(245,255,255,.9)','transparent',0);
+ }
+ ctx.restore();
  for(let x=sp.x+70;x<sw.x+sw.w-18;x+=54){line(x,sw.y+22,x+26,sw.y+22,3,'rgba(255,255,255,.72)');line(x+9,sw.y+50,x+34,sw.y+50,3,'rgba(255,255,255,.55)')}
  ctx.restore();
 
@@ -2514,6 +2630,43 @@ function drawWorld(){
      ctx.restore();
    }
  }
+
+ // 攻略と無関係な自然物・段差・浅い水流。
+ for(const a of ambientTerrain){
+   if(a.dead)continue;
+   const az=ambientZoneStyle(a.x);
+   if(a.kind==='step'){
+     ctx.fillStyle=az.side;ctx.strokeStyle='#111';ctx.lineWidth=5;
+     ctx.beginPath();ctx.roundRect(a.x,a.y+14,a.w,a.h,26);ctx.fill();ctx.stroke();
+     ctx.fillStyle=az.top;ctx.beginPath();ctx.roundRect(a.x,a.y,a.w,a.h,26);ctx.fill();ctx.stroke();
+     // 上面の草の縁で「乗れる高さ」を読みやすくする。
+     line(a.x+18,a.y+8,a.x+a.w-18,a.y+8,3,'rgba(255,255,255,.35)');
+   }else if(a.kind==='tree'){
+     line(a.x,a.y,a.x,a.y-38,12,'#111');line(a.x,a.y,a.x,a.y-38,7,a.x>9500?'#695b49':'#765038');
+     if(a.x>9500&&a.x<11750){
+       // 岩場：低くねじれた風衝木
+       circle(a.x-16,a.y-42,15,az.tree,'#111',5);circle(a.x+12,a.y-49,17,az.tree2,'#111',5);line(a.x,a.y-35,a.x+20,a.y-61,6,'#111');
+     }else if(a.x>7900&&a.x<9500){
+       // 風の庭園：軽い丸葉
+       circle(a.x-18,a.y-46,15,az.tree,'#111',4);circle(a.x+15,a.y-45,15,az.tree2,'#111',4);circle(a.x,a.y-62,18,az.tree2,'#111',4);
+     }else{
+       circle(a.x-15,a.y-45,18,az.tree,'#111',5);circle(a.x+14,a.y-47,19,az.tree2,'#111',5);circle(a.x,a.y-63,22,az.tree,'#111',5);
+     }
+   }else if(a.kind==='rock'){
+     ctx.fillStyle=az.rock;ctx.strokeStyle='#111';ctx.lineWidth=5;
+     ctx.beginPath();ctx.moveTo(a.x-a.r,a.y+10);ctx.lineTo(a.x-a.r*.55,a.y-a.r*.65);ctx.lineTo(a.x+a.r*.25,a.y-a.r);ctx.lineTo(a.x+a.r,a.y-a.r*.2);ctx.lineTo(a.x+a.r*.7,a.y+a.r*.7);ctx.closePath();ctx.fill();ctx.stroke();
+   }else if(a.kind==='stream'){
+     ctx.fillStyle='rgba(155,229,245,.78)';ctx.strokeStyle='#58b8d2';ctx.lineWidth=3;
+     ctx.beginPath();ctx.roundRect(a.x,a.y,a.w,a.h,14);ctx.fill();ctx.stroke();
+     const vertical=Math.abs(a.fy||0)>Math.abs(a.fx||0);
+     ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=2;
+     if(vertical){
+       for(let yy=a.y+8;yy<a.y+a.h-5;yy+=12){ctx.beginPath();ctx.moveTo(a.x+12,yy);ctx.lineTo(a.x+a.w-12,yy);ctx.stroke();}
+     }else{
+       for(let xx=a.x+14;xx<a.x+a.w-8;xx+=34){ctx.beginPath();ctx.moveTo(xx,a.y+9);ctx.lineTo(xx+18,a.y+9);ctx.stroke();}
+     }
+   }
+ }
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
  drawSwordSkillEffect();
@@ -2598,7 +2751,8 @@ function drawPlayer(){
  const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
  const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight*shields[player.shieldType].jump:0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
- const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
+ const stepLift=player.onAmbientStep&&player.jumpT<=0?24:0;
+ const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0)+stepLift;
  const moving=player.moveMag>.16&&player.jumpT<=0;
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
@@ -2780,7 +2934,12 @@ function drawPlayer(){
    ctx.globalAlpha=ready?.24:.08;
    ctx.strokeStyle=player.weapon===4?'#dffaff':(player.weapon===3?'#ffd6c2':'#eefaff');
    ctx.lineWidth=7;ctx.lineCap='round';
-   ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+Math.cos(wa)*(player.weapon===1?72:54),wy+Math.sin(wa)*(player.weapon===1?72:54));ctx.stroke();
+   // drawPlayer内ではwx/wyは存在しないため、実際の武器手座標を使う。
+   const glowX=handR.x,glowY=handR.y;
+   ctx.beginPath();
+   ctx.moveTo(glowX,glowY);
+   ctx.lineTo(glowX+Math.cos(wa)*(player.weapon===1?72:54),glowY+Math.sin(wa)*(player.weapon===1?72:54));
+   ctx.stroke();
    ctx.restore();
  }
  ctx.restore();
