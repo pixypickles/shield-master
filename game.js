@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 101: 最初の浮遊草原ステージ
+// Prototype 102: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1841,11 +1841,13 @@ function update(dt){
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
   player.cloudBounceCd=Math.max(0,(player.cloudBounceCd||0)-dt);
   if(player.jumpT>0&&player.cloudBounceCd<=0){
-    const lift=jumpLift();
-    for(const c of cloudJumpPads){
-      if(dist(player.x,player.y-lift,c.x,c.y)<c.r+player.r*.65 && player.y-lift<c.y+12){
-        player.jumpDur=.92;player.jumpHeight=185;player.jumpT=.92;player.cloudBounceCd=.7;
-        particle(c.x,c.y-35,'ボヨン！','#fff',.45,17);break;
+    const lift=jumpLiftNow();
+    if(Number.isFinite(lift)){
+      for(const c of cloudJumpPads){
+        if(dist(player.x,player.y-lift,c.x,c.y)<c.r+player.r*.65 && player.y-lift<c.y+12){
+          player.jumpDur=.92;player.jumpHeight=185;player.jumpT=.92;player.cloudBounceCd=.7;
+          particle(c.x,c.y-35,'ボヨン！','#fff',.45,17);break;
+        }
       }
     }
   }
@@ -3298,9 +3300,6 @@ function drawWorld(){
    ctx.moveTo(0,-38);ctx.quadraticCurveTo(38,-28,34,8);ctx.quadraticCurveTo(28,38,0,52);ctx.quadraticCurveTo(-28,38,-34,8);ctx.quadraticCurveTo(-38,-28,0,-38);ctx.fill();ctx.stroke();
    ctx.strokeStyle='#fff';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-15,5);ctx.lineTo(-4,17);ctx.lineTo(18,-10);ctx.stroke();ctx.restore();
  }
-
- // 低い雨雲は乗れることが分かるよう上面を白く強調。
- for(const c of cloudJumpPads){ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(c.x,c.y-17,c.r*.72,c.r*.24,0,0,Math.PI*2);ctx.stroke();}
 
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
