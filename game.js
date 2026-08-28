@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 65: 最初の浮遊草原ステージ
+// Prototype 68: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -231,6 +231,18 @@ const rockBoss={
 
 const rollingRocks=[];
 const bossWalnuts=[];
+const stage8Geo={path:[
+ {x:11780,y:410,w:250,h:300},{x:12095,y:390,w:155,h:150},{x:12305,y:545,w:145,h:145},
+ {x:12510,y:370,w:150,h:150},{x:12720,y:525,w:145,h:145},{x:12930,y:360,w:160,h:155},
+ {x:13155,y:455,w:330,h:255}
+]};
+const stage8Enemies=[
+ {x:12170,y:445,r:25,hp:2,maxHp:2,type:'dandelion',attackCd:1.8,flash:0,dead:false},
+ {x:12585,y:425,r:25,hp:2,maxHp:2,type:'fanleaf',attackCd:1.7,flash:0,dead:false},
+ {x:13010,y:415,r:25,hp:2,maxHp:2,type:'dandelion',attackCd:1.9,flash:0,dead:false}
+];
+let stage8Started=false;
+
 
 
 
@@ -290,6 +302,7 @@ function visibleGroundRects(){
    grounds.push(stage7Geo.path[0]);
  }
  if(stage7Started)grounds.push(...stage7Geo.path);
+ if(rockBossDefeated)grounds.push(...stage8Geo.path);
  return grounds;
 }
 function pointSupportedByGround(x,y,pad=24){
@@ -371,7 +384,7 @@ function renderEquipPanel(){
      if(unlockedWeapons[i])b.onclick=()=>{
        player.weapon=i;weaponNameEl.textContent=w.name;
        shortcut={type:'weapon',index:i,returnType:'weapon',returnIndex:i};
-       updateShortcutLabel();renderEquipPanel()
+       updateShortcutLabel();say(`${w.name}を装備＋SHORT登録`);renderEquipPanel()
      };
      equipItems.appendChild(b);
    });
@@ -383,7 +396,7 @@ function renderEquipPanel(){
      if(unlockedShields[i])b.onclick=()=>{
        player.shieldType=i;
        shortcut={type:'shield',index:i,returnType:'shield',returnIndex:i};
-       updateShortcutLabel();say(`${sh.name} を装備／SHORT登録`);renderEquipPanel()
+       updateShortcutLabel();say(`${sh.name}を装備＋SHORT登録`);renderEquipPanel()
      };
      equipItems.appendChild(b);
    });
@@ -402,7 +415,7 @@ function updateShortcutLabel(){
 }
 shortcutBtn.addEventListener('pointerdown',(ev)=>{
  ev.preventDefault();
- if(shortcut.index<0){say('装備画面でSHORTに登録');return}
+ if(shortcut.index<0){say('CHANGE→登録したい装備をタップ＝SHORT登録');return}
  if(shortcut.type==='weapon'){
    if(player.weapon!==shortcut.index){
      shortcut.returnType='weapon';shortcut.returnIndex=player.weapon;
@@ -1656,6 +1669,22 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
+ // 岩ボス撃破後：橋ではなく、小島をジャンプで渡る次コース。
+ if(rockBossDefeated&&player.x>11740&&!stage8Started){
+   stage8Started=true;currentStage=8;stage.checkpoint={x:11840,y:545};
+   say('跳び石群島：短い隙間はジャンプで！');
+ }
+ if(stage8Started){
+   for(const e of stage8Enemies){
+     if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+     if(e.attackCd<=0&&d<320){
+       e.attackCd=e.type==='dandelion'?1.9:1.7;const a=Math.atan2(dy,dx);
+       projectiles.push({x:e.x,y:e.y-8,vx:Math.cos(a)*165,vy:Math.sin(a)*165,r:10,life:2,kind:'wind',damage:4,enemyShot:true,hit:false});
+     }
+   }
+ }
+
  // 転がる岩
  for(const r of rollingRocks){
    if(r.dead)continue;
@@ -2122,6 +2151,23 @@ function drawWorld(){
    ctx.fillStyle='#111';ctx.fillRect(boss.x-90,boss.y-95,180,16);ctx.fillStyle='#e84a3a';ctx.fillRect(boss.x-86,boss.y-91,172*Math.max(0,boss.hp/boss.maxHp),8);
  }
  drawStaffSkillEffects();
+ 
+ // ステージ8：虹橋より短い空白をジャンプで渡る小島の連続。
+ if(rockBossDefeated){
+   for(const r of stage8Geo.path){
+     ctx.fillStyle='#8fd27a';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,42);ctx.fill();ctx.stroke();
+   }
+ }
+ if(stage8Started){
+   for(const e of stage8Enemies){
+     if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);
+     if(e.flash>0){ctx.fillStyle='rgba(255,80,80,.45)';ctx.beginPath();ctx.arc(0,0,e.r+7,0,Math.PI*2);ctx.fill()}
+     line(0,5,0,30,10,'#111');line(0,5,0,30,5,'#4a9d49');
+     for(let i=0;i<7;i++){const a=i*Math.PI*2/7;circle(Math.cos(a)*18,Math.sin(a)*18-8,9,e.type==='dandelion'?'#eef8e8':'#8ddc72','#111',3)}
+     circle(0,-8,12,'#d9a94d','#111',4);ctx.restore();
+   }
+ }
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
  drawSwordSkillEffect();
