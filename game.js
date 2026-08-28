@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 112: 最初の浮遊草原ステージ
+// Prototype 113: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -637,10 +637,10 @@ function pointSupportedByGround(x,y,pad=24){
 
 
 const SAVE_KEY='shieldHeroSave_v112';
-function saveProgress(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,seedBossDead:!!stage2Boss.dead,fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,stage9Started:!!stage9Started,stage10Started:!!stage10Started,islandBossDefeated:!!islandBossDefeated}))}catch(e){}}
+function saveProgress(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,seedBossDead:!!seedBoss.dead,fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,stage9Started:!!stage9Started,stage10Started:!!stage10Started,islandBossDefeated:!!islandBossDefeated}))}catch(e){}}
 function loadProgress(){let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d)return false;
 Object.assign(player,{x:d.x??player.x,y:d.y??player.y,hp:d.hp??player.hp,weapon:d.weapon??player.weapon,shieldType:d.shieldType??player.shieldType,swordPlus:!!d.swordPlus});if(d.inv)player.inv=d.inv;if(Number.isInteger(d.currentStage))currentStage=d.currentStage;if(d.checkpoint)stage.checkpoint=d.checkpoint;
-if(d.seedBossDead){stage2Boss.dead=true;stage2Boss.active=false}if(d.fireBossDead){fireBoss.dead=true;fireBoss.active=false}if(d.iceBossDead){iceBoss.dead=true;iceBoss.active=false}if(d.rockBossDead){rockBoss.dead=true;rockBoss.active=false}if(d.hammerGuardianDead){hammerGuardian.dead=true;hammerGuardian.active=false}if(d.islandBossDead){islandBoss.dead=true;islandBoss.active=false}
+if(d.seedBossDead){seedBoss.dead=true;seedBoss.active=false}if(d.fireBossDead){fireBoss.dead=true;fireBoss.active=false}if(d.iceBossDead){iceBoss.dead=true;iceBoss.active=false}if(d.rockBossDead){rockBoss.dead=true;rockBoss.active=false}if(d.hammerGuardianDead){hammerGuardian.dead=true;hammerGuardian.active=false}if(d.islandBossDead){islandBoss.dead=true;islandBoss.active=false}
 spearPickup.taken=!!d.spearTaken;hammerPickup.taken=!!d.hammerTaken;upperSwordPickup.taken=!!d.upperSwordTaken;stage9Started=!!d.stage9Started;stage10Started=!!d.stage10Started;islandBossDefeated=!!d.islandBossDefeated;return true}
 setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},2500);window.addEventListener('pagehide',saveProgress);
 window.addEventListener('DOMContentLoaded',()=>{const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}c.disabled=!has;c.onclick=()=>{loadProgress();m.classList.add('hidden')};n.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}m.classList.add('hidden')}});
@@ -1927,7 +1927,13 @@ function update(dt){
    player.ledgeT=0;
  }
 
-  // 大型ボスの中心には入り込めない。接触自体は攻撃ではない。
+  // 灼熱花の中心へは入り込めない。
+ if(fireBoss.active&&!fireBoss.dead){
+   const dx=player.x-fireBoss.x,dy=player.y-fireBoss.y,d=Math.hypot(dx,dy)||1;
+   const minD=player.r+fireBoss.r*.72;
+   if(d<minD){player.x=fireBoss.x+dx/d*minD;player.y=fireBoss.y+dy/d*minD;}
+ }
+ // 大型ボスの中心には入り込めない。接触自体は攻撃ではない。
  for(const b of [boss,seedBoss,grassFinalBoss,rockBoss]){
    if(!b.active||b.dead)continue;
    const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,minD=player.r+b.r*.72;
@@ -2069,8 +2075,10 @@ function update(dt){
      }
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
    }else if(pr.kind==='ice'){
-     if(freezeLegacyWaterAt(pr.x,pr.y,pr.r+22)){particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
-     if(!pr.hit&&freezeStreamsAt(pr.x,pr.y,pr.r+16))pr.hit=true;
+     const frozeLegacy=freezeLegacyWaterAt(pr.x,pr.y,pr.r+22);
+     const frozeStream=freezeStreamsAt(pr.x,pr.y,pr.r+16);
+     if(frozeLegacy||frozeStream)particle(pr.x,pr.y,'カチッ','#167bad',.22,12);
+     // 水を凍らせても氷弾は消えず、そのまま敵まで飛ぶ。
    }
    if(pr.hit)continue;
    if(pr.kind==='ice'&&iceHitAnything(pr))continue;
@@ -2679,7 +2687,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  if(fireBossDefeated&&!iceBoss.dead&&player.y<-3050&&player.x<100){
    iceBoss.active=true;
  }
- for(const e of iceEnemies){if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;const d=dist(player.x,player.y,e.x,e.y);if(d<390&&e.attackCd<=0){const a=Math.atan2(player.y-e.y,player.x-e.x);if(e.type==='penguin'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*175,vy:Math.sin(a)*175,r:9,life:2.2,kind:'snowball',damage:4,enemyShot:true,hit:false});e.attackCd=1.6}else if(e.type==='seal'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*135,vy:Math.sin(a)*135,r:12,life:2.5,kind:'icechunk',damage:5,enemyShot:true,hit:false});e.attackCd=2}else{e.x+=Math.cos(a)*48;e.y+=Math.sin(a)*48;e.attackCd=2.2;if(d<82&&!player.shield)hurt(6)}}}
+ for(const e of iceEnemies){if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;const d=dist(player.x,player.y,e.x,e.y);if(d<390&&e.attackCd<=0){const a=Math.atan2(player.y-e.y,player.x-e.x);if(e.type==='penguin'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*175,vy:Math.sin(a)*175,r:9,life:2.2,kind:'snowball',damage:4,enemyShot:true,hit:false});e.attackCd=1.6}else if(e.type==='seal'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*135,vy:Math.sin(a)*135,r:12,life:2.5,kind:'icechunk',damage:5,enemyShot:true,hit:false});e.attackCd=2}else{e.x+=Math.cos(a)*48;e.y+=Math.sin(a)*48;e.attackCd=2.2;if(d<82&&!player.shield&&player.inv<=0){const got=takeDamage(6);player.inv=.55;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}}}}
  if(iceBoss.active&&!iceBoss.dead){
    iceBoss.flash=Math.max(0,iceBoss.flash-dt);iceBoss.attackCd-=dt;
    if(iceBoss.attackCd<=0){
@@ -3527,6 +3535,27 @@ function drawWorld(){
      ctx.save();ctx.translate(o.x,o.y);ctx.fillStyle='#bcecff';ctx.strokeStyle='#111';ctx.lineWidth=6;
      ctx.beginPath();ctx.moveTo(0,-o.r);ctx.lineTo(o.r*.78,-o.r*.25);ctx.lineTo(o.r*.55,o.r*.8);ctx.lineTo(-o.r*.55,o.r*.8);ctx.lineTo(-o.r*.8,-o.r*.2);ctx.closePath();ctx.fill();ctx.stroke();
      line(-14,-7,8,13,3,'#fff');line(5,-20,20,-3,3,'#fff');ctx.restore();
+   }
+
+   // 氷エリアの雑魚は地形より後に描き、背景の下へ隠れない。
+   for(const e of iceEnemies){
+     if(e.dead)continue;
+     ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#31576a';ctx.beginPath();ctx.ellipse(e.x,e.y+27,e.r*.82,e.r*.27,0,0,Math.PI*2);ctx.fill();ctx.restore();
+     ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+     if(e.type==='penguin'){
+       circle(0,2,27,'#202a32','#111',5);
+       ctx.fillStyle='#f5fbff';ctx.beginPath();ctx.ellipse(0,8,15,20,0,0,Math.PI*2);ctx.fill();
+       circle(-8,-7,3,'#111','transparent',0);circle(8,-7,3,'#111','transparent',0);
+       ctx.fillStyle='#f4a62a';ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(7,0);ctx.lineTo(0,7);ctx.closePath();ctx.fill();
+     }else if(e.type==='seal'){
+       ctx.fillStyle='#d9edf4';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,7,34,23,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+       circle(-9,0,3,'#111','transparent',0);circle(9,0,3,'#111','transparent',0);circle(0,7,4,'#333','transparent',0);
+       line(-18,12,-31,19,4,'#111');line(18,12,31,19,4,'#111');
+     }else{
+       circle(0,4,38,'#f5fbff','#111',6);circle(-24,-22,12,'#f5fbff','#111',5);circle(24,-22,12,'#f5fbff','#111',5);
+       circle(-11,-3,4,'#111','transparent',0);circle(11,-3,4,'#111','transparent',0);circle(0,9,7,'#333','transparent',0);
+     }
+     ctx.restore();
    }
    if(!iceBoss.dead){
      ctx.save();ctx.translate(iceBoss.x,iceBoss.y);if(iceBoss.flash>0)ctx.globalAlpha=.58;
