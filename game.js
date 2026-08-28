@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={w:11800,h:1100};
+const world={w:15050,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 68: 最初の浮遊草原ステージ
+// Prototype 76: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -244,6 +244,22 @@ const stage8Enemies=[
 ];
 let stage8Started=false;
 
+// ステージ9：跳び石群島の先にある円形ボス島。
+// 左の虹で入場し、撃破後に右の虹が開く。
+const stage9Geo={
+ arena:{x:13680,y:300,w:760,h:500},
+ entryBridge:{x1:13460,y1:575,x2:13680,y2:555},
+ exitBridge:{x1:14440,y1:555,x2:14630,y2:555},
+ exitIsland:{x:14620,y:420,w:260,h:270}
+};
+const islandBoss={
+ x:14060,y:555,r:92,hp:52,maxHp:52,active:false,dead:false,
+ attackCd:1.15,flash:0,phase:0,petalA:0
+};
+let stage9Started=false;
+let islandBossDefeated=false;
+
+
 
 
 
@@ -303,7 +319,25 @@ function visibleGroundRects(){
    grounds.push(stage7Geo.path[0]);
  }
  if(stage7Started)grounds.push(...stage7Geo.path);
- if(rockBossDefeated)grounds.push(...stage8Geo.path);
+ if(rockBossDefeated){
+   grounds.push(...stage8Geo.path);
+   grounds.push({
+     x:Math.min(stage9Geo.entryBridge.x1,stage9Geo.entryBridge.x2)-30,
+     y:stage9Geo.entryBridge.y1-105,
+     w:Math.abs(stage9Geo.entryBridge.x2-stage9Geo.entryBridge.x1)+60,
+     h:210
+   });
+   grounds.push(stage9Geo.arena);
+ }
+ if(islandBossDefeated){
+   grounds.push({
+     x:Math.min(stage9Geo.exitBridge.x1,stage9Geo.exitBridge.x2)-30,
+     y:stage9Geo.exitBridge.y1-105,
+     w:Math.abs(stage9Geo.exitBridge.x2-stage9Geo.exitBridge.x1)+60,
+     h:210
+   });
+   grounds.push(stage9Geo.exitIsland);
+ }
  return grounds;
 }
 function pointSupportedByGround(x,y,pad=24){
@@ -747,6 +781,61 @@ function swordSkillHitTarget(target,damage=7){
  return true;
 }
 
+
+function damageBreakableRock(r,weapon,amount=1){
+ if(r.dead)return;
+ if(r.hp==null)r.hp=5;
+ if(weapon===2){
+   r.hp=0;r.dead=true;particle(r.x,r.y,'粉砕！','#444',.45,17);return;
+ }
+ if(weapon===1){
+   r.hp-=amount;
+   particle(r.x,r.y,r.hp>0?`ガキン！ ${r.hp}`:'砕けた！','#555',.34,14);
+   if(r.hp<=0)r.dead=true;
+ }else{
+   particle(r.x,r.y,'カン！','#555',.28,13);
+ }
+}
+
+// 氷塊：ハンマー1発、槍5発、炎1発。
+// 再生ツタ：通常武器では即再生。青杖で凍らせれば剣・槍・ハンマーのどれでも破壊可能。
+const elementalObstacles=[
+ {x:14735,y:485,r:34,type:'iceBlock',hp:5,dead:false},
+ {x:14795,y:610,r:42,type:'regenVine',frozen:false,dead:false,wiggle:0}
+];
+function hitElementalObstacle(x,y,r,kind,power=1){
+ for(const o of elementalObstacles){
+  if(o.dead||dist(x,y,o.x,o.y)>r+o.r)continue;
+  if(o.type==='iceBlock'){
+   if(kind==='hammer'||kind==='fire'){o.dead=true;particle(o.x,o.y,'パリン！','#b8ecff',.45,17)}
+   else if(kind==='spear'){o.hp-=power;particle(o.x,o.y,o.hp>0?`キン！ ${o.hp}`:'パリン！','#8bdcf4',.35,14);if(o.hp<=0)o.dead=true}
+   else particle(o.x,o.y,'カチン！','#8bdcf4',.3,13);
+  }else if(o.type==='regenVine'){
+   if(kind==='ice'&&!o.frozen){
+     o.frozen=true;particle(o.x,o.y,'カチコチ！','#63d7ff',.5,16);
+   }else if(o.frozen&&(kind==='hammer'||kind==='spear'||kind==='sword')){
+     o.dead=true;particle(o.x,o.y,'パキパキッ！','#dff8ff',.5,17);
+   }else if(o.frozen&&kind==='fire'){
+     o.frozen=false;particle(o.x,o.y,'ジュッ…再生！','#e66',.4,14);
+   }else if(kind==='hammer'||kind==='spear'||kind==='sword'){
+     particle(o.x,o.y,'グニャ…再生！','#287b3c',.42,14);
+   }else{
+     particle(o.x,o.y,o.frozen?'凍っている':'うごめいている…','#287b3c',.3,13);
+   }
+  }
+ }
+}
+
+function hitIslandBoss(damage,range,base,cone){
+ if(!stage9Started||!islandBoss.active||islandBoss.dead)return;
+ const d=dist(player.x,player.y,islandBoss.x,islandBoss.y);
+ const a=Math.atan2(islandBoss.y-player.y,islandBoss.x-player.x);
+ if(d<=range+islandBoss.r&&Math.abs(angleDiff(a,base))<=cone/2){
+   islandBoss.hp-=damage;islandBoss.flash=.18;
+   particle(islandBoss.x,islandBoss.y-65,`-${damage}`,'#b31313',.42,16);
+ }
+}
+
 function hitBoss(damage,range,base,cone=Math.PI*2){
  if(!boss.active||boss.dead)return;
  const d=dist(player.x,player.y,boss.x,boss.y);
@@ -794,7 +883,7 @@ function doAttack(charged=false){
    for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=5;enemyHitReact(e,58);particle(e.x,e.y-22,'-5','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+55){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
-   hitBoss(5,range+38,base,Math.PI*2);hitStage2(5,range+38,base,Math.PI*2);hitStage3(5,range+38,base,Math.PI*2,w,true);hitStage45(5,range+38,base,Math.PI*2,w);
+   hitBoss(5,range+38,base,Math.PI*2);hitIslandBoss(5,range+38,base,Math.PI*2);hitStage2(5,range+38,base,Math.PI*2);hitStage3(5,range+38,base,Math.PI*2,w,true);hitStage45(5,range+38,base,Math.PI*2,w);
    return;
  }
 
@@ -814,13 +903,18 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(8,230,base,.55,w);
-   // この序盤岩は槍では壊れない。ハンマー入手後のバックトラック用。
-   for(const r of props.rocks){
+   hitBoss(4,230,base,.55);hitIslandBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(8,230,base,.55,w);
+   // 槍でも岩は削れるが、5回必要。ハンマーなら1発。
+   for(const r of stage7Rocks){
      if(r.dead)continue;
      const dx=r.x-player.x,dy=r.y-player.y;
      const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-     if(along>0&&along<reach&&side<48){particle(r.x,r.y,'ガキン！','#555',.35,15)}
+     if(along>0&&along<reach&&side<r.r+24)damageBreakableRock(r,1,1);
+   }
+   for(const o of elementalObstacles){
+     if(o.dead)continue;const dx=o.x-player.x,dy=o.y-player.y;
+     const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+     if(along>0&&along<reach&&side<o.r+20)hitElementalObstacle(o.x,o.y,2,'spear',1);
    }
    return;
  }
@@ -840,17 +934,17 @@ function doAttack(charged=false){
 
  let cone=w===1?.34:1.05;
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
- hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
+ hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
  hitStage2(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitStage3(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w,false);hitStage45(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w);
  if(w===0){
   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
  }
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
- if(w===2&&stage7Started){
+ if((w===1||w===2)&&stage7Started){
   for(const r of stage7Rocks){
    if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+55){
-    r.dead=true;particle(r.x,r.y,'粉砕！','#444',.45,17);
+    damageBreakableRock(r,w,1);
    }
   }
   for(const e of bossWalnuts){
@@ -863,6 +957,14 @@ function doAttack(charged=false){
     r.dead=true;particle(r.x,r.y,'ガシャッ！','#666',.4,16);
    }
   }
+ }
+ if(w===0||w===1||w===2){
+   const fx=Math.cos(base),fy=Math.sin(base);
+   for(const o of elementalObstacles){
+     if(o.dead)continue;const dx=o.x-player.x,dy=o.y-player.y;
+     const along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+     if(along>0&&along<range+o.r+28&&side<o.r+22)hitElementalObstacle(o.x,o.y,2,w===0?'sword':(w===1?'spear':'hammer'),1);
+   }
  }
 }
 function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
@@ -915,6 +1017,9 @@ function update(dt){
            r.dead=true;particle(r.x,r.y,'ガシャッ！','#666',.4,16);
          }
        }
+     }
+     for(const o of elementalObstacles){
+       if(!o.dead&&dist(player.x,player.y,o.x,o.y)<155)hitElementalObstacle(o.x,o.y,2,'hammer',1);
      }
      for(const e of enemies){
        if(e.dead)continue;
@@ -1027,7 +1132,7 @@ function update(dt){
      if(t<.60&&local>.055&&local<.12&&!player.skillHit.has('s'+phase)){
        player.skillHit.add('s'+phase);
        particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,'ザシュ！','#fff',.25,15);
-       hitBoss(3,112,sa,1.25);hitStage2(3,112,sa,1.25);hitStage3(3,112,sa,1.25,0,false);hitStage45(3,112,sa,1.25,0);
+       hitBoss(3,112,sa,1.25);hitIslandBoss(3,112,sa,1.25);hitStage2(3,112,sa,1.25);hitStage3(3,112,sa,1.25,0,false);hitStage45(3,112,sa,1.25,0);
        for(const e of enemies){
          if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
          if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=3;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
@@ -1050,7 +1155,7 @@ function update(dt){
        const key='p'+tick;
        if(!player.skillHit.has(key)){
          player.skillHit.add(key);
-         hitBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
+         hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
          for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<76+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
@@ -1060,7 +1165,7 @@ function update(dt){
        if(p>.35&&!player.skillHit.has('finish')){
          player.skillHit.add('finish');
          particle(player.x+Math.cos(sa)*90,player.y+Math.sin(sa)*90,'ズドッ！','#fff',.3,17);
-         hitBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
+         hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
          for(const e of enemies){if(e.dead)continue;const dx=e.x-player.x,dy=e.y-player.y,along=dx*Math.cos(sa)+dy*Math.sin(sa),side=Math.abs(dx*Math.sin(sa)-dy*Math.cos(sa));if(along>0&&along<165&&side<35+e.r*.4){e.hp-=6;e.flash=.18;enemyHitReact(e,70);if(e.hp<=0)e.dead=true}}
        }
      }
@@ -1142,6 +1247,13 @@ function update(dt){
  }
  const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
+ for(const o of elementalObstacles){if(o.type==='regenVine'&&!o.dead)o.wiggle=(o.wiggle||0)+dt*7;}
+ // 属性障害物は壊すまで通行不可。
+ for(const o of elementalObstacles){
+   if(!o.dead&&dist(player.x,player.y,o.x,o.y)<player.r+o.r-4){
+     player.x=prevX;player.y=prevY;break;
+   }
+ }
  // gate付きの木だけは道を塞ぐ。ほかの小木は自然物なので通行を妨げない。
  for(const tr of props.smallTrees){
    if(tr.gate&&!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<47){
@@ -1334,6 +1446,15 @@ function update(dt){
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
    }else{
      const wa=props.water;if(pr.x>wa.x-pr.r&&pr.x<wa.x+wa.w+pr.r&&pr.y>wa.y-pr.r&&pr.y<wa.y+wa.h+pr.r){wa.frozen=5;particle(pr.x,pr.y,'カチッ','#167bad',.35,14);pr.hit=true}
+   }
+   if(pr.hit)continue;
+   if(pr.kind==='fire'||pr.kind==='ice'){
+     for(const o of elementalObstacles){
+       if(o.dead)continue;
+       if(dist(pr.x,pr.y,o.x,o.y)<pr.r+o.r){
+         hitElementalObstacle(o.x,o.y,o.r,pr.kind,1);pr.hit=true;break;
+       }
+     }
    }
    if(pr.hit)continue;
    if(seedBoss.active&&!seedBoss.dead&&dist(pr.x,pr.y,seedBoss.x,seedBoss.y)<pr.r+seedBoss.r){
@@ -1705,8 +1826,8 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
  // 岩ボス撃破後：橋ではなく、小島をジャンプで渡る次コース。
- if(rockBossDefeated&&player.x>11740&&!stage8Started){
-   stage8Started=true;currentStage=8;stage.checkpoint={x:11840,y:545};
+ if(rockBossDefeated&&player.x>11690&&!stage8Started){
+   stage8Started=true;currentStage=8;stage.checkpoint={x:11870,y:545};
    say('跳び石群島：短い隙間はジャンプで！');
  }
  if(stage8Started){
@@ -1717,6 +1838,50 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
        const got=takeDamage(4);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
        const a=Math.atan2(player.y-e.y,player.x-e.x);player.x+=Math.cos(a)*18;player.y+=Math.sin(a)*18;
      }
+   }
+ }
+
+ // 跳び石群島の最奥：円形のボス島へ。
+ if(rockBossDefeated&&player.x>13640&&!stage9Started){
+   stage9Started=true;currentStage=9;stage.checkpoint={x:13780,y:555};
+   islandBoss.active=true;
+   say('大輪の闘技島！');
+ }
+ if(stage9Started&&!islandBoss.dead){
+   islandBoss.flash=Math.max(0,islandBoss.flash-dt);
+   islandBoss.petalA=(islandBoss.petalA||0)+dt*1.8;
+   islandBoss.attackCd-=dt;
+
+   // ボスは島から出ない。プレイヤーにも重ならない。
+   islandBoss.x=clamp(islandBoss.x,stage9Geo.arena.x+120,stage9Geo.arena.x+stage9Geo.arena.w-120);
+   islandBoss.y=clamp(islandBoss.y,stage9Geo.arena.y+120,stage9Geo.arena.y+stage9Geo.arena.h-105);
+   const dx=player.x-islandBoss.x,dy=player.y-islandBoss.y,d=Math.hypot(dx,dy)||1;
+   if(d<islandBoss.r+player.r+14){
+     const push=islandBoss.r+player.r+14-d;
+     player.x+=dx/d*push;player.y+=dy/d*push;
+   }
+
+   if(islandBoss.attackCd<=0){
+     islandBoss.attackCd=1.35;
+     islandBoss.phase++;
+     const base=Math.atan2(player.y-islandBoss.y,player.x-islandBoss.x);
+     // 大輪から葉っぱ弾。時々3方向。
+     const count=islandBoss.phase%3===0?3:1;
+     for(let i=0;i<count;i++){
+       const a=base+(i-(count-1)/2)*.28;
+       projectiles.push({
+         x:islandBoss.x+Math.cos(a)*70,y:islandBoss.y+Math.sin(a)*70-8,
+         vx:Math.cos(a)*195,vy:Math.sin(a)*195,r:12,life:2.3,
+         kind:'leafshot',damage:5,enemyShot:true,hit:false
+       });
+     }
+     particle(islandBoss.x,islandBoss.y-70,'サァッ！','#5a9d45',.3,15);
+   }
+
+   if(islandBoss.hp<=0){
+     islandBoss.dead=true;islandBoss.active=false;islandBossDefeated=true;
+     particle(islandBoss.x,islandBoss.y,'撃破！','#fff',.9,26);
+     say('右側に虹の橋が現れた！');
    }
  }
 
@@ -2232,6 +2397,107 @@ function drawWorld(){
      ctx.restore();circle(0,0,13,'#ffd85a','#111',5);line(0,12,0,31,8,'#111');line(0,12,0,31,4,'#4fae52');ctx.restore();
    }
  }
+
+ // ステージ9：大きな円形ボス島。
+ if(rockBossDefeated){
+   const a=stage9Geo.arena;
+   // 茶色の浮遊島の厚み
+   ctx.fillStyle='#7b5b3c';ctx.strokeStyle='#111';ctx.lineWidth=8;
+   ctx.beginPath();ctx.roundRect(a.x+20,a.y+38,a.w-40,a.h+70,150);ctx.fill();ctx.stroke();
+   // 草の上面
+   ctx.fillStyle='#7fd369';ctx.strokeStyle='#111';ctx.lineWidth=8;
+   ctx.beginPath();ctx.roundRect(a.x,a.y,a.w,a.h,150);ctx.fill();ctx.stroke();
+
+   // 外周に木・低木。中央は戦闘スペースとして空ける。
+   for(let i=0;i<12;i++){
+     const ang=i*Math.PI*2/12;
+     const rx=a.x+a.w/2+Math.cos(ang)*(a.w*.40);
+     const ry=a.y+a.h/2+Math.sin(ang)*(a.h*.38);
+     if(Math.abs(Math.cos(ang))>.92)continue;
+     circle(rx,ry,18,'#3fb95a','#111',5);
+     if(i%3===0)circle(rx+12,ry-10,14,'#57ca67','#111',4);
+   }
+
+   // 左の入場虹
+   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
+   cols.forEach((c,i)=>{
+     ctx.strokeStyle=c;ctx.lineWidth=16;ctx.beginPath();
+     ctx.moveTo(stage9Geo.entryBridge.x1,stage9Geo.entryBridge.y1+i*10-25);
+     ctx.quadraticCurveTo(13575,520+i*7,stage9Geo.entryBridge.x2,stage9Geo.entryBridge.y2+i*10-25);
+     ctx.stroke();
+   });
+
+   // 撃破後だけ右の虹＋出口小島
+   if(islandBossDefeated){
+     cols.forEach((c,i)=>{
+       ctx.strokeStyle=c;ctx.lineWidth=16;ctx.beginPath();
+       ctx.moveTo(stage9Geo.exitBridge.x1,stage9Geo.exitBridge.y1+i*10-25);
+       ctx.quadraticCurveTo(14535,520+i*7,stage9Geo.exitBridge.x2,stage9Geo.exitBridge.y2+i*10-25);
+       ctx.stroke();
+     });
+     const ex=stage9Geo.exitIsland;
+     ctx.fillStyle='#8fd27a';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(ex.x,ex.y,ex.w,ex.h,60);ctx.fill();ctx.stroke();
+   }
+ }
+
+ if(stage9Started&&!islandBoss.dead){
+   ctx.save();ctx.translate(islandBoss.x,islandBoss.y);
+   if(islandBoss.flash>0)ctx.globalAlpha=.58;
+   // 大輪ボス。足元の葉を2枚、中央は広く読みやすく。
+   ctx.fillStyle='#55b84f';ctx.strokeStyle='#111';ctx.lineWidth=7;
+   ctx.beginPath();ctx.ellipse(-42,62,40,18,-.45,0,Math.PI*2);ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.ellipse(42,62,40,18,.45,0,Math.PI*2);ctx.fill();ctx.stroke();
+   line(0,18,0,76,24,'#111');line(0,18,0,76,13,'#4d9f48');
+   ctx.save();ctx.rotate(islandBoss.petalA*.18);
+   for(let i=0;i<14;i++){
+     const aa=i*Math.PI*2/14;
+     ctx.save();ctx.translate(Math.cos(aa)*58,Math.sin(aa)*58-18);ctx.rotate(aa);
+     ctx.fillStyle=i%2?'#ff9f45':'#ffd24f';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.ellipse(0,0,18,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+   }
+   ctx.restore();
+   circle(0,-18,46,'#75952c','#111',8);
+   circle(-15,-24,6,'#111','#111',1);circle(15,-24,6,'#111','#111',1);
+   line(-16,2,16,2,6,'#111');
+   ctx.restore();
+
+   ctx.fillStyle='#111';ctx.fillRect(islandBoss.x-115,islandBoss.y-135,230,16);
+   ctx.fillStyle='#e84a3a';ctx.fillRect(islandBoss.x-111,islandBoss.y-131,222*Math.max(0,islandBoss.hp/islandBoss.maxHp),8);
+ }
+
+ // 属性障害物の見本：出口小島に配置。
+ for(const o of elementalObstacles){
+   if(o.dead)continue;
+   if(o.type==='iceBlock'){
+     ctx.save();ctx.translate(o.x,o.y);ctx.fillStyle='#8de7ff';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.moveTo(-30,20);ctx.lineTo(-20,-24);ctx.lineTo(5,-38);ctx.lineTo(31,-12);ctx.lineTo(25,27);ctx.closePath();ctx.fill();ctx.stroke();
+     line(-10,-20,10,15,4,'rgba(255,255,255,.85)');ctx.restore();
+   }else{
+     ctx.save();ctx.translate(o.x,o.y);
+     const wig=o.frozen?0:Math.sin(o.wiggle||0)*7;
+     ctx.lineCap='round';ctx.lineJoin='round';
+     // 絡み合って道を塞ぐ、太い再生ツタ。
+     ctx.strokeStyle='#111';ctx.lineWidth=18;
+     ctx.beginPath();ctx.moveTo(-34,30);ctx.bezierCurveTo(-48,-8,-8,-12+wig,4,-42);ctx.stroke();
+     ctx.beginPath();ctx.moveTo(32,31);ctx.bezierCurveTo(45,0,18,1-wig,-4,-40);ctx.stroke();
+     ctx.beginPath();ctx.moveTo(-38,8);ctx.bezierCurveTo(-10,22+wig,15,-23,39,-4);ctx.stroke();
+     ctx.strokeStyle=o.frozen?'#a8eaff':'#238b45';ctx.lineWidth=10;
+     ctx.beginPath();ctx.moveTo(-34,30);ctx.bezierCurveTo(-48,-8,-8,-12+wig,4,-42);ctx.stroke();
+     ctx.beginPath();ctx.moveTo(32,31);ctx.bezierCurveTo(45,0,18,1-wig,-4,-40);ctx.stroke();
+     ctx.beginPath();ctx.moveTo(-38,8);ctx.bezierCurveTo(-10,22+wig,15,-23,39,-4);ctx.stroke();
+     // 葉
+     ctx.fillStyle=o.frozen?'#d9f8ff':'#3fbd55';ctx.strokeStyle='#111';ctx.lineWidth=4;
+     for(const [lx,ly,a] of [[-25,-8,-.6],[24,-13,.6],[-7,17,.35]]){
+       ctx.save();ctx.translate(lx,ly);ctx.rotate(a);ctx.beginPath();ctx.ellipse(0,0,13,7,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+     }
+     if(o.frozen){
+       ctx.globalAlpha=.75;ctx.strokeStyle='#fff';ctx.lineWidth=3;
+       line(-22,-28,-10,-16,3,'#fff');line(16,-31,26,-20,3,'#fff');
+     }
+     ctx.restore();
+   }
+ }
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
  drawSwordSkillEffect();
@@ -2257,6 +2523,7 @@ function drawObjectiveArrow(){
  else if(!stage7Started){tx=stage7Geo.path[0].x+120;ty=550;}
  else if(!hammerPickup.taken){tx=hammerPickup.x;ty=hammerPickup.y;}
  else if(!rockBossDefeated){tx=rockBoss.x;ty=rockBoss.y;}
+ else if(!islandBossDefeated){tx=islandBoss.x;ty=islandBoss.y;}
  else return;
 
  const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
