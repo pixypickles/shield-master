@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 111: 最初の浮遊草原ステージ
+// Prototype 112: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -245,6 +245,12 @@ const iceRouteBlocks=[
  {x:-590,y:-2830,r:57,hp:1,dead:false},{x:-360,y:-2850,r:56,hp:1,dead:false},{x:-120,y:-2825,r:55,hp:1,dead:false},
  {x:-500,y:-3170,r:59,hp:1,dead:false},{x:-250,y:-3190,r:58,hp:1,dead:false},{x:10,y:-3165,r:57,hp:1,dead:false}
 ];
+const iceEnemies=[
+{x:-920,y:-520,r:28,hp:3,maxHp:3,type:'penguin',attackCd:1.2,flash:0,dead:false},{x:-760,y:-900,r:30,hp:3,maxHp:3,type:'seal',attackCd:1.7,flash:0,dead:false},
+{x:-650,y:-1260,r:31,hp:4,maxHp:4,type:'penguin',attackCd:1.1,flash:0,dead:false},{x:-470,y:-1570,r:34,hp:5,maxHp:5,type:'seal',attackCd:1.6,flash:0,dead:false},
+{x:-380,y:-1930,r:39,hp:7,maxHp:7,type:'polarbear',attackCd:1.8,flash:0,dead:false},{x:-210,y:-2280,r:31,hp:4,maxHp:4,type:'penguin',attackCd:1,flash:0,dead:false},
+{x:-80,y:-2640,r:35,hp:5,maxHp:5,type:'seal',attackCd:1.5,flash:0,dead:false},{x:80,y:-2990,r:42,hp:8,maxHp:8,type:'polarbear',attackCd:1.7,flash:0,dead:false}];
+
 const iceBoss={
  x:-250,y:-3260,r:86,hp:48,maxHp:48,active:false,dead:false,flash:0,attackCd:1.05
 };
@@ -385,9 +391,9 @@ const stage7Rocks=[
  {x:10780,y:610,r:38,dead:false}
 ];
 
-let hammerPickup={x:10380,y:540,taken:false};
+let hammerPickup={x:10380,y:690,taken:false};
 const hammerGuardian={
- x:10380,y:540,r:55,hp:18,maxHp:18,active:false,dead:false,
+ x:10380,y:690,r:55,hp:18,maxHp:18,active:false,dead:false,
  attackCd:.85,flash:0
 };
 const hammerGuardianRocks=[];
@@ -628,6 +634,16 @@ function pointSupportedByGround(x,y,pad=24){
    return dx*dx+dy*dy<=pad*pad;
  });
 }
+
+
+const SAVE_KEY='shieldHeroSave_v112';
+function saveProgress(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,seedBossDead:!!stage2Boss.dead,fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,stage9Started:!!stage9Started,stage10Started:!!stage10Started,islandBossDefeated:!!islandBossDefeated}))}catch(e){}}
+function loadProgress(){let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d)return false;
+Object.assign(player,{x:d.x??player.x,y:d.y??player.y,hp:d.hp??player.hp,weapon:d.weapon??player.weapon,shieldType:d.shieldType??player.shieldType,swordPlus:!!d.swordPlus});if(d.inv)player.inv=d.inv;if(Number.isInteger(d.currentStage))currentStage=d.currentStage;if(d.checkpoint)stage.checkpoint=d.checkpoint;
+if(d.seedBossDead){stage2Boss.dead=true;stage2Boss.active=false}if(d.fireBossDead){fireBoss.dead=true;fireBoss.active=false}if(d.iceBossDead){iceBoss.dead=true;iceBoss.active=false}if(d.rockBossDead){rockBoss.dead=true;rockBoss.active=false}if(d.hammerGuardianDead){hammerGuardian.dead=true;hammerGuardian.active=false}if(d.islandBossDead){islandBoss.dead=true;islandBoss.active=false}
+spearPickup.taken=!!d.spearTaken;hammerPickup.taken=!!d.hammerTaken;upperSwordPickup.taken=!!d.upperSwordTaken;stage9Started=!!d.stage9Started;stage10Started=!!d.stage10Started;islandBossDefeated=!!d.islandBossDefeated;return true}
+setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},2500);window.addEventListener('pagehide',saveProgress);
+window.addEventListener('DOMContentLoaded',()=>{const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}c.disabled=!has;c.onclick=()=>{loadProgress();m.classList.add('hidden')};n.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}m.classList.add('hidden')}});
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
@@ -1385,6 +1401,7 @@ function doAttack(charged=false){
  }
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)dmg=swordDamage(dmg);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
  let commonD=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)commonD=swordDamage(commonD);
+ for(const e of iceEnemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<range+e.r&&Math.abs(angleDiff(aa,base))<cone){e.hp-=commonD;e.flash=.16;enemyHitReact(e,48);particle(e.x,e.y-20,`-${commonD}`,'#b31313',.35,15);if(e.hp<=0)e.dead=true}}
  hitBoss(commonD,range,base,cone);hitIslandBoss(commonD,range,base,cone);hitFireBoss(commonD,range,base,cone);hitIceBoss(commonD,range,base,cone);
  hitStage2(commonD,range,base,cone);hitStage3(commonD,range,base,cone,w,false);hitStage45(commonD,range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
@@ -2083,6 +2100,7 @@ function update(dt){
      iceBoss.hp-=dmg;iceBoss.flash=.18;particle(iceBoss.x,iceBoss.y-48,`-${dmg}`,'#e55232',.4,16);pr.hit=true;
    }
    if(pr.hit)continue;
+   for(const e of iceEnemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r+10){let dmg=pr.damage||3;if(pr.kind==='fire')dmg++;e.hp-=dmg;e.flash=.16;particle(e.x,e.y-24,`-${dmg}`,'#b31313',.35,15);pr.hit=true;if(e.hp<=0)e.dead=true;break}}if(pr.hit)continue;
    for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;enemyHitReact(e,14);particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
@@ -2661,6 +2679,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  if(fireBossDefeated&&!iceBoss.dead&&player.y<-3050&&player.x<100){
    iceBoss.active=true;
  }
+ for(const e of iceEnemies){if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;const d=dist(player.x,player.y,e.x,e.y);if(d<390&&e.attackCd<=0){const a=Math.atan2(player.y-e.y,player.x-e.x);if(e.type==='penguin'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*175,vy:Math.sin(a)*175,r:9,life:2.2,kind:'snowball',damage:4,enemyShot:true,hit:false});e.attackCd=1.6}else if(e.type==='seal'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*135,vy:Math.sin(a)*135,r:12,life:2.5,kind:'icechunk',damage:5,enemyShot:true,hit:false});e.attackCd=2}else{e.x+=Math.cos(a)*48;e.y+=Math.sin(a)*48;e.attackCd=2.2;if(d<82&&!player.shield)hurt(6)}}}
  if(iceBoss.active&&!iceBoss.dead){
    iceBoss.flash=Math.max(0,iceBoss.flash-dt);iceBoss.attackCd-=dt;
    if(iceBoss.attackCd<=0){
@@ -3686,6 +3705,7 @@ function drawProjectile(pr){
    ctx.fillStyle='#65b84d';ctx.strokeStyle='#111';ctx.lineWidth=4;
    ctx.beginPath();ctx.moveTo(pr.r+5,0);ctx.quadraticCurveTo(0,-pr.r,-pr.r-5,0);ctx.quadraticCurveTo(0,pr.r,pr.r+5,0);ctx.fill();ctx.stroke();
    line(-pr.r-7,0,pr.r+2,0,3,'#397a35');
+ }else if(pr.kind==='snowball'||pr.kind==='icechunk'){circle(0,0,pr.r,pr.kind==='snowball'?'#f8fdff':'#bcecff','#507c91',3);ctx.globalAlpha=.65;line(-pr.r-10,0,-pr.r-2,0,3,'#fff');ctx.globalAlpha=1;
  }else if(pr.kind==='fire'){
    // 赤杖：魔法感は残しつつ、中心を大きくした「火の玉」。
    const t=performance.now()*.018+(pr.magicPhase||0);
