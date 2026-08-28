@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 103: 最初の浮遊草原ステージ
+// Prototype 104: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -143,8 +143,6 @@ const currentStreams=[
  {id:'leftfire',source:'cloud',cloudX:-1110,cloudY:150,width:72,speed:132,frozen:0,
   pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-790,y:640},{x:-790,y:880}]},
  {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9300,y:155},{x:9200,y:235},{x:9200,y:390}]},
- {id:'cloudUpperB',source:'cloud',cloudX:6350,cloudY:-40,width:86,speed:188,frozen:0,pts:[{x:6350,y:55},{x:6350,y:125},{x:6160,y:155},{x:5700,y:155},{x:5580,y:230},{x:5580,y:390}]},
- {id:'cloudUpperC',source:'cloud',cloudX:3050,cloudY:-45,width:80,speed:72,frozen:0,pts:[{x:3050,y:55},{x:3050,y:130},{x:2890,y:155},{x:2460,y:155},{x:2350,y:230},{x:2350,y:390}]}
 ];
 const cloudJumpPads=[
  {x:620,y:455,r:54},{x:1355,y:165,r:58},{x:2440,y:280,r:52},
@@ -1352,8 +1350,7 @@ function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
  return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
- if(areaMapOpen)return;
- if(areaMapOpen)return;
+ if(areaMapOpen||!equipPanel.classList.contains('hidden'))return;
  player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
  for(const e of enemies){
@@ -1611,7 +1608,7 @@ function update(dt){
      player.face=faceFromVec(mx,my);
      // 地面に短時間残る火を置く。
      if(!player.fireTrail.length || dist(player.x,player.y,player.fireTrail[player.fireTrail.length-1].x,player.fireTrail[player.fireTrail.length-1].y)>34){
-       player.fireTrail.push({x:player.x,y:player.y,life:1.6});
+       player.fireTrail.push({x:player.x,y:player.y,life:2.15});
      }
      for(const e of enemies){
        if(e.dead||player.skillHit.has(e))continue;
@@ -1684,8 +1681,9 @@ function update(dt){
    st.frozen=Math.max(0,st.frozen-dt);
    const seg=nearestStreamSegment(st,player.x,player.y,player.r*.55);
    const visibleHere=pointSupportedByGround(player.x,player.y,player.r*.35);
-   const visibleWater=seg&&pointSupportedByGround(seg.px,seg.py,6);
-   if(seg&&visibleHere&&visibleWater&&st.frozen<=0){
+   const visibleWater=seg&&pointSupportedByGround(seg.px,seg.py,10);
+   const sameGround=seg&&pointOnSameVisibleGround({x:player.x,y:player.y},{x:seg.px,y:seg.py},10);
+   if(seg&&visibleHere&&visibleWater&&sameGround&&st.frozen<=0){
      const nx=seg.dx/(seg.len||1),ny=seg.dy/(seg.len||1);
      player.x+=nx*st.speed*dt;player.y+=ny*st.speed*dt;
    }
@@ -2552,6 +2550,12 @@ function clipVisibleGround(){
  }
  ctx.clip();
 }
+function pointOnSameVisibleGround(a,b,pad=4){
+ return visibleGroundRects().some(g=>
+   a.x>=g.x+pad&&a.x<=g.x+g.w-pad&&a.y>=g.y+pad&&a.y<=g.y+g.h-pad&&
+   b.x>=g.x+pad&&b.x<=g.x+g.w-pad&&b.y>=g.y+pad&&b.y<=g.y+g.h-pad
+ );
+}
 function streamHasSurface(st){
  const p=st.pts[0];return pointSupportedByGround(p.x,p.y,28);
 }
@@ -2808,6 +2812,13 @@ function drawWorld(){
      }
    }
    ctx.restore();
+ }
+
+ // 赤杖の火の跡は草原・岩場を問わず地面の上に残す。
+ for(const f of player.fireTrail){
+   ctx.save();ctx.globalAlpha=Math.min(.78,f.life*.72);
+   ctx.fillStyle='rgba(255,72,18,.78)';ctx.beginPath();ctx.arc(f.x,f.y,20,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='rgba(255,205,45,.92)';ctx.lineWidth=4;ctx.stroke();ctx.restore();
  }
 
  // 川は地面の上、木・敵・プレイヤーの下に描く。
@@ -3715,17 +3726,7 @@ function drawThrustStreak(a){const t=1-player.attacking/player.attackMax;ctx.sav
 
 
 function drawStaffSkillEffects(){
- // 地面に残る炎
- if(player.fireTrail.length){
-   for(const f of player.fireTrail){
-     ctx.save();ctx.globalAlpha=Math.min(.7,f.life);
-     ctx.fillStyle='rgba(255,85,20,.8)';
-     ctx.beginPath();ctx.arc(f.x,f.y,18,0,Math.PI*2);ctx.fill();
-     ctx.strokeStyle='rgba(255,210,60,.9)';ctx.lineWidth=4;ctx.stroke();
-     ctx.restore();
-   }
- }
-
+ // 地面の炎は地形描画側で先に描く。
  // 青杖スキルの通過跡：火ではなく氷のキラキラ。
  if(player.iceTrail.length){
    const tm=performance.now()*.012;
@@ -3849,7 +3850,7 @@ function drawChargeEffects(){
        const x=50+p*205;
        const side=Math.sin(i*2.17+performance.now()*.01)*(20+p*65);
        const wob=Math.sin(performance.now()*.018+i)*8;
-       ctx.globalAlpha=(.11+.20*(1-p))*life;
+       ctx.globalAlpha=(.24+.34*(1-p))*life;
        ctx.fillStyle=i%3===0?'#ff2f2f':(i%3===1?'#ff6b32':'#ffb13b');
        ctx.beginPath();
        ctx.moveTo(x-28,side+18);
@@ -3859,7 +3860,7 @@ function drawChargeEffects(){
        ctx.fill();
      }
      // 外周に薄い熱気の扇形。
-     ctx.globalAlpha=.13*life;ctx.fillStyle='#ff3a30';ctx.beginPath();ctx.moveTo(28,0);
+     ctx.globalAlpha=.27*life;ctx.fillStyle='#ff3a30';ctx.beginPath();ctx.moveTo(28,0);
      ctx.arc(28,0,250,-.52,.52);ctx.closePath();ctx.fill();
 
    }else{
@@ -4001,5 +4002,4 @@ let stage6Started=false;
 let stage7Started=false;
 let rockBossDefeated=false;
 let spearPickup={x:3605,y:545,taken:false};
-
 
