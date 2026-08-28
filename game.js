@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 114: 最初の浮遊草原ステージ
+// Prototype 115: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -284,9 +284,9 @@ const vineAreaGeo={
  arena:{x:2750,y:-980,w:720,h:500}
 };
 const vineWalls=[
- {x:720,y:-690,r:52,hp:3,maxHp:3,dead:false,regenT:0,burned:false},
- {x:1260,y:-760,r:55,hp:3,maxHp:3,dead:false,regenT:0,burned:false},
- {x:1860,y:-700,r:58,hp:4,maxHp:4,dead:false,regenT:0,burned:false}
+ {x:720,y:-690,r:52,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1260,y:-760,r:55,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
+ {x:1860,y:-700,r:58,hp:4,maxHp:4,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false}
 ];
 const vineSeedFlowers=[
  {x:1040,y:-770,r:30,hp:4,maxHp:4,attackCd:1.2,flash:0,dead:false},
@@ -1320,9 +1320,14 @@ function hitVineContent(damage,range,base,cone,kind='physical'){
  for(const e of iceThrowers)hit(e);
  for(const e of iceEnemies)hit(e);
  for(const v of vineWalls){
-   if(v.dead)continue;
+   if(v.dead||v.perma)continue;
    const d=dist(player.x,player.y,v.x,v.y),a=Math.atan2(v.y-player.y,v.x-player.x);
    if(d<=range+v.r&&Math.abs(angleDiff(a,base))<=cone/2+.12){
+     if(v.iceStage===2&&kind!=='fire'){
+       v.perma=true;v.dead=true;v.iceStage=0;v.regenT=999999;
+       particle(v.x,v.y,'パキィン！','#e9fbff',.75,22);
+       continue;
+     }
      v.hp-=damage;
      if(v.hp<=0){v.dead=true;v.burned=kind==='fire';v.regenT=kind==='fire'?10:5;particle(v.x,v.y,kind==='fire'?'ボワッ！':'ザシュ！',kind==='fire'?'#e43':'#2e843a',.4,15);}
    }
@@ -1815,7 +1820,10 @@ function update(dt){
        }
      }
      for(const v of [...vineWalls,...vineKnot]){
-       if(!v.dead&&dist(player.x,player.y,v.x,v.y)<115){v.hp-=2;if(v.hp<=0){v.dead=true;v.burned=true;v.regenT=10;particle(v.x,v.y,'ボワッ！','#e43',.4,15);}}
+       if(!v.dead&&!v.perma&&dist(player.x,player.y,v.x,v.y)<115){
+         if(v.iceStage){v.iceStage=0;v.iceT=0;}
+         v.hp-=2;if(v.hp<=0){v.dead=true;v.burned=true;v.regenT=10;particle(v.x,v.y,'ボワッ！','#e43',.4,15);}
+       }
      }
      player.fireWheelVisual=(player.fireWheelVisual||0)+dt*18;
      const inputA=stickAngle();
@@ -1869,7 +1877,7 @@ function update(dt){
  }
  // 再生ツタ壁は壊れている間だけ通れる。
  for(const v of vineWalls){
-   if(!v.dead&&dist(player.x,player.y,v.x,v.y)<player.r+v.r-6){
+   if(!v.dead&&!v.perma&&dist(player.x,player.y,v.x,v.y)<player.r+v.r-6){
      player.x=prevX;player.y=prevY;break;
    }
  }
@@ -2213,9 +2221,25 @@ function update(dt){
    }
    if(pr.hit)continue;
    for(const v of [...vineWalls,...vineKnot]){
-     if(v.dead)continue;if(dist(pr.x,pr.y,v.x,v.y)<pr.r+v.r){
-       const dmg=pr.damage||2;v.hp-=dmg;pr.hit=true;
-       if(v.hp<=0){v.dead=true;v.burned=pr.kind==='fire';v.regenT=pr.kind==='fire'?10:5;particle(v.x,v.y,pr.kind==='fire'?'ボワッ！':'ザシュ！',pr.kind==='fire'?'#e43':'#2e843a',.4,15);}
+     if(v.dead||v.perma)continue;
+     if(dist(pr.x,pr.y,v.x,v.y)<pr.r+v.r){
+       if(pr.kind==='ice'&&vineWalls.includes(v)){
+         if(v.iceStage===0){
+           v.iceStage=1;v.hp=v.maxHp;pr.hit=true;
+           particle(v.x,v.y-18,'キュッ…','#bdeeff',.5,16);
+         }else if(v.iceStage===1){
+           // 縮んだ後は根元付近に当てる。根元は壁中心より下側。
+           if(pr.y>v.y-8){
+             v.iceStage=2;v.iceT=10;pr.hit=true;
+             particle(v.x,v.y+22,'カチコチ！','#e8fbff',.65,19);
+           }
+         }else{
+           pr.hit=true;particle(v.x,v.y,'カン！','#dff8ff',.25,12);
+         }
+       }else{
+         const dmg=pr.damage||2;v.hp-=dmg;pr.hit=true;
+         if(v.hp<=0){v.dead=true;v.burned=pr.kind==='fire';v.regenT=pr.kind==='fire'?10:5;particle(v.x,v.y,pr.kind==='fire'?'ボワッ！':'ザシュ！',pr.kind==='fire'?'#e43':'#2e843a',.4,15);}
+       }
        break;
      }
    }
@@ -2799,9 +2823,15 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  // 右分岐：再生ツタ壁。
  for(const v of vineWalls){
+   if(v.perma)continue;
+   if(v.iceStage===2){
+     v.iceT-=dt;
+     if(v.iceT<=0){v.iceStage=0;v.hp=v.maxHp;particle(v.x,v.y,'パキ…モゾモゾ','#8ddff4',.4,13);}
+     continue;
+   }
    if(v.dead){
      v.regenT-=dt;
-     if(v.regenT<=0){v.dead=false;v.hp=v.maxHp;v.burned=false;particle(v.x,v.y,'モゾモゾ…','#2f8a45',.35,13);}
+     if(v.regenT<=0){v.dead=false;v.hp=v.maxHp;v.burned=false;v.iceStage=0;particle(v.x,v.y,'モゾモゾ…','#2f8a45',.35,13);}
    }
  }
  // ぐるぐるツタは約5秒で個別再生。3本全部が同時に倒れている時だけ報酬。
@@ -3768,10 +3798,23 @@ function drawWorld(){
    }
    // 大きな幹ツタ＋再生壁
    for(const v of vineWalls){
-     if(v.dead)continue;ctx.save();ctx.translate(v.x,v.y);ctx.strokeStyle='#154f28';ctx.lineWidth=22;ctx.lineCap='round';
-     ctx.beginPath();ctx.moveTo(0,60);ctx.bezierCurveTo(-45,15,45,-18,0,-62);ctx.stroke();
-     ctx.strokeStyle='#36a94f';ctx.lineWidth=11;ctx.stroke();
-     for(let y=-40;y<=40;y+=27){circle(Math.sin(y*.1)*22,y,13,'#58c65d','#111',4)}
+     if(v.dead||v.perma)continue;ctx.save();ctx.translate(v.x,v.y);ctx.lineCap='round';
+     if(v.iceStage===0){
+       ctx.strokeStyle='#154f28';ctx.lineWidth=22;ctx.beginPath();ctx.moveTo(0,60);ctx.bezierCurveTo(-45,15,45,-18,0,-62);ctx.stroke();
+       ctx.strokeStyle='#36a94f';ctx.lineWidth=11;ctx.stroke();
+       for(let y=-40;y<=40;y+=27){circle(Math.sin(y*.1)*22,y,13,'#58c65d','#111',4)}
+     }else if(v.iceStage===1){
+       // 一度凍気を当てると葉とツタが縮み、根元が露出。
+       ctx.strokeStyle='#174f28';ctx.lineWidth=19;ctx.beginPath();ctx.moveTo(0,55);ctx.quadraticCurveTo(-18,35,0,15);ctx.stroke();
+       ctx.strokeStyle='#61b96b';ctx.lineWidth=8;ctx.stroke();
+       circle(0,48,18,'#704c31','#111',5);circle(-14,27,9,'#7ad080','#111',3);circle(14,29,9,'#7ad080','#111',3);
+       ctx.globalAlpha=.5;circle(0,48,27,'#bdeeff','transparent',0);ctx.globalAlpha=1;
+     }else{
+       // 根元まで凍結：10秒間、この状態を武器で砕けば永久破壊。
+       ctx.fillStyle='#bfeeff';ctx.strokeStyle='#256e93';ctx.lineWidth=6;
+       ctx.beginPath();ctx.moveTo(0,-55);ctx.lineTo(35,-20);ctx.lineTo(30,48);ctx.lineTo(0,67);ctx.lineTo(-34,45);ctx.lineTo(-38,-18);ctx.closePath();ctx.fill();ctx.stroke();
+       line(-15,-22,14,15,4,'#fff');line(7,-35,23,-12,3,'#fff');
+     }
      ctx.restore();
    }
    for(const e of vineSeedFlowers){
