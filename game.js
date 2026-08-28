@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 119: 最初の浮遊草原ステージ
+// Prototype 120: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -298,7 +298,16 @@ const vineSkyGeo={
  launchPads:[
   {x:560,y:-670,r:48,dir:-1.42},
   {x:1185,y:-1325,r:44,dir:-.22},
-  {x:2035,y:-1370,r:46,dir:.10}
+  {x:2035,y:-1370,r:46,dir:.10},
+  // ツタボス撃破後、右端から上空ルートへ復帰する打ち上げ台。
+  {x:3190,y:-790,r:50,dir:-1.57}
+ ],
+ postBossIslands:[
+  {x:3120,y:-1120,w:250,h:150},
+  {x:2870,y:-1330,w:230,h:150}
+ ],
+ postBossClouds:[
+  {x:3070,y:-1255,r:66}
  ]
 };
 
@@ -694,6 +703,7 @@ function visibleGroundRects(){
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
+   if(vineBossDefeated)grounds.push(...vineSkyGeo.postBossIslands);
  }
  if(islandBossDefeated){
    grounds.push({
@@ -2979,6 +2989,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  player.launchPadCd=Math.max(0,(player.launchPadCd||0)-dt);
  if(player.launchPadCd<=0&&(player.skillKind==='fire'||player.skillKind==='ice')&&player.skillT>0){
   for(const p of vineSkyGeo.launchPads){
+   if(p.x>3000&&!vineBossDefeated)continue;
    if(dist(player.x,player.y,p.x,p.y)<p.r+player.r+12){
     // スキルの横方向の勢いをジャンプへ変換する。スキルはここで打ち上げへ移行。
     player.skillT=0;
@@ -2994,7 +3005,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
   }
  }
  // 上空ルートの雲ジャンプ台。
- for(const c of vineSkyGeo.clouds){
+ for(const c of [...vineSkyGeo.clouds,...(vineBossDefeated?vineSkyGeo.postBossClouds:[])]){
   if(dist(player.x,player.y,c.x,c.y)<c.r+player.r+10&&player.jumpT<=0&&!player.falling){
    player.jumpDur=player.shieldType===4?1.05:.78;player.jumpHeight=player.shieldType===4?165:135;player.jumpT=player.jumpDur;
    particle(c.x,c.y,'ぽよん！','#fff',.3,14);
@@ -4004,8 +4015,20 @@ function drawWorld(){
     ctx.fillStyle='#63b85b';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(q.x,q.y,q.w,q.h,40);ctx.fill();ctx.stroke();
     ctx.fillStyle='#8a5934';ctx.beginPath();ctx.moveTo(q.x+20,q.y+q.h-8);ctx.lineTo(q.x+q.w-20,q.y+q.h-8);ctx.lineTo(q.x+q.w*.56,q.y+q.h+65);ctx.lineTo(q.x+q.w*.44,q.y+q.h+65);ctx.closePath();ctx.fill();ctx.stroke();
    }
+   // ボス撃破後だけ現れる、上空ルートへの帰り道。
+   if(vineBossDefeated){
+    for(const q of vineSkyGeo.postBossIslands){
+     ctx.fillStyle='#69bd61';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(q.x,q.y,q.w,q.h,42);ctx.fill();ctx.stroke();
+     ctx.fillStyle='#8a5934';ctx.beginPath();ctx.moveTo(q.x+20,q.y+q.h-8);ctx.lineTo(q.x+q.w-20,q.y+q.h-8);ctx.lineTo(q.x+q.w*.56,q.y+q.h+62);ctx.lineTo(q.x+q.w*.44,q.y+q.h+62);ctx.closePath();ctx.fill();ctx.stroke();
+    }
+    for(const c of vineSkyGeo.postBossClouds){
+     circle(c.x-30,c.y+5,c.r*.48,'#f8fdff','#111',5);circle(c.x,c.y-12,c.r*.58,'#f8fdff','#111',5);circle(c.x+32,c.y+7,c.r*.45,'#f8fdff','#111',5);
+    }
+   }
    // 杖スキルの速度を受けて下から突き上げるジャンプ台。
    for(const p of vineSkyGeo.launchPads){
+    if(p.x>3000&&!vineBossDefeated)continue;
     ctx.save();ctx.translate(p.x,p.y);
     ctx.fillStyle='#2f8f47';ctx.strokeStyle='#111';ctx.lineWidth=6;
     ctx.beginPath();ctx.ellipse(0,17,p.r*.85,p.r*.34,0,0,Math.PI*2);ctx.fill();ctx.stroke();
