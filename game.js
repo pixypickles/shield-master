@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 84: 最初の浮遊草原ステージ
+// Prototype 85: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -929,6 +929,10 @@ function doAttack(charged=false){
  const jumpStrike=player.jumpT>0&&!charged;
  let range=wp.range*(charged?1.45:1);
  let base=autoAim(faceAngle(player.face),Math.PI*.58,w>=3?440:range+90);
+ if(w===1&&charged){
+   const stickDir=stickAngle();
+   if(stickDir!==null)base=stickDir;
+ }
  player.aim=base;
 
  // ジャンプ中の通常攻撃は、地上攻撃とは別の「下方向攻撃」。
@@ -968,7 +972,7 @@ function doAttack(charged=false){
    player.attackMax=.48;player.attacking=.48;player.attackCooldown=.72;
    player.spiral=.48;player.spiralA=base;
    particle(player.x,player.y-48,'スパイラル！','#fff',.45,15);
-   const reach=230, width=34;
+   const reach=285, width=34;
    const fx=Math.cos(base),fy=Math.sin(base);
    for(const e of enemies){
      if(e.dead)continue;
@@ -979,7 +983,7 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,230,base,.55);hitIslandBoss(4,230,base,.55);hitStage2(4,230,base,.55);hitStage3(4,230,base,.55,w,true);hitStage45(8,230,base,.55,w);
+   hitBoss(4,285,base,.55);hitIslandBoss(4,285,base,.55);hitStage2(4,285,base,.55);hitStage3(4,285,base,.55,w,true);hitStage45(8,285,base,.55,w);hitStage8Spinner(285,base);
    // 槍でも岩は削れるが、5回必要。ハンマーなら1発。
    for(const r of stage7Rocks){
      if(r.dead)continue;
@@ -3147,7 +3151,7 @@ function drawChargeEffects(){
      ctx.strokeStyle=i%2?'rgba(255,255,255,.95)':'rgba(125,220,255,.95)';
      ctx.lineWidth=i%2?5:7;
      ctx.beginPath();
-     for(let x=18;x<225;x+=7){
+     for(let x=18;x<280;x+=7){
        const spread=8+x*.075;
        const y=Math.sin(x*.115+tm+i*Math.PI/2)*spread;
        if(x===18)ctx.moveTo(x,y);else ctx.lineTo(x,y);
@@ -3158,8 +3162,8 @@ function drawChargeEffects(){
    // 空気が引っ張られて前へ流れている長い残像。
    ctx.lineCap='round';
    for(let i=0;i<8;i++){
-     const phase=(tm*22+i*29)%190;
-     const x=35+phase;
+     const phase=(tm*22+i*29)%245;
+     const x=30+phase;
      const side=(i%2?1:-1)*(15+(i%4)*7);
      const len=38+(i%3)*18;
      ctx.globalAlpha=.25+.35*life;
@@ -3176,7 +3180,7 @@ function drawChargeEffects(){
    ctx.strokeStyle='rgba(210,247,255,.95)';
    ctx.lineWidth=5;
    for(let j=0;j<3;j++){
-     const x=105+j*46;
+     const x=125+j*58;
      ctx.beginPath();
      ctx.ellipse(x,0,10+j*5,24+j*8,0,0,Math.PI*2);
      ctx.stroke();
