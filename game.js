@@ -182,6 +182,15 @@ const leftZoneGeo={
    {x:-300,y:350,w:390,h:370}
  ]
 };
+// 岩壁の向こうが空洞に見えないよう、最初から見える岩盤の連なり。
+// 通行判定は岩壁を壊すまで開かないが、道そのものは奥へ続いて見える。
+const leftRockPreview=[
+ {x:-90,y:410,w:150,h:260},
+ {x:-230,y:395,w:150,h:290},
+ {x:-370,y:390,w:170,h:300},
+ {x:-530,y:405,w:190,h:280}
+];
+
 const fireBoss={
  x:-760,y:545,r:82,hp:46,maxHp:46,active:false,dead:false,
  attackCd:1.0,flash:0,phase:0
@@ -3240,6 +3249,22 @@ function drawWorld(){
 
  // 全ての大陸を描いたあと、水面だけ地面上に重ねる。
  drawSurfaceStreams();
+
+ // 岩壁の奥には、最初から岩盤の道が続いて見える。
+ // 「壁の向こうがただの空」ではなく、塞がれた岩道だと分かる見た目。
+ if(!startRockWall.dead){
+   for(const r of leftRockPreview){
+     ctx.fillStyle='#66564b';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(r.x+8,r.y+28,r.w-16,r.h+38,34);ctx.fill();ctx.stroke();
+     ctx.fillStyle='#777973';ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,34);ctx.fill();ctx.stroke();
+     for(let yy=r.y+32;yy<r.y+r.h-18;yy+=58){
+       for(let xx=r.x+28+((yy/58|0)%2)*20;xx<r.x+r.w-15;xx+=55){
+         circle(xx,yy,18,'#92948e','#111',4);
+         line(xx-6,yy-3,xx+6,yy-8,2,'#686a65');
+       }
+     }
+   }
+ }
 
  // スタート左のハンマー岩壁。ゲーム開始時から見えて、後で戻る理由になる。
  if(!startRockWall.dead){
