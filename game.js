@@ -1032,6 +1032,12 @@ function update(dt){
          if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
          if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=3;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
        }
+       // 剣スキルの3連撃でも、通常の剣攻撃と同じく小さい木を斬れる。
+       for(const tr of props.smallTrees){
+         if(tr.dead)continue;
+         const d=dist(player.x,player.y,tr.x,tr.y),aa=Math.atan2(tr.y-player.y,tr.x-player.x);
+         if(d<150&&Math.abs(angleDiff(aa,sa))<.8){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}
+       }
      }
 
    }else if(player.skillKind==='spear'){
