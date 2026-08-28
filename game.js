@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 79: 最初の浮遊草原ステージ
+// Prototype 83: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -259,36 +259,28 @@ const islandBoss={
 let stage9Started=false;
 let islandBossDefeated=false;
 
-// 各エリアに「攻略とは無関係な地形」を少量散らす。
-// 段差・木・岩・浅い水流など、世界に生活感/自然さを出すための飾り。
+// 各エリアに「攻略とは無関係な自然物」を少量散らす。
+// 木・岩など、世界に生活感/自然さを出すための飾り。水は必ず発生源と流れ先が分かる形だけにする。
 // 進行必須ギミックにはせず、基本は避けても無視してもよい。
 const ambientTerrain=[
  // area 1
- {kind:'step',x:420,y:390,w:170,h:78},{kind:'tree',x:1080,y:665},{kind:'rock',x:1450,y:410,r:24},
- {kind:'stream',x:980,y:690,w:210,h:34,fx:18,fy:0},
+ {kind:'tree',x:1080,y:665},{kind:'rock',x:1450,y:410,r:24},
  // area 2
- {kind:'step',x:2140,y:420,w:150,h:70},{kind:'tree',x:2470,y:640},{kind:'rock',x:2810,y:410,r:22},
- {kind:'stream',x:2650,y:655,w:180,h:32,fx:-14,fy:0},
+ {kind:'tree',x:2470,y:640},{kind:'rock',x:2810,y:410,r:22},
  // area 3
- {kind:'step',x:3720,y:430,w:145,h:68},{kind:'tree',x:4320,y:650},{kind:'rock',x:3990,y:445,r:24},
- {kind:'stream',x:4460,y:675,w:150,h:30,fx:0,fy:-12},
+ {kind:'tree',x:4320,y:650},{kind:'rock',x:3990,y:445,r:24},
  // area 4
- {kind:'step',x:5150,y:410,w:160,h:72},{kind:'tree',x:5590,y:655},{kind:'rock',x:5900,y:420,r:24},
- {kind:'stream',x:5480,y:675,w:175,h:32,fx:16,fy:0},
+ {kind:'tree',x:5590,y:655},{kind:'rock',x:5900,y:420,r:24},
  // area 5
- {kind:'step',x:6500,y:430,w:170,h:76},{kind:'tree',x:6930,y:660},{kind:'rock',x:7300,y:410,r:25},
- {kind:'stream',x:6760,y:690,w:190,h:32,fx:-14,fy:0},
+ {kind:'tree',x:6930,y:660},{kind:'rock',x:7300,y:410,r:25},
  // area 6
- {kind:'step',x:8270,y:415,w:160,h:72},{kind:'tree',x:8720,y:660},{kind:'rock',x:9140,y:415,r:24},
- {kind:'stream',x:8860,y:675,w:190,h:32,fx:20,fy:0},
+ {kind:'tree',x:8720,y:660},{kind:'rock',x:9140,y:415,r:24},
  // area 7
- {kind:'step',x:9730,y:380,w:150,h:70},{kind:'tree',x:10850,y:690},{kind:'rock',x:10300,y:690,r:23},
- {kind:'stream',x:11100,y:705,w:180,h:30,fx:-16,fy:0},
+ {kind:'tree',x:10850,y:690},{kind:'rock',x:10300,y:690,r:23},
  // area 8
- {kind:'step',x:13210,y:500,w:150,h:68},{kind:'tree',x:13390,y:650},{kind:'rock',x:13195,y:625,r:22},
+ {kind:'tree',x:13390,y:650},{kind:'rock',x:13195,y:625,r:22},
  // boss island
- {kind:'step',x:13830,y:390,w:170,h:72},{kind:'tree',x:14300,y:680},{kind:'rock',x:13770,y:675,r:24},
- {kind:'stream',x:14130,y:705,w:170,h:30,fx:14,fy:0}
+ {kind:'tree',x:14300,y:680},{kind:'rock',x:13770,y:675,r:24},
 ];
 
 
@@ -1353,20 +1345,6 @@ function update(dt){
      player.x+=(a.fx||0)*dt;player.y+=(a.fy||0)*dt;
    }
  }
- // 低い段差はジャンプで乗れる。地上歩行で側面へぶつかると止まり、
- // ジャンプ中に十分な高さがあれば上面へ乗り移れる。
- player.onAmbientStep=null;
- for(const a of ambientTerrain){
-   if(a.kind!=='step')continue;
-   const inside=player.x>a.x-player.r*.55&&player.x<a.x+a.w+player.r*.55&&
-                player.y>a.y-player.r*.45&&player.y<a.y+a.h+player.r*.45;
-   if(!inside)continue;
-   if(jumpLiftNow()>=34||player.jumpT>0&&jumpLiftNow()>=24){
-     player.onAmbientStep=a;
-   }else{
-     player.x=prevX;player.y=prevY;
-   }
- }
  // 属性障害物は壊すまで通行不可。
  for(const o of elementalObstacles){
    if(!o.dead&&dist(player.x,player.y,o.x,o.y)<player.r+o.r-4){
@@ -2149,7 +2127,7 @@ function drawWorld(){
  if(stage6Started){
    // 風の庭園から岩の分かれ道への橋
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=16;ctx.beginPath();ctx.moveTo(stage7Geo.bridge.x1,stage7Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(9505,505+i*6,stage7Geo.bridge.x2,stage7Geo.bridge.y2+i*9-23);ctx.stroke()});
+   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(stage7Geo.bridge.x1,stage7Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(9505,505+i*6,stage7Geo.bridge.x2,stage7Geo.bridge.y2+i*9-23);ctx.stroke()});
    for(const r of stage7Geo.path){
      ctx.fillStyle='#89bf68';ctx.strokeStyle='#111';ctx.lineWidth=7;
      ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
@@ -2159,7 +2137,7 @@ function drawWorld(){
  if(grassAreaClear){
   // 次エリアへの虹の橋
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(stage6Geo.bridge.x1,stage6Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(7925,505+i*6,stage6Geo.bridge.x2,stage6Geo.bridge.y2+i*9-23);ctx.stroke()});
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=28;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(stage6Geo.bridge.x1-18,stage6Geo.bridge.y1+i*18-45);ctx.quadraticCurveTo(7925,505+i*8,stage6Geo.bridge.x2+18,stage6Geo.bridge.y2+i*18-45);ctx.stroke()});
   for(const r of stage6Geo.path){
    ctx.fillStyle='#9bd77a';ctx.strokeStyle='#111';ctx.lineWidth=7;
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,52);ctx.fill();ctx.stroke();
@@ -2173,9 +2151,9 @@ function drawWorld(){
  if(stage.bridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
    cols.forEach((c,i)=>{
-     ctx.strokeStyle=c;ctx.lineWidth=22;ctx.beginPath();
-     ctx.moveTo(stageGeo.bridge.x1,stageGeo.bridge.y1+i*12-30);
-     ctx.quadraticCurveTo(1820,530+i*8,stageGeo.bridge.x2,stageGeo.bridge.y2+i*12-30);
+     ctx.strokeStyle=c;ctx.lineWidth=30;ctx.lineCap='butt';ctx.beginPath();
+     ctx.moveTo(stageGeo.bridge.x1-20,stageGeo.bridge.y1+i*19-48);
+     ctx.quadraticCurveTo(1820,530+i*8,stageGeo.bridge.x2+20,stageGeo.bridge.y2+i*19-48);
      ctx.stroke();
    });
    ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
@@ -2196,11 +2174,13 @@ function drawWorld(){
  // 中心だけ地面判定にすると崖から半分はみ出すため、円周8方向も確認する。
  for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
    const px=x+(y%3)*8,py=y,r=34;
-   let fullyOnGround=pointSupportedByGround(px,py,0);
-   for(let i=0;i<8&&fullyOnGround;i++){
-     const a=i*Math.PI/4;
-     if(!pointSupportedByGround(px+Math.cos(a)*(r+8),py+Math.sin(a)*(r+8),0))fullyOnGround=false;
-   }
+   // 黒い外枠をまたぐ丸は描かない。
+   // 隣り合う2つの島を合わせて「地面」と判定せず、1枚の陸地の内側に円全体が収まる時だけ緑。
+   const margin=r+13;
+   const fullyOnGround=visibleGroundRects().some(g=>
+     px-margin>=g.x && px+margin<=g.x+g.w &&
+     py-margin>=g.y && py+margin<=g.y+g.h
+   );
    ctx.fillStyle=fullyOnGround?'#a9df92':'rgba(203,235,239,.12)';
    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
  }
@@ -2326,6 +2306,10 @@ function drawWorld(){
   if(!seedBoss.dead&&seedBoss.active){
    ctx.save();ctx.translate(seedBoss.x,seedBoss.y);if(seedBoss.flash>0)ctx.globalAlpha=.55;
    line(0,18,0,70,24,'#111');line(0,18,0,70,13,'#4c9342');
+   // 槍入手前の大花ボスにも、茎の根元から左右へ大きな葉。
+   ctx.fillStyle='#43b94f';ctx.strokeStyle='#111';ctx.lineWidth=6;
+   ctx.save();ctx.translate(-28,58);ctx.rotate(-.42);ctx.beginPath();ctx.ellipse(0,0,25,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+   ctx.save();ctx.translate(28,58);ctx.rotate(.42);ctx.beginPath();ctx.ellipse(0,0,25,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
    for(let i=0;i<12;i++){
      const aa=i*Math.PI/6;
      ctx.save();ctx.translate(Math.cos(aa)*46,Math.sin(aa)*46-18);ctx.rotate(aa);
@@ -2553,18 +2537,18 @@ function drawWorld(){
    // 左の入場虹
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
    cols.forEach((c,i)=>{
-     ctx.strokeStyle=c;ctx.lineWidth=16;ctx.beginPath();
-     ctx.moveTo(stage9Geo.entryBridge.x1,stage9Geo.entryBridge.y1+i*10-25);
-     ctx.quadraticCurveTo(13575,520+i*7,stage9Geo.entryBridge.x2,stage9Geo.entryBridge.y2+i*10-25);
+     ctx.strokeStyle=c;ctx.lineWidth=30;ctx.lineCap='butt';ctx.beginPath();
+     ctx.moveTo(stage9Geo.entryBridge.x1-20,stage9Geo.entryBridge.y1+i*19-48);
+     ctx.quadraticCurveTo(13575,520+i*8,stage9Geo.entryBridge.x2+20,stage9Geo.entryBridge.y2+i*19-48);
      ctx.stroke();
    });
 
    // 撃破後だけ右の虹＋出口小島
    if(islandBossDefeated){
      cols.forEach((c,i)=>{
-       ctx.strokeStyle=c;ctx.lineWidth=16;ctx.beginPath();
-       ctx.moveTo(stage9Geo.exitBridge.x1,stage9Geo.exitBridge.y1+i*10-25);
-       ctx.quadraticCurveTo(14535,520+i*7,stage9Geo.exitBridge.x2,stage9Geo.exitBridge.y2+i*10-25);
+       ctx.strokeStyle=c;ctx.lineWidth=30;ctx.lineCap='butt';ctx.beginPath();
+       ctx.moveTo(stage9Geo.exitBridge.x1-20,stage9Geo.exitBridge.y1+i*19-48);
+       ctx.quadraticCurveTo(14535,520+i*8,stage9Geo.exitBridge.x2+20,stage9Geo.exitBridge.y2+i*19-48);
        ctx.stroke();
      });
      const ex=stage9Geo.exitIsland;
@@ -2631,17 +2615,11 @@ function drawWorld(){
    }
  }
 
- // 攻略と無関係な自然物・段差・浅い水流。
+ // 攻略と無関係な自然物。
  for(const a of ambientTerrain){
    if(a.dead)continue;
    const az=ambientZoneStyle(a.x);
-   if(a.kind==='step'){
-     ctx.fillStyle=az.side;ctx.strokeStyle='#111';ctx.lineWidth=5;
-     ctx.beginPath();ctx.roundRect(a.x,a.y+14,a.w,a.h,26);ctx.fill();ctx.stroke();
-     ctx.fillStyle=az.top;ctx.beginPath();ctx.roundRect(a.x,a.y,a.w,a.h,26);ctx.fill();ctx.stroke();
-     // 上面の草の縁で「乗れる高さ」を読みやすくする。
-     line(a.x+18,a.y+8,a.x+a.w-18,a.y+8,3,'rgba(255,255,255,.35)');
-   }else if(a.kind==='tree'){
+   if(a.kind==='tree'){
      line(a.x,a.y,a.x,a.y-38,12,'#111');line(a.x,a.y,a.x,a.y-38,7,a.x>9500?'#695b49':'#765038');
      if(a.x>9500&&a.x<11750){
        // 岩場：低くねじれた風衝木
@@ -2751,8 +2729,7 @@ function drawPlayer(){
  const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
  const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight*shields[player.shieldType].jump:0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
- const stepLift=player.onAmbientStep&&player.jumpT<=0?24:0;
- const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0)+stepLift;
+ const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
  const moving=player.moveMag>.16&&player.jumpT<=0;
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
@@ -2928,18 +2905,32 @@ function drawPlayer(){
    // 輪っかではなく、溜まるほど身体と武器がほんのり発光する。
    ctx.save();
    ctx.globalCompositeOperation='screen';
-   ctx.globalAlpha=ready?.18:Math.min(.10,.025+held*.12);
-   ctx.fillStyle=player.weapon===4?'#aeeeff':(player.weapon===3?'#ffb08b':'#d9f3ff');
-   ctx.beginPath();ctx.ellipse(0,-8,31,39,0,0,Math.PI*2);ctx.fill();
-   ctx.globalAlpha=ready?.24:.08;
-   ctx.strokeStyle=player.weapon===4?'#dffaff':(player.weapon===3?'#ffd6c2':'#eefaff');
-   ctx.lineWidth=7;ctx.lineCap='round';
+   const pulse=.5+.5*Math.sin(performance.now()*.012);
+   // 白い剣・槍でも一目で分かるよう、無属性武器は水色～青の発光にする。
+   const neutralGlow=player.weapon<=2?'#45cfff':(player.weapon===4?'#66ddff':'#ff704d');
+   ctx.globalAlpha=ready?(.28+pulse*.10):Math.min(.18,.06+held*.22);
+   ctx.fillStyle=neutralGlow;
+   ctx.beginPath();ctx.ellipse(0,-8,34,42,0,0,Math.PI*2);ctx.fill();
+   // 成立後は身体の中心にも小さな明滅を重ねる。黄色い輪は使わない。
+   if(ready){
+     ctx.globalAlpha=.16+pulse*.10;ctx.fillStyle='#ffffff';
+     ctx.beginPath();ctx.ellipse(0,-8,25,34,0,0,Math.PI*2);ctx.fill();
+   }
+   ctx.globalAlpha=ready?(.62+pulse*.18):.28;
+   ctx.strokeStyle=neutralGlow;
+   ctx.lineWidth=ready?12:8;ctx.lineCap='round';
    // drawPlayer内ではwx/wyは存在しないため、実際の武器手座標を使う。
    const glowX=handR.x,glowY=handR.y;
    ctx.beginPath();
    ctx.moveTo(glowX,glowY);
    ctx.lineTo(glowX+Math.cos(wa)*(player.weapon===1?72:54),glowY+Math.sin(wa)*(player.weapon===1?72:54));
    ctx.stroke();
+   if(ready){
+     const glen=player.weapon===1?72:54;
+     const tx=glowX+Math.cos(wa)*glen,ty=glowY+Math.sin(wa)*glen;
+     ctx.globalAlpha=.45+pulse*.35;ctx.fillStyle=neutralGlow;
+     ctx.beginPath();ctx.arc(tx,ty,6+pulse*3,0,Math.PI*2);ctx.fill();
+   }
    ctx.restore();
  }
  ctx.restore();
