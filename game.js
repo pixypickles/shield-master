@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 115: 最初の浮遊草原ステージ
+// Prototype 116: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -446,7 +446,7 @@ const stage7Rocks=[
  {x:10780,y:610,r:38,dead:false}
 ];
 
-let hammerPickup={x:10380,y:690,taken:false};
+let hammerPickup={x:10470,y:685,taken:false};
 const hammerGuardian={
  x:10380,y:690,r:55,hp:18,maxHp:18,active:false,dead:false,
  attackCd:.85,flash:0
@@ -692,13 +692,127 @@ function pointSupportedByGround(x,y,pad=24){
 
 
 const SAVE_KEY='shieldHeroSave_v112';
-function saveProgress(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,seedBossDead:!!seedBoss.dead,fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,stage9Started:!!stage9Started,stage10Started:!!stage10Started,islandBossDefeated:!!islandBossDefeated,cloudShieldTaken:!!cloudShieldPickup.taken,vineBossDead:!!vineBoss.dead}))}catch(e){}}
-function loadProgress(){let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d)return false;
-Object.assign(player,{x:d.x??player.x,y:d.y??player.y,hp:d.hp??player.hp,weapon:d.weapon??player.weapon,shieldType:d.shieldType??player.shieldType,swordPlus:!!d.swordPlus});if(d.inv)player.inv=d.inv;if(Number.isInteger(d.currentStage))currentStage=d.currentStage;if(d.checkpoint)stage.checkpoint=d.checkpoint;
-if(d.seedBossDead){seedBoss.dead=true;seedBoss.active=false}if(d.fireBossDead){fireBoss.dead=true;fireBoss.active=false}if(d.iceBossDead){iceBoss.dead=true;iceBoss.active=false}if(d.rockBossDead){rockBoss.dead=true;rockBoss.active=false}if(d.hammerGuardianDead){hammerGuardian.dead=true;hammerGuardian.active=false}if(d.islandBossDead){islandBoss.dead=true;islandBoss.active=false}
-spearPickup.taken=!!d.spearTaken;hammerPickup.taken=!!d.hammerTaken;upperSwordPickup.taken=!!d.upperSwordTaken;stage9Started=!!d.stage9Started;stage10Started=!!d.stage10Started;islandBossDefeated=!!d.islandBossDefeated;if(d.cloudShieldTaken){cloudShieldPickup.taken=true;unlockedShields[4]=true}if(d.vineBossDead){vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true}return true}
-setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},2500);window.addEventListener('pagehide',saveProgress);
-window.addEventListener('DOMContentLoaded',()=>{const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}c.disabled=!has;c.onclick=()=>{loadProgress();m.classList.add('hidden')};n.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}m.classList.add('hidden')}});
+function saveProgress(){
+ try{
+  localStorage.setItem(SAVE_KEY,JSON.stringify({
+   saveVersion:116,
+   x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,
+   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,
+   unlockedWeapons:[...unlockedWeapons],unlockedShields:[...unlockedShields],
+   stageBossDefeated:!!stage.bossDefeated,stageBridgeOpen:!!stage.bridgeOpen,
+   stage2Started,stage2BossDefeated,stage2BridgeOpen,
+   stage3Started,stage3BossDefeated,stage3BridgeOpen,
+   stage4Started,stage4Cleared,stage4BridgeOpen,
+   stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,
+   spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
+   redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
+   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,
+   seedBossDead:!!seedBoss.dead,grassFinalBossDead:!!grassFinalBoss.dead,
+   fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,
+   hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,
+   startRockWallDead:!!startRockWall.dead
+  }));
+ }catch(e){}
+}
+function loadProgress(){
+ let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}
+ if(!d)return false;
+
+ Object.assign(player,{
+  x:d.x??player.x,y:d.y??player.y,hp:d.hp??player.hp,
+  weapon:d.weapon??player.weapon,shieldType:d.shieldType??player.shieldType,
+  swordPlus:!!d.swordPlus
+ });
+ if(Number.isFinite(d.inv))player.inv=d.inv;
+ if(Number.isInteger(d.currentStage))currentStage=d.currentStage;
+ if(d.checkpoint)stage.checkpoint=d.checkpoint;
+
+ // 新しいセーブは配列をそのまま復元。旧セーブは取得物から補完する。
+ if(Array.isArray(d.unlockedWeapons)){
+  for(let i=0;i<unlockedWeapons.length;i++)unlockedWeapons[i]=!!d.unlockedWeapons[i];
+ }
+ if(Array.isArray(d.unlockedShields)){
+  for(let i=0;i<unlockedShields.length;i++)unlockedShields[i]=!!d.unlockedShields[i];
+ }
+
+ stage.bossDefeated=!!d.stageBossDefeated || currentStage>=2;
+ stage.bridgeOpen=!!d.stageBridgeOpen || currentStage>=2;
+
+ stage2Started=!!d.stage2Started || currentStage>=2;
+ stage2BossDefeated=!!d.stage2BossDefeated || currentStage>=3 || !!d.seedBossDead;
+ stage2BridgeOpen=!!d.stage2BridgeOpen || currentStage>=3;
+
+ stage3Started=!!d.stage3Started || currentStage>=3;
+ stage3BossDefeated=!!d.stage3BossDefeated || currentStage>=4;
+ stage3BridgeOpen=!!d.stage3BridgeOpen || currentStage>=4;
+
+ stage4Started=!!d.stage4Started || currentStage>=4;
+ stage4Cleared=!!d.stage4Cleared || currentStage>=5;
+ stage4BridgeOpen=!!d.stage4BridgeOpen || currentStage>=5;
+
+ stage5Started=!!d.stage5Started || currentStage>=5;
+ grassAreaClear=!!d.grassAreaClear || currentStage>=6 || !!d.grassFinalBossDead;
+ stage6Started=!!d.stage6Started || currentStage>=6;
+ stage7Started=!!d.stage7Started || currentStage>=7 || !!d.hammerGuardianDead || !!d.hammerTaken;
+ stage8Started=!!d.stage8Started || currentStage>=8 || !!d.rockBossDead;
+ stage9Started=!!d.stage9Started || currentStage>=9 || !!d.islandBossDead;
+ stage10Started=!!d.stage10Started || currentStage>=10;
+
+ if(d.seedBossDead||stage2BossDefeated){seedBoss.dead=true;seedBoss.active=false}
+ if(d.grassFinalBossDead||grassAreaClear){grassFinalBoss.dead=true;grassFinalBoss.active=false}
+ if(d.hammerGuardianDead||d.hammerTaken){hammerGuardian.dead=true;hammerGuardian.active=false}
+ if(d.rockBossDead){rockBoss.dead=true;rockBoss.active=false}
+ if(d.islandBossDead){islandBoss.dead=true;islandBoss.active=false}
+ if(d.fireBossDead){fireBoss.dead=true;fireBoss.active=false}
+ if(d.iceBossDead){iceBoss.dead=true;iceBoss.active=false}
+ if(d.vineBossDead){vineBoss.dead=true;vineBoss.active=false}
+
+ rockBossDefeated=!!d.rockBossDefeated || !!d.rockBossDead || stage8Started;
+ islandBossDefeated=!!d.islandBossDefeated || !!d.islandBossDead || stage10Started;
+ // 旧セーブでは「倒したフラグ」を保存していなかったため、dead から復元する。
+ fireBossDefeated=!!d.fireBossDefeated || !!d.fireBossDead;
+ vineBossDefeated=!!d.vineBossDefeated || !!d.vineBossDead;
+
+ spearPickup.taken=!!d.spearTaken;
+ hammerPickup.taken=!!d.hammerTaken;
+ upperSwordPickup.taken=!!d.upperSwordTaken;
+ redStaffPickup.taken=!!d.redStaffTaken || (!!d.fireBossDead && (d.weapon===3||d.weapon===4));
+ blueStaffPickup.taken=!!d.blueStaffTaken || (!!d.iceBossDead && d.weapon===4);
+ healShieldPickup.taken=!!d.healShieldTaken || d.shieldType===1;
+ cloudShieldPickup.taken=!!d.cloudShieldTaken || d.shieldType===4;
+
+ // 装備アンロックも旧セーブから復元。
+ if(spearPickup.taken||currentStage>=3)unlockedWeapons[1]=true;
+ if(hammerPickup.taken||d.hammerGuardianDead||currentStage>=8)unlockedWeapons[2]=true;
+ if(redStaffPickup.taken||fireBossDefeated)unlockedWeapons[3]=true;
+ if(blueStaffPickup.taken||d.iceBossDead)unlockedWeapons[4]=true;
+ if(healShieldPickup.taken||islandBossDefeated)unlockedShields[1]=true;
+ if(cloudShieldPickup.taken){unlockedShields[4]=true;cloudShieldDropped=true;}
+
+ if(d.startRockWallDead || fireBossDefeated || d.fireBossDead){startRockWall.dead=true;startRockWall.hp=0}
+
+ // 主要報酬の表示状態も復元。
+ redStaffPickup.active=fireBoss.dead&&!redStaffPickup.taken;
+ blueStaffPickup.active=iceBoss.dead&&!blueStaffPickup.taken;
+ healShieldPickup.active=islandBoss.dead&&!healShieldPickup.taken;
+ cloudShieldPickup.active=cloudShieldDropped&&!cloudShieldPickup.taken;
+
+ // ハンマー未取得の旧セーブでも、報酬は必ず道上へ戻す。
+ if(hammerGuardian.dead&&!hammerPickup.taken){hammerPickup.x=10470;hammerPickup.y=685;}
+
+ weaponNameEl.textContent=player.weapon===0&&player.swordPlus?'翠鋼の剣':weapons[player.weapon].name;
+ return true;
+}
+setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},2500);
+window.addEventListener('pagehide',saveProgress);
+window.addEventListener('DOMContentLoaded',()=>{
+ const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');
+ let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}
+ c.disabled=!has;
+ c.onclick=()=>{loadProgress();m.classList.add('hidden')};
+ n.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}m.classList.add('hidden')};
+});
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
@@ -2577,9 +2691,10 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
    if(hammerGuardian.hp<=0){
      hammerGuardian.dead=true;hammerGuardian.active=false;
-     hammerPickup.x=hammerGuardian.x;hammerPickup.y=hammerGuardian.y;
-     particle(hammerGuardian.x,hammerGuardian.y,'中ボス撃破！','#fff',.7,22);
-     say('中ボスがいた場所にハンマーが残った！');
+     // 中ボスが道の外側へ押し出されていても、報酬は必ず下側の岩道へ落とす。
+     hammerPickup.x=10470;hammerPickup.y=685;
+     particle(hammerPickup.x,hammerPickup.y-20,'ハンマーが道に落ちた！','#fff',.7,20);
+     say('ハンマーが岩道に落ちた！');
    }
  }
  for(const r of hammerGuardianRocks){
@@ -2593,7 +2708,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
  // 中ボス撃破後、消えた場所に落ちたハンマーを取得。
- if(stage7Started&&hammerGuardian.dead&&!hammerPickup.taken&&dist(player.x,player.y,hammerPickup.x,hammerPickup.y)<62){
+ if(stage7Started&&hammerGuardian.dead&&!hammerPickup.taken&&dist(player.x,player.y,hammerPickup.x,hammerPickup.y)<86){
    hammerPickup.taken=true;
    unlockedWeapons[2]=true;
    player.weapon=2;
