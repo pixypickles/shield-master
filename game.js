@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 110: 最初の浮遊草原ステージ
+// Prototype 111: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -143,6 +143,9 @@ const currentStreams=[
  {id:'leftfire',source:'cloud',cloudX:-1110,cloudY:150,width:72,speed:132,frozen:0,
   pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-790,y:640},{x:-790,y:880}]},
  {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9300,y:155},{x:9200,y:235},{x:9200,y:390}]},
+ // 生命の盾後の上段はショートカット兼ご褒美ルート。右→左へ高速で運ぶ。
+ {id:'upperExpress',source:'cloud',cloudX:14020,cloudY:-70,width:72,speed:235,frozen:0,
+  pts:[{x:14020,y:80},{x:13700,y:125},{x:12800,y:135},{x:11800,y:135},{x:10800,y:140},{x:9800,y:140},{x:8800,y:140},{x:7800,y:140},{x:6800,y:140},{x:5800,y:140},{x:4800,y:140},{x:3800,y:140},{x:2800,y:140},{x:1800,y:140},{x:850,y:145},{x:520,y:165}]},
 ];
 const cloudJumpPads=[
  {x:620,y:455,r:54},{x:1355,y:165,r:58},{x:2440,y:280,r:52},
@@ -213,6 +216,11 @@ const postFireGeo={
    {x:-430,y:-20,w:520,h:250},
    {x:30,y:40,w:520,h:250}
  ],
+ iceRight:[
+   {x:-570,y:-900,w:520,h:250},
+   {x:-90,y:-860,w:560,h:250},
+   {x:430,y:-810,w:620,h:250}
+ ],
  ice:[
    {x:-1110,y:-250,w:420,h:360},
    {x:-1080,y:-590,w:420,h:360},
@@ -227,16 +235,15 @@ const postFireGeo={
  ]
 };
 const iceRouteBlocks=[
- {x:-1040,y:-150,r:42,hp:1,dead:false},
- {x:-1010,y:-470,r:44,hp:1,dead:false},
- {x:-960,y:-810,r:46,hp:1,dead:false},
- {x:-900,y:-1150,r:48,hp:1,dead:false},
- {x:-840,y:-1490,r:50,hp:1,dead:false},
- {x:-780,y:-1830,r:52,hp:1,dead:false},
- {x:-720,y:-2170,r:54,hp:1,dead:false},
- {x:-650,y:-2510,r:54,hp:1,dead:false},
- {x:-580,y:-2850,r:56,hp:1,dead:false},
- {x:-500,y:-3190,r:58,hp:1,dead:false}
+ {x:-1040,y:-150,r:42,hp:1,dead:false},{x:-1010,y:-470,r:44,hp:1,dead:false},{x:-960,y:-810,r:46,hp:1,dead:false},
+ // 3つ目より上は「氷で封鎖された道」。横に何個も並び、赤杖で崩して進む。
+ {x:-900,y:-1130,r:48,hp:1,dead:false},{x:-760,y:-1145,r:47,hp:1,dead:false},{x:-620,y:-1125,r:46,hp:1,dead:false},
+ {x:-850,y:-1470,r:50,hp:1,dead:false},{x:-690,y:-1490,r:49,hp:1,dead:false},{x:-520,y:-1465,r:48,hp:1,dead:false},
+ {x:-790,y:-1810,r:52,hp:1,dead:false},{x:-610,y:-1830,r:51,hp:1,dead:false},{x:-430,y:-1805,r:50,hp:1,dead:false},
+ {x:-730,y:-2150,r:54,hp:1,dead:false},{x:-540,y:-2170,r:53,hp:1,dead:false},{x:-340,y:-2145,r:52,hp:1,dead:false},
+ {x:-660,y:-2490,r:55,hp:1,dead:false},{x:-450,y:-2510,r:54,hp:1,dead:false},{x:-230,y:-2485,r:53,hp:1,dead:false},
+ {x:-590,y:-2830,r:57,hp:1,dead:false},{x:-360,y:-2850,r:56,hp:1,dead:false},{x:-120,y:-2825,r:55,hp:1,dead:false},
+ {x:-500,y:-3170,r:59,hp:1,dead:false},{x:-250,y:-3190,r:58,hp:1,dead:false},{x:10,y:-3165,r:57,hp:1,dead:false}
 ];
 const iceBoss={
  x:-250,y:-3260,r:86,hp:48,maxHp:48,active:false,dead:false,flash:0,attackCd:1.05
@@ -378,9 +385,9 @@ const stage7Rocks=[
  {x:10780,y:610,r:38,dead:false}
 ];
 
-let hammerPickup={x:10860,y:540,taken:false};
+let hammerPickup={x:10380,y:540,taken:false};
 const hammerGuardian={
- x:10790,y:540,r:55,hp:18,maxHp:18,active:false,dead:false,
+ x:10380,y:540,r:55,hp:18,maxHp:18,active:false,dead:false,
  attackCd:.85,flash:0
 };
 const hammerGuardianRocks=[];
@@ -446,6 +453,7 @@ const stage10Geo={
  homeBridge:{x:465,y1:330,y2:250,w:190}
 };
 let stage10Started=false;
+const upperSwordPickup={x:1580,y:135,taken:false};
 const stage10Enemies=[
  {x:13610,y:125,r:26,hp:3,maxHp:3,type:'fanleaf',attackCd:1.5,flash:0,dead:false},
  {x:13110,y:165,r:27,hp:3,maxHp:3,type:'dandelion',attackCd:1.8,flash:0,dead:false},
@@ -594,7 +602,7 @@ function visibleGroundRects(){
  }
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
-   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.ice);
+   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice);
  }
  if(islandBossDefeated){
    grounds.push({
@@ -1264,6 +1272,7 @@ function hitBoss(damage,range,base,cone=Math.PI*2){
  }
 }
 
+function swordDamage(v){return player.swordPlus?v+2:v}
 function doAttack(charged=false){
  if(player.attackCooldown>0)return;
  const wasDash=player.dashT>0||player.dashAuto;
@@ -1310,10 +1319,10 @@ function doAttack(charged=false){
  if(w===0 && charged){
    player.spin=1;player.spinT=0;player.attackMax=.56;player.attacking=.56;player.attackCooldown=.72;
    particle(player.x,player.y-50,'回転斬り！','#fff',.45,15);
-   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=5;enemyHitReact(e,58);particle(e.x,e.y-22,'-5','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
+   for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){const sd=swordDamage(5);e.hp-=sd;enemyHitReact(e,58);particle(e.x,e.y-22,`-${sd}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+55){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
-   hitBoss(5,range+38,base,Math.PI*2);hitIslandBoss(5,range+38,base,Math.PI*2);hitFireBoss(5,range+38,base,Math.PI*2);hitStage2(5,range+38,base,Math.PI*2);hitStage3(5,range+38,base,Math.PI*2,w,true);hitStage45(5,range+38,base,Math.PI*2,w);
+   const spinD=swordDamage(5);hitBoss(spinD,range+38,base,Math.PI*2);hitIslandBoss(spinD,range+38,base,Math.PI*2);hitFireBoss(spinD,range+38,base,Math.PI*2);hitStage2(spinD,range+38,base,Math.PI*2);hitStage3(spinD,range+38,base,Math.PI*2,w,true);hitStage45(spinD,range+38,base,Math.PI*2,w);
    return;
  }
 
@@ -1374,9 +1383,10 @@ function doAttack(charged=false){
    const d=dist(player.x,player.y,a.x,a.y),aa=Math.atan2(a.y-player.y,a.x-player.x);
    if(d<range+38&&Math.abs(angleDiff(aa,base))<cone*.75)damageAmbient(a,w,1);
  }
- for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
- hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitFireBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIceBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
- hitStage2(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitStage3(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w,false);hitStage45(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w);
+ for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)dmg=swordDamage(dmg);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
+ let commonD=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)commonD=swordDamage(commonD);
+ hitBoss(commonD,range,base,cone);hitIslandBoss(commonD,range,base,cone);hitFireBoss(commonD,range,base,cone);hitIceBoss(commonD,range,base,cone);
+ hitStage2(commonD,range,base,cone);hitStage3(commonD,range,base,cone,w,false);hitStage45(commonD,range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
  if(w===0){
   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
@@ -1615,10 +1625,11 @@ function update(dt){
      if(t<.60&&local>.055&&local<.12&&!player.skillHit.has('s'+phase)){
        player.skillHit.add('s'+phase);
        particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,'ザシュ！','#fff',.25,15);
-       hitBoss(3,112,sa,1.25);hitIslandBoss(3,112,sa,1.25);hitFireBoss(3,112,sa,1.25);hitIceBoss(3,112,sa,1.25);hitStage2(3,112,sa,1.25);hitStage3(3,112,sa,1.25,0,false);hitStage45(3,112,sa,1.25,0);
+       const sd=swordDamage(3);
+       hitBoss(sd,112,sa,1.25);hitIslandBoss(sd,112,sa,1.25);hitFireBoss(sd,112,sa,1.25);hitIceBoss(sd,112,sa,1.25);hitStage2(sd,112,sa,1.25);hitStage3(sd,112,sa,1.25,0,false);hitStage45(sd,112,sa,1.25,0);
        for(const e of enemies){
          if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
-         if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=3;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
+         if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=sd;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
        }
        // 剣スキルの3連撃でも、通常の剣攻撃と同じく小さい木を斬れる。
        for(const tr of props.smallTrees){
@@ -1690,7 +1701,12 @@ function update(dt){
      }
 
    }else if(player.skillKind==='fire'){
-     // 赤杖：燃えるタイヤのように旋回。
+     // 赤杖：燃えるタイヤのように旋回。氷塊へ触れればスキルでも溶かせる。
+     for(const o of iceRouteBlocks){
+       if(!o.dead&&dist(player.x,player.y,o.x,o.y)<105+o.r*.35){
+         o.dead=true;particle(o.x,o.y,'ジュワァ！','#bfeeff',.45,16);
+       }
+     }
      player.fireWheelVisual=(player.fireWheelVisual||0)+dt*18;
      const inputA=stickAngle();
      if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*5.2);
@@ -2062,6 +2078,11 @@ function update(dt){
      fireBoss.hp-=pr.damage;fireBoss.flash=.14;particle(fireBoss.x,fireBoss.y-45,`-${pr.damage}`,'#b31313',.4,16);pr.hit=true;
    }
    if(pr.hit)continue;
+   if(iceBoss.active&&!iceBoss.dead&&dist(pr.x,pr.y,iceBoss.x,iceBoss.y)<pr.r+iceBoss.r+18){
+     const dmg=pr.kind==='fire'?Math.max(3,pr.damage+1):pr.damage;
+     iceBoss.hp-=dmg;iceBoss.flash=.18;particle(iceBoss.x,iceBoss.y-48,`-${dmg}`,'#e55232',.4,16);pr.hit=true;
+   }
+   if(pr.hit)continue;
    for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;enemyHitReact(e,14);particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
  }
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
@@ -2374,7 +2395,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
  // ハンマー直前の中ボス。倒すまではハンマーは存在しない。
- if(stage7Started&&!hammerGuardian.dead&&!hammerGuardian.active&&player.x>10580){
+ if(stage7Started&&!hammerGuardian.dead&&!hammerGuardian.active&&player.x>10180){
    hammerGuardian.active=true;
    say('岩甲羅の中ボス！');
  }
@@ -2418,7 +2439,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
  // ボス起動
- if(stage7Started&&hammerPickup.taken&&!rockBoss.dead&&!rockBoss.active&&player.x>11040){
+ if(stage7Started&&hammerGuardian.dead&&hammerPickup.taken&&!rockBoss.dead&&!rockBoss.active&&player.x>11220){
    rockBoss.active=true;
    say('岩喰いグルミ！');
  }
@@ -2530,6 +2551,12 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  if(islandBossDefeated&&!stage10Started&&player.y<245&&player.x>13870&&player.x<14280){
    stage10Started=true;currentStage=10;stage.checkpoint={x:14080,y:120};
    say('高庭の折り返し道：ここから左へ');
+ }
+ if(stage10Started&&!upperSwordPickup.taken&&dist(player.x,player.y,upperSwordPickup.x,upperSwordPickup.y)<58){
+   upperSwordPickup.taken=true;player.swordPlus=true;
+   if(player.weapon===0)weaponNameEl.textContent='翠鋼の剣';
+   particle(upperSwordPickup.x,upperSwordPickup.y-30,'剣強化！','#d8ffd0',.8,22);
+   say('翠鋼の剣！ 剣の威力が上がった！');
  }
  if(stage10Started){
    for(const e of stage10Enemies){
@@ -3348,6 +3375,12 @@ function drawWorld(){
        ctx.fillStyle='rgba(110,77,52,.82)';
        ctx.beginPath();ctx.moveTo(r.x+45,r.y+r.h);ctx.lineTo(r.x+r.w-45,r.y+r.h);ctx.lineTo(r.x+r.w-75,r.y+r.h+36);ctx.lineTo(r.x+75,r.y+r.h+36);ctx.closePath();ctx.fill();
      }
+
+     if(!upperSwordPickup.taken){
+       ctx.save();ctx.translate(upperSwordPickup.x,upperSwordPickup.y);ctx.rotate(-.28);
+       line(-8,0,42,0,12,'#111');line(-8,0,42,0,6,'#c8f2d2');line(3,-12,3,12,7,'#111');line(3,-8,3,8,3,'#6fbd78');
+       ctx.globalAlpha=.22;circle(18,0,35,'#a8efbd','transparent',0);ctx.restore();
+     }
    }
  }
 
@@ -3462,13 +3495,14 @@ function drawWorld(){
 
  // 灼熱花の先の分岐。右は通常ルート、上は長い氷ルート。
  if(fireBossDefeated){
-   for(const r of [postFireGeo.junction,...postFireGeo.right]){
+   for(const r of [postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight]){
      ctx.fillStyle='#6f9f61';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
    }
-   for(const r of postFireGeo.ice){
-     ctx.fillStyle='#d8f3f8';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
-     ctx.globalAlpha=.35;ctx.fillStyle='#fff';for(let k=0;k<4;k++)circle(r.x+70+k*95,r.y+70+(k%2)*80,24,'#fff','transparent',0);ctx.globalAlpha=1;
-   }
+   postFireGeo.ice.forEach((r,i)=>{
+     const normal=i<3;
+     ctx.fillStyle=normal?'#78b96b':'#d8f3f8';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
+     if(!normal){ctx.globalAlpha=.35;ctx.fillStyle='#fff';for(let k=0;k<4;k++)circle(r.x+70+k*95,r.y+70+(k%2)*80,24,'#fff','transparent',0);ctx.globalAlpha=1;}
+   });
    for(const o of iceRouteBlocks){
      if(o.dead)continue;
      ctx.save();ctx.translate(o.x,o.y);ctx.fillStyle='#bcecff';ctx.strokeStyle='#111';ctx.lineWidth=6;
@@ -3653,21 +3687,21 @@ function drawProjectile(pr){
    ctx.beginPath();ctx.moveTo(pr.r+5,0);ctx.quadraticCurveTo(0,-pr.r,-pr.r-5,0);ctx.quadraticCurveTo(0,pr.r,pr.r+5,0);ctx.fill();ctx.stroke();
    line(-pr.r-7,0,pr.r+2,0,3,'#397a35');
  }else if(pr.kind==='fire'){
-   // 赤杖：ただの丸弾ではなく、尾を引く小さな魔法火炎。
+   // 赤杖：魔法感は残しつつ、中心を大きくした「火の玉」。
    const t=performance.now()*.018+(pr.magicPhase||0);
-   ctx.globalAlpha=.18;circle(-7,0,pr.r+16,'#ff9b32','transparent',0);ctx.globalAlpha=1;
-   // 二本の魔力の尾
-   ctx.strokeStyle='#ffb52e';ctx.lineWidth=6;ctx.lineCap='round';
-   for(let i=0;i<2;i++){
-     const yy=Math.sin(t+i*Math.PI)*6;
-     ctx.beginPath();ctx.moveTo(-pr.r-25,yy);ctx.quadraticCurveTo(-16,-yy,-5,yy*.25);ctx.stroke();
-   }
-   // 炎の先端
-   ctx.fillStyle='#ff542d';ctx.strokeStyle='#8b271c';ctx.lineWidth=3;
-   ctx.beginPath();ctx.moveTo(pr.r+10,0);ctx.quadraticCurveTo(0,-pr.r-8,-pr.r-9,0);ctx.quadraticCurveTo(0,pr.r+8,pr.r+10,0);ctx.fill();ctx.stroke();
-   ctx.fillStyle='#ffe56b';ctx.beginPath();ctx.moveTo(pr.r+3,0);ctx.quadraticCurveTo(-1,-7,-8,0);ctx.quadraticCurveTo(-1,7,pr.r+3,0);ctx.fill();
-   // 魔法の火花
-   ctx.fillStyle='#fff2a6';for(let i=0;i<3;i++){const xx=-13-i*8,yy=Math.sin(t*1.4+i*2)*9;ctx.fillRect(xx-2,yy-2,4,4);}
+   ctx.globalAlpha=.18;circle(-5,0,pr.r+18,'#ff7b2d','transparent',0);ctx.globalAlpha=1;
+   // 短い炎尾
+   ctx.fillStyle='#ff7a28';
+   ctx.beginPath();ctx.moveTo(-pr.r+2,-8);ctx.quadraticCurveTo(-pr.r-28,Math.sin(t)*7,-pr.r-39,0);ctx.quadraticCurveTo(-pr.r-23,13,-pr.r+2,8);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#ffd54f';
+   ctx.beginPath();ctx.moveTo(-pr.r+1,-4);ctx.quadraticCurveTo(-pr.r-20,Math.sin(t+1)*4,-pr.r-27,0);ctx.quadraticCurveTo(-pr.r-15,7,-pr.r+1,4);ctx.closePath();ctx.fill();
+   // 大きい球状の炎核
+   circle(2,0,pr.r+5,'#ff4d2d','#8b271c',3);
+   circle(6,-3,pr.r*.58,'#ff9f2f','transparent',0);
+   circle(9,-5,pr.r*.28,'#fff08a','transparent',0);
+   // 周囲の魔法火花
+   ctx.fillStyle='#ffe36a';
+   for(let i=0;i<3;i++){const aa=t+i*2.1,rr=pr.r+10;circle(Math.cos(aa)*rr,Math.sin(aa)*rr,2.4,'#ffe36a','transparent',0);}
  }else if(pr.kind==='ice'){
    // 青杖：結晶核＋回転する魔法リング。綿毛弾と完全に別シルエット。
    const t=performance.now()*.014+(pr.magicPhase||0);
@@ -3974,7 +4008,7 @@ function drawShieldBack(hx,hy,a,raised){
  circle(-7,0,7,'#f7fbff','#111',4);
  ctx.restore();ctx.restore();
 }
-function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,'#eef5fa');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,'#d8a93d')}
+function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,player.swordPlus?'#c8f2d2':'#eef5fa');if(player.swordPlus)line(10,-2,41,-2,2,'#64c58b');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,player.swordPlus?'#6fbd78':'#d8a93d')}
  else if(w===1){
    // 槍は金属柄。穂先は単純な三角ではなく、細長い菱形の槍身。
    line(-3,0,62,0,10,'#111');line(-3,0,62,0,5,'#8d9aa3');line(1,-1,58,-1,2,'#dbe4e9');
