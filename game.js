@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={w:15050,h:1100};
+const world={minX:-1500,w:15050,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 91: 最初の浮遊草原ステージ
+// Prototype 92: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -122,6 +122,26 @@ const props={
 
 // スタート地点の左にある、後でハンマーを取って戻って壊す岩壁。
 const startRockWall={x:125,y:525,w:76,h:360,hp:1,dead:false};
+
+// 岩壁の向こう側。ハンマーを持って戻ると開く、スタート左の寄り道エリア。
+const leftZoneGeo={
+ path:[
+   {x:-1380,y:335,w:620,h:390},
+   {x:-850,y:300,w:650,h:460},
+   {x:-300,y:350,w:390,h:370}
+ ]
+};
+const fireBoss={
+ x:-760,y:545,r:82,hp:46,maxHp:46,active:false,dead:false,
+ attackCd:1.0,flash:0,phase:0
+};
+let fireBossDefeated=false;
+const redStaffPickup={x:-760,y:545,taken:false,active:false};
+
+// 上段ルートの新敵：跳ねる岩を投げる植物。
+const bouncingRocks=[];
+const rockThrower={x:10420,y:135,r:31,hp:5,maxHp:5,dead:false,flash:0,attackCd:1.3};
+
 
 const stageGeo={
  // ステージ1：一枚の読みやすい浮遊草原。
@@ -451,6 +471,7 @@ function visibleGroundRects(){
    });
    grounds.push(stage9Geo.arena);
  }
+ if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(islandBossDefeated){
    grounds.push({
      x:stage10Geo.bridge.x-stage10Geo.bridge.w/2,
@@ -1025,6 +1046,16 @@ function hitIslandBoss(damage,range,base,cone){
  }
 }
 
+function hitFireBoss(damage,range,base,cone=Math.PI*2){
+ if(!fireBoss.active||fireBoss.dead)return;
+ const d=dist(player.x,player.y,fireBoss.x,fireBoss.y);
+ const a=Math.atan2(fireBoss.y-player.y,fireBoss.x-player.x);
+ if(d<=range+fireBoss.r&&Math.abs(angleDiff(a,base))<=cone/2){
+   fireBoss.hp-=damage;fireBoss.flash=.18;
+   particle(fireBoss.x,fireBoss.y-55,`-${damage}`,'#b31313',.4,17);
+ }
+}
+
 function hitBoss(damage,range,base,cone=Math.PI*2){
  if(!boss.active||boss.dead)return;
  const d=dist(player.x,player.y,boss.x,boss.y);
@@ -1079,7 +1110,7 @@ function doAttack(charged=false){
    for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<=range+38){e.hp-=5;enemyHitReact(e,58);particle(e.x,e.y-22,'-5','#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
    for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+40){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
    for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+55){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
-   hitBoss(5,range+38,base,Math.PI*2);hitIslandBoss(5,range+38,base,Math.PI*2);hitStage2(5,range+38,base,Math.PI*2);hitStage3(5,range+38,base,Math.PI*2,w,true);hitStage45(5,range+38,base,Math.PI*2,w);
+   hitBoss(5,range+38,base,Math.PI*2);hitIslandBoss(5,range+38,base,Math.PI*2);hitFireBoss(5,range+38,base,Math.PI*2);hitStage2(5,range+38,base,Math.PI*2);hitStage3(5,range+38,base,Math.PI*2,w,true);hitStage45(5,range+38,base,Math.PI*2,w);
    return;
  }
 
@@ -1099,7 +1130,7 @@ function doAttack(charged=false){
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,285,base,.55);hitIslandBoss(4,285,base,.55);hitStage2(4,285,base,.55);hitStage3(4,285,base,.55,w,true);hitStage45(8,285,base,.55,w);hitStage8Spinner(285,base);
+   hitBoss(4,285,base,.55);hitIslandBoss(4,285,base,.55);hitFireBoss(4,285,base,.55);hitStage2(4,285,base,.55);hitStage3(4,285,base,.55,w,true);hitStage45(8,285,base,.55,w);hitStage8Spinner(285,base);
    // 槍でも岩は削れるが、5回必要。ハンマーなら1発。
    for(const r of stage7Rocks){
      if(r.dead)continue;
@@ -1141,7 +1172,7 @@ function doAttack(charged=false){
    if(d<range+38&&Math.abs(angleDiff(aa,base))<cone*.75)damageAmbient(a,w,1);
  }
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
- hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
+ hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitFireBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
  hitStage2(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitStage3(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w,false);hitStage45(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
  if(w===0){
@@ -1149,6 +1180,20 @@ function doAttack(charged=false){
   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
  }
  if(w===2){for(const r of props.rocks){if(!r.dead&&dist(player.x,player.y,r.x,r.y)<range+35){r.dead=true;particle(r.x,r.y,'バキッ','#444')}}}
+ if(stage10Started&&!rockThrower.dead){
+   const d=dist(player.x,player.y,rockThrower.x,rockThrower.y),aa=Math.atan2(rockThrower.y-player.y,rockThrower.x-player.x);
+   if(d<range+rockThrower.r+18&&Math.abs(angleDiff(aa,base))<cone/2+.15){
+     const dmg=w===2?5:3;rockThrower.hp-=dmg;rockThrower.flash=.2;particle(rockThrower.x,rockThrower.y-24,`-${dmg}`,'#b31313',.35,14);
+     if(rockThrower.hp<=0){rockThrower.dead=true;particle(rockThrower.x,rockThrower.y,'粉砕！','#777',.5,17)}
+   }
+ }
+ if(w===2){
+   for(const br of bouncingRocks){
+     if(!br.dead&&dist(player.x,player.y,br.x,br.y)<range+br.r+34&&br.z<72){
+       br.dead=true;particle(br.x,br.y,'ガシャッ！','#777',.38,16);
+     }
+   }
+ }
  if(!startRockWall.dead){
    const wx=startRockWall.x+startRockWall.w/2, wy=clamp(player.y,startRockWall.y-startRockWall.h/2,startRockWall.y+startRockWall.h/2);
    if(dist(player.x,player.y,wx,wy)<range+70){
@@ -1249,6 +1294,12 @@ function update(dt){
      }
      for(const a of ambientTerrain){
        if(!a.dead&&(a.kind==='tree'||a.kind==='rock')&&dist(player.x,player.y,a.x,a.y)<165)damageAmbient(a,2,5);
+     }
+     for(const br of bouncingRocks){
+       if(!br.dead&&dist(player.x,player.y,br.x,br.y)<180){br.dead=true;particle(br.x,br.y,'ガシャッ！','#777',.4,16)}
+     }
+     if(stage10Started&&!rockThrower.dead&&dist(player.x,player.y,rockThrower.x,rockThrower.y)<185){
+       rockThrower.hp-=8;rockThrower.flash=.2;if(rockThrower.hp<=0)rockThrower.dead=true;
      }
      for(const e of enemies){
        if(e.dead)continue;
@@ -1475,7 +1526,7 @@ function update(dt){
    }
  }
  const prevX=player.x,prevY=player.y;
- player.x=clamp(player.x+mx*speed*dt,45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
+ player.x=clamp(player.x+mx*speed*dt,world.minX+45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
  for(const o of elementalObstacles){if(o.type==='regenVine'&&!o.dead)o.wiggle=(o.wiggle||0)+dt*7;}
  // 意味のない浅い水流。入っても通れるが、少しだけ流される。
  for(const a of ambientTerrain){
@@ -1622,12 +1673,12 @@ function update(dt){
    if(w===0||w===1){
      const rad=w===0?64:72,dmg=5;
      particle(player.x,player.y,w===0?'ズブッ！':'ドスッ！','#fff',.38,17);
-     hitBoss(dmg,rad,0,Math.PI*2);hitStage2(dmg,rad,0,Math.PI*2);hitStage3(dmg,rad,0,Math.PI*2,w,false);hitStage45(dmg,rad,0,Math.PI*2,w);
+     hitBoss(dmg,rad,0,Math.PI*2);hitFireBoss(dmg,rad,0,Math.PI*2);hitStage2(dmg,rad,0,Math.PI*2);hitStage3(dmg,rad,0,Math.PI*2,w,false);hitStage45(dmg,rad,0,Math.PI*2,w);
      for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<rad+e.r){e.hp-=dmg;e.flash=.18;enemyHitReact(e,42);if(e.hp<=0)e.dead=true}}
    }else if(w===2){
      // 直撃範囲のみ。チャージのような外周衝撃波は無し。
      particle(player.x,player.y,'ドン！','#555',.34,17);
-     hitBoss(5,68,0,Math.PI*2);hitStage2(5,68,0,Math.PI*2);hitStage3(5,68,0,Math.PI*2,2,false);hitStage45(5,68,0,Math.PI*2,2);
+     hitBoss(5,68,0,Math.PI*2);hitFireBoss(5,68,0,Math.PI*2);hitStage2(5,68,0,Math.PI*2);hitStage3(5,68,0,Math.PI*2,2,false);hitStage45(5,68,0,Math.PI*2,2);
      for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<68+e.r){e.hp-=5;e.flash=.18;enemyHitReact(e,65);if(e.hp<=0)e.dead=true}}
    }else if(player.airMagic){
      const m=player.airMagic;
@@ -1670,20 +1721,20 @@ function update(dt){
  for(const pr of projectiles){
    if(pr.hit)continue;
    pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
-   if(pr.life<=0||pr.x<0||pr.y<0||pr.x>world.w||pr.y>world.h){pr.hit=true;continue}
+   if(pr.life<=0||pr.x<world.minX||pr.y<0||pr.x>world.w||pr.y>world.h){pr.hit=true;continue}
 
    // 敵が撃った種・花粉弾は、プレイヤー専用の当たり判定。
    // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
    if(pr.enemyShot){
      // 槍スキルの風車回転中は、槍そのものが弾を弾く。
-     if(player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
+     if(pr.kind!=='enemyFire'&&player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
        pr.hit=true;particle(pr.x,pr.y,'キン！','#fff',.28,14);continue;
      }
      if(dist(pr.x,pr.y,player.x,player.y)<pr.r+player.r){
-       if(player.jumpT>0){
+       if(pr.kind!=='enemyFire'&&player.jumpT>0){
          particle(player.x,player.y-45,'スカッ','#333',.3,13);
        }else if(shieldBlocks({x:pr.x,y:pr.y})){
-         particle(pr.x,pr.y,pr.kind==='seed'?'カン！':'ポフン！','#111',.35,14);
+         particle(pr.x,pr.y,pr.kind==='enemyFire'?'ボォン！':(pr.kind==='seed'?'カン！':'ポフン！'),'#111',.35,14);
        }else if(player.inv<=0){
          const got=takeDamage(pr.damage);
          player.inv=.45;
@@ -2165,6 +2216,83 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
+
+ // 上段の岩投げ植物。岩は地面で2回バウンドして迫る。
+ if(stage10Started&&!rockThrower.dead){
+   rockThrower.flash=Math.max(0,rockThrower.flash-dt);
+   rockThrower.attackCd-=dt;
+   const dx=player.x-rockThrower.x,dy=player.y-rockThrower.y,d=Math.hypot(dx,dy)||1;
+   if(rockThrower.attackCd<=0&&d<520){
+     rockThrower.attackCd=1.75;
+     const a=Math.atan2(dy,dx);
+     bouncingRocks.push({
+       x:rockThrower.x,y:rockThrower.y-8,vx:Math.cos(a)*205,vy:Math.sin(a)*205,
+       z:42,vz:225,r:22,bounces:0,life:4.2,dead:false
+     });
+     particle(rockThrower.x,rockThrower.y-36,'ポーン！','#666',.35,15);
+   }
+ }
+ for(const br of bouncingRocks){
+   if(br.dead)continue;
+   br.life-=dt;br.x+=br.vx*dt;br.y+=br.vy*dt;br.z+=br.vz*dt;br.vz-=540*dt;
+   if(br.z<=0){
+     br.z=0;
+     if(br.bounces<2){
+       br.bounces++;br.vz=150-br.bounces*28;br.vx*=.92;br.vy*=.92;
+       particle(br.x,br.y,'ドン！','#777',.22,12);
+     }else br.vz=0;
+   }
+   if(br.life<=0){br.dead=true;continue}
+   // 高く跳ねている最中は頭上を通る。低い時だけ当たる。
+   if(br.z<34&&dist(player.x,player.y,br.x,br.y)<player.r+br.r){
+     if(player.shield&&shieldBlocks({x:br.x,y:br.y})){
+       particle(br.x,br.y,'ガァン！','#111',.35,16);
+       br.vx*=-.45;br.vy*=-.45;br.vz=120;
+     }else if(player.inv<=0){
+       const got=takeDamage(6);player.inv=.5;br.dead=true;
+       particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+     }
+   }
+ }
+
+ // 岩壁の先へ入ると火吹き植物ボスが起動。
+ if(startRockWall.dead&&!fireBoss.dead){
+   const inLeft=player.x<20;
+   if(inLeft&&!fireBoss.active){fireBoss.active=true;currentStage=11;stage.checkpoint={x:-260,y:545};say('灼熱花！ 火は盾で受けろ！');}
+   if(fireBoss.active){
+     fireBoss.flash=Math.max(0,fireBoss.flash-dt);fireBoss.attackCd-=dt;
+     const dx=player.x-fireBoss.x,dy=player.y-fireBoss.y,d=Math.hypot(dx,dy)||1;
+     if(d<150){fireBoss.x-=dx/d*28*dt;fireBoss.y-=dy/d*28*dt}
+     else if(d>260){fireBoss.x+=dx/d*20*dt;fireBoss.y+=dy/d*20*dt}
+     fireBoss.x=clamp(fireBoss.x,-1120,-430);fireBoss.y=clamp(fireBoss.y,390,680);
+     if(fireBoss.attackCd<=0){
+       fireBoss.attackCd=1.45;fireBoss.phase++;
+       const base=Math.atan2(player.y-fireBoss.y,player.x-fireBoss.x);
+       // 炎は槍の風車では弾けず、ジャンプ回避も不可。盾だけが確実な防御。
+       for(const off of [-.34,-.17,0,.17,.34]){
+         const a=base+off;
+         projectiles.push({
+           x:fireBoss.x+Math.cos(a)*62,y:fireBoss.y+Math.sin(a)*62-8,
+           vx:Math.cos(a)*190,vy:Math.sin(a)*190,r:15,life:1.55,
+           kind:'enemyFire',damage:6,enemyShot:true,hit:false
+         });
+       }
+       particle(fireBoss.x,fireBoss.y-55,'ボォォッ！','#e54b24',.4,18);
+     }
+     if(fireBoss.hp<=0){
+       fireBoss.dead=true;fireBoss.active=false;fireBossDefeated=true;
+       redStaffPickup.active=true;redStaffPickup.x=fireBoss.x;redStaffPickup.y=fireBoss.y;
+       particle(fireBoss.x,fireBoss.y,'撃破！','#fff',.85,25);
+       say('炎が消えた。赤杖が残っている！');
+     }
+   }
+ }
+ if(redStaffPickup.active&&!redStaffPickup.taken&&dist(player.x,player.y,redStaffPickup.x,redStaffPickup.y)<58){
+   redStaffPickup.taken=true;unlockedWeapons[3]=true;player.weapon=3;weaponNameEl.textContent=weapons[3].name;
+   particle(redStaffPickup.x,redStaffPickup.y-30,'赤杖 GET！','#ff675d',.8,22);
+   say('赤杖を手に入れた！');
+ }
+
  // 転がる岩
  for(const r of rollingRocks){
    if(r.dead)continue;
@@ -2234,7 +2362,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;leafStockEl.textContent=`🍃 ${floatLeafStock}`;
- camera.x=clamp(player.x-W/2,0,Math.max(0,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
+ camera.x=clamp(player.x-W/2,world.minX,Math.max(world.minX,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
 }
 
 function line(x1,y1,x2,y2,w=5,color='#111'){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
@@ -2355,7 +2483,7 @@ function drawWorld(){
  ctx.restore();
  // 丸い模様：緑丸は外枠の黒線より内側に完全に収まる場合だけ描く。
  // 中心だけ地面判定にすると崖から半分はみ出すため、円周8方向も確認する。
- for(let x=80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
+ for(let x=world.minX+80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
    const px=x+(y%3)*8,py=y,r=34;
    // 黒い外枠をまたぐ丸は描かない。
    // 隣り合う2つの島を合わせて「地面」と判定せず、1枚の陸地の内側に円全体が収まる時だけ緑。
@@ -2854,6 +2982,45 @@ function drawWorld(){
    }
  }
 
+
+ // 岩壁の先の火山草地。
+ if(startRockWall.dead){
+   for(const r of leftZoneGeo.path){
+     ctx.fillStyle='#76513b';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(r.x+15,r.y+34,r.w-30,r.h+58,48);ctx.fill();ctx.stroke();
+     ctx.fillStyle='#a8b85c';ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
+   }
+   if(!fireBoss.dead){
+     ctx.save();ctx.translate(fireBoss.x,fireBoss.y);if(fireBoss.flash>0)ctx.globalAlpha=.6;
+     line(0,15,0,60,18,'#111');line(0,15,0,60,10,'#4f8d3a');
+     for(let i=0;i<10;i++){const a=i*Math.PI*2/10;ctx.save();ctx.rotate(a);ctx.translate(54,0);ctx.fillStyle=i%2?'#f05a30':'#ff8a32';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,27,13,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+     circle(0,0,27,'#5c2a20','#111',7);circle(-8,-5,4,'#ffd45a','#111',2);circle(8,-5,4,'#ffd45a','#111',2);
+     ctx.restore();
+     if(fireBoss.active){ctx.fillStyle='#111';ctx.fillRect(fireBoss.x-105,fireBoss.y-115,210,15);ctx.fillStyle='#e84a3a';ctx.fillRect(fireBoss.x-101,fireBoss.y-111,202*Math.max(0,fireBoss.hp/fireBoss.maxHp),7);}
+   }
+   if(redStaffPickup.active&&!redStaffPickup.taken){
+     ctx.save();ctx.translate(redStaffPickup.x,redStaffPickup.y);ctx.rotate(-.32);
+     line(0,28,0,-45,11,'#111');line(0,28,0,-45,6,'#8b4e35');
+     circle(0,-55,15,'#ff5a36','#111',5);circle(0,-55,7,'#ffd45a','#111',2);ctx.restore();
+     particle(redStaffPickup.x,redStaffPickup.y-78,'！','#ff675d',.12,18);
+   }
+ }
+ if(stage10Started&&!rockThrower.dead){
+   ctx.save();ctx.translate(rockThrower.x,rockThrower.y);if(rockThrower.flash>0)ctx.globalAlpha=.62;
+   line(0,8,0,31,10,'#111');line(0,8,0,31,5,'#577c3f');
+   circle(0,-4,27,'#71834d','#111',6);circle(-9,-8,4,'#111','#111',1);circle(9,-8,4,'#111','#111',1);
+   // 岩を抱える腕
+   line(-17,2,-31,15,7,'#111');line(17,2,31,15,7,'#111');circle(0,18,15,'#898b84','#111',5);
+   ctx.restore();
+ }
+ for(const br of bouncingRocks){
+   if(br.dead)continue;
+   // 地面影＋高さのある岩
+   ctx.globalAlpha=.22;ctx.fillStyle='#111';ctx.beginPath();ctx.ellipse(br.x,br.y+10,br.r*.9,br.r*.38,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+   circle(br.x,br.y-br.z*.45,br.r,'#858781','#111',5);
+   line(br.x-7,br.y-br.z*.45-4,br.x+7,br.y-br.z*.45-10,3,'#666');
+ }
+
  // スタート左のハンマー岩壁。ゲーム開始時から見えて、後で戻る理由になる。
  if(!startRockWall.dead){
    ctx.save();
@@ -2920,6 +3087,14 @@ function drawObjectiveArrow(){
 }
 
 function drawProjectile(pr){
+ if(pr.kind==='enemyFire'){
+   ctx.save();ctx.translate(pr.x,pr.y);
+   const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);
+   ctx.fillStyle='#ff6a2a';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(17,0);ctx.quadraticCurveTo(-2,-16,-18,0);ctx.quadraticCurveTo(-2,16,17,0);ctx.fill();ctx.stroke();
+   circle(3,0,7,'#ffd45a','#111',2);ctx.restore();return;
+ }
+
  ctx.save();ctx.translate(pr.x,pr.y);
  const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);
  if(pr.kind==='seed'){
