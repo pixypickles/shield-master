@@ -77,13 +77,14 @@ const boss={
 
 const props={
  grass:[{x:470,y:350,dead:false},{x:525,y:365,dead:false},{x:575,y:340,dead:false},{x:1240,y:390,dead:false}],
- rocks:[{x:1110,y:655,dead:false},{x:1165,y:670,dead:false}],
+ rocks:[],
  water:{x:260,y:590,w:300,h:105,frozen:0},
  // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
- shallowWater:{x:650,y:565,w:1100,h:82,flowX:34,flowY:0},
+ shallowWater:{x:650,y:610,w:500,h:72,flowX:34,flowY:0},
+ spring:{x:620,y:646,r:42},
  // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
- upperPond:{x:980,y:365,w:250,h:105,flowX:0,flowY:0},
- waterfall:{x:1158,y:425,w:72,h:390,flowX:0,flowY:58},
+ upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0},
+ waterfall:{x:1408,y:425,w:72,h:390,flowX:0,flowY:58},
  smallTrees:[
   // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
@@ -238,8 +239,8 @@ const bossWalnuts=[];
 
 const guardRails=[
  // stage1: rocks / low trees along portions of cliff
- {x:180,y:340,w:260,h:24,type:'rock'},{x:1020,y:340,w:250,h:24,type:'bush'},
- {x:300,y:690,w:260,h:24,type:'bush'},{x:1050,y:690,w:230,h:24,type:'rock'},
+ {x:180,y:340,w:260,h:24,type:'bush'},{x:1020,y:340,w:180,h:24,type:'bush'},
+ {x:300,y:690,w:220,h:24,type:'bush'},{x:1050,y:690,w:120,h:24,type:'bush'},
  // stage2
  {x:1990,y:360,w:230,h:22,type:'bush'},{x:2640,y:710,w:250,h:22,type:'rock'},
  // stage3
@@ -1858,12 +1859,24 @@ function drawWorld(){
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
 
- // 水色＝浅い水。歩ける。濃い青＝深い水で、青杖で凍らせるまで入れない。
- const sw=props.shallowWater;
+ // 水系A：湧き水→浅い小川。別の滝とは交差させない。
+ const sw=props.shallowWater,sp=props.spring;
+ // 湧水口：岩ではなく地面から水がこんこん湧く丸い泉。
+ ctx.fillStyle='#8edff1';ctx.strokeStyle='#329fca';ctx.lineWidth=4;ctx.beginPath();ctx.arc(sp.x,sp.y,sp.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+ ctx.fillStyle='rgba(235,253,255,.9)';ctx.beginPath();ctx.arc(sp.x-8,sp.y-7,12,0,Math.PI*2);ctx.fill();
+ for(let i=0;i<3;i++){ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(sp.x,sp.y,17+i*8,-2.8,-.25);ctx.stroke()}
+ // 泉から右へ流れ、崖際まで自然に続く浅瀬。
  ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(sw.x,sw.y,sw.w,sw.h,24);ctx.fill();ctx.stroke();
- for(let x=sw.x+18;x<sw.x+sw.w-10;x+=48){line(x,sw.y+22,x+24,sw.y+22,3,'rgba(255,255,255,.75)');line(x+10,sw.y+52,x+35,sw.y+52,3,'rgba(255,255,255,.6)')}
+ for(let x=sw.x+18;x<sw.x+sw.w-10;x+=48){line(x,sw.y+22,x+24,sw.y+22,3,'rgba(255,255,255,.75)');line(x+10,sw.y+50,x+35,sw.y+50,3,'rgba(255,255,255,.6)')}
+
+ // 小川の終点は途中で消えず、崖から細く下へ落ちる。
+ const sx=sw.x+sw.w-58;
+ ctx.fillStyle='rgba(151,229,245,.82)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=3;
+ ctx.beginPath();ctx.roundRect(sx,sw.y+40,58,150,16);ctx.fill();ctx.stroke();
+ for(let x=sx+14;x<sx+52;x+=18)line(x,sw.y+52,x,sw.y+178,2,'rgba(255,255,255,.7)');
+
+ // 水系B：高台の池→下向きの滝。横小川とは離して独立させる。
  const up=props.upperPond,wf=props.waterfall;
- // 滝を先に描き、池を上から重ねる。池→滝が一続きで、横にはみ出して見えない。
  ctx.fillStyle='rgba(137,221,246,.86)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y,wf.w,wf.h,18);ctx.fill();ctx.stroke();
  for(let x=wf.x+14;x<wf.x+wf.w;x+=20)line(x,wf.y+8,x,wf.y+wf.h-8,3,'rgba(255,255,255,.72)');
  ctx.fillStyle='#6f9e55';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(up.x-22,up.y-24,up.w+44,up.h+46,28);ctx.fill();ctx.stroke();
