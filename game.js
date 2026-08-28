@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 106: 最初の浮遊草原ステージ
+// Prototype 107: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -331,6 +331,11 @@ const stage7Rocks=[
 ];
 
 let hammerPickup={x:10860,y:540,taken:false};
+const hammerGuardian={
+ x:10790,y:540,r:55,hp:18,maxHp:18,active:false,dead:false,
+ attackCd:.85,flash:0
+};
+const hammerGuardianRocks=[];
 
 const rockBoss={
  x:11420,y:545,r:82,hp:44,maxHp:44,active:false,dead:false,
@@ -807,6 +812,7 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
  if(boss.active&&!boss.dead)candidates.push(boss);
  if(seedBoss.active&&!seedBoss.dead)candidates.push(seedBoss);
  if(grassFinalBoss.active&&!grassFinalBoss.dead)candidates.push(grassFinalBoss);
+ if(hammerGuardian.active&&!hammerGuardian.dead)candidates.push(hammerGuardian);
  if(rockBoss.active&&!rockBoss.dead)candidates.push(rockBoss);
  if(islandBoss.active&&!islandBoss.dead)candidates.push(islandBoss);
  for(const e of bossWalnuts)if(!e.dead)candidates.push(e);
@@ -1034,6 +1040,14 @@ function hitStage45(damage,range,base,cone,weapon){
     particle(e.x,e.y-24,`-${damage}`,'#b31313',.4,15);
     if(e.hp<=0){e.dead=true;particle(e.x,e.y,'パァッ！','#fff',.45,15);killDrop(e,.55)}
    }
+  }
+ }
+ if(stage7Started&&hammerGuardian.active&&!hammerGuardian.dead){
+  const d=dist(player.x,player.y,hammerGuardian.x,hammerGuardian.y);
+  const a=Math.atan2(hammerGuardian.y-player.y,hammerGuardian.x-player.x);
+  if(d<=range+hammerGuardian.r+14&&Math.abs(angleDiff(a,base))<=cone/2+.08){
+   hammerGuardian.hp-=damage;hammerGuardian.flash=.2;enemyHitReact(hammerGuardian,45);
+   particle(hammerGuardian.x,hammerGuardian.y-42,`-${damage}`,'#b31313',.38,16);
   }
  }
  if(stage7Started&&rockBoss.active&&!rockBoss.dead){
@@ -2240,8 +2254,42 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    say('岩の分かれ道');
  }
 
- // ハンマー取得
- if(stage7Started&&!hammerPickup.taken&&dist(player.x,player.y,hammerPickup.x,hammerPickup.y)<62){
+ // ハンマー直前の中ボス。倒すまではハンマーは存在しない。
+ if(stage7Started&&!hammerGuardian.dead&&!hammerGuardian.active&&player.x>10580){
+   hammerGuardian.active=true;
+   say('岩甲羅の中ボス！');
+ }
+ if(hammerGuardian.active&&!hammerGuardian.dead){
+   hammerGuardian.flash=Math.max(0,hammerGuardian.flash-dt);
+   hammerGuardian.attackCd-=dt;
+   if(hammerGuardian.attackCd<=0){
+     hammerGuardian.attackCd=1.05;
+     const a=Math.atan2(player.y-hammerGuardian.y,player.x-hammerGuardian.x);
+     hammerGuardianRocks.push({
+       x:hammerGuardian.x+Math.cos(a)*48,y:hammerGuardian.y+Math.sin(a)*48,
+       vx:Math.cos(a)*215,vy:Math.sin(a)*215,r:18,life:2.7,dead:false
+     });
+     particle(hammerGuardian.x,hammerGuardian.y-40,'ゴロッ！','#777',.3,14);
+   }
+   if(hammerGuardian.hp<=0){
+     hammerGuardian.dead=true;hammerGuardian.active=false;
+     hammerPickup.x=hammerGuardian.x;hammerPickup.y=hammerGuardian.y;
+     particle(hammerGuardian.x,hammerGuardian.y,'中ボス撃破！','#fff',.7,22);
+     say('中ボスがいた場所にハンマーが残った！');
+   }
+ }
+ for(const r of hammerGuardianRocks){
+   if(r.dead)continue;
+   r.x+=r.vx*dt;r.y+=r.vy*dt;r.life-=dt;
+   if(r.life<=0){r.dead=true;continue}
+   if(dist(player.x,player.y,r.x,r.y)<player.r+r.r){
+     if(player.shield){r.dead=true;particle(r.x,r.y,'ガン！','#fff',.3,14)}
+     else if(player.inv<=0){const got=takeDamage(5);player.inv=.55;r.dead=true;particle(player.x,player.y-35,`-${got}`,'#c11',.35,15)}
+   }
+ }
+
+ // 中ボス撃破後、消えた場所に落ちたハンマーを取得。
+ if(stage7Started&&hammerGuardian.dead&&!hammerPickup.taken&&dist(player.x,player.y,hammerPickup.x,hammerPickup.y)<62){
    hammerPickup.taken=true;
    unlockedWeapons[2]=true;
    player.weapon=2;
@@ -3013,13 +3061,31 @@ function drawWorld(){
      line(r.x-r.r*.4,r.y-5,r.x+r.r*.25,r.y-15,4,'#666');
    }
 
-   if(!hammerPickup.taken){
+   if(hammerGuardian.dead&&!hammerPickup.taken){
      ctx.save();ctx.translate(hammerPickup.x,hammerPickup.y);
      ctx.rotate(-.35);
      line(0,30,0,-25,12,'#111');line(0,30,0,-25,6,'#8b5c3b');
      roundRect(-22,-48,44,28,7,'#aaa','#111',6);
      ctx.restore();
      particle(hammerPickup.x,hammerPickup.y-70,'！','#ffe15a',.12,18);
+   }
+
+   if(!hammerGuardian.dead){
+     ctx.save();ctx.translate(hammerGuardian.x,hammerGuardian.y);if(hammerGuardian.flash>0)ctx.globalAlpha=.58;
+     // 小型の岩甲羅獣。後ろの本ボスより一回り小さく、武器入手前でも倒せる。
+     circle(0,0,47,'#858983','#111',7);
+     ctx.fillStyle='#a26b3d';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.ellipse(0,4,31,35,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+     circle(-11,-8,4.5,'#111','#111',1);circle(11,-8,4.5,'#111','#111',1);
+     line(-14,13,14,13,5,'#111');
+     ctx.restore();
+     if(hammerGuardian.active){
+       ctx.fillStyle='#111';ctx.fillRect(hammerGuardian.x-72,hammerGuardian.y-80,144,13);
+       ctx.fillStyle='#e85a42';ctx.fillRect(hammerGuardian.x-68,hammerGuardian.y-76,136*Math.max(0,hammerGuardian.hp/hammerGuardian.maxHp),6);
+     }
+   }
+   for(const r of hammerGuardianRocks){
+     if(r.dead)continue;circle(r.x,r.y,r.r,'#8b8d87','#111',5);line(r.x-7,r.y-3,r.x+5,r.y-8,3,'#666');
    }
 
    for(const r of rollingRocks){
