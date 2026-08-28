@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 120: 最初の浮遊草原ステージ
+// Prototype 121: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1571,10 +1571,16 @@ function doAttack(charged=false){
      player.airSlam=true;
      particle(player.x,player.y+22,'着地叩き！','#fff',.32,15);
    }else{
-     // 杖：斜め下へ撃ち、地面へ着弾して柱/氷トゲを発生。
-     const landX=player.x+Math.cos(base)*92,landY=player.y+Math.sin(base)*92;
-     player.airMagic={kind:w===3?'fire':'ice',x:landX,y:landY,done:false};
-     particle(landX,landY,w===3?'火球！':'氷弾！',w===3?'#e43':'#268bc1',.28,14);
+     // 杖：ジャンプ中に斜め下へ「実際に見える弾」を撃つ。
+     const landX=player.x+Math.cos(base)*125,landY=player.y+Math.sin(base)*125;
+     player.airMagic={
+       kind:w===3?'fire':'ice',
+       sx:player.x,sy:player.y,
+       x:landX,y:landY,
+       t:0,dur:.28,done:false,
+       startLift:jumpLiftNow()
+     };
+     particle(player.x,player.y-30,w===3?'火球！':'氷弾！',w===3?'#e43':'#268bc1',.24,14);
    }
    return;
  }
@@ -1715,6 +1721,38 @@ function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
  const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);
  const facing=faceAngle(player.face);
  return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
+
+
+function resolveAirMagic(m){
+ if(!m||m.done)return;
+ m.done=true;
+ particle(m.x,m.y,m.kind==='fire'?'ボォン！':'キィン！',m.kind==='fire'?'#e43':'#268bc1',.55,20);
+ const rad=86,dmg=5;
+ const hit=(e)=>{
+   if(!e||e.dead)return;
+   if(dist(m.x,m.y,e.x,e.y)<rad+(e.r||20)){
+     e.hp=(e.hp??1)-dmg;e.flash=.2;
+     particle(e.x,e.y-25,`-${dmg}`,m.kind==='fire'?'#e43':'#268bc1',.4,16);
+     if(e.hp<=0)e.dead=true;
+   }
+ };
+ for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,bossWalnuts]){
+   for(const e of list){
+     if(e.type==='spinnerflower'){if(dist(m.x,m.y,e.x,e.y)<rad+e.r)particle(e.x,e.y-25,'キン！','#111',.3,14)}
+     else hit(e);
+   }
+ }
+ for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss]){
+   if(b&&(!('active' in b)||b.active)&&!b.dead)hit(b);
+ }
+ if(m.kind==='fire'){
+   for(const g of props.grass){if(!g.dead&&dist(m.x,m.y,g.x,g.y)<100){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}}
+   for(const o of iceRouteBlocks){if(!o.dead&&dist(m.x,m.y,o.x,o.y)<100){o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.4,15)}}
+ }else{
+   freezeLegacyWaterAt(m.x,m.y,100);
+   freezeStreamsAt(m.x,m.y,100);
+ }
+}
 
 function update(dt){
  // 凍結ツタはガードステップのシールドアタックでも永久破壊。
@@ -2210,6 +2248,12 @@ function update(dt){
    if(d<minD){const push=minD-d;player.x+=dx/d*push;player.y+=dy/d*push}
  }
 
+ // 杖ジャンプ弾は着地を待たず、約0.28秒で斜め下へ飛んで着弾する。
+ if(player.airMagic&&!player.airMagic.done){
+   player.airMagic.t+=dt;
+   if(player.airMagic.t>=player.airMagic.dur)resolveAirMagic(player.airMagic);
+ }
+
  // ジャンプ攻撃の着地判定
  if(player.airAttack&&player.jumpT>0&&player.jumpT<=dt+.025&&!player.airAttackDone){
    player.airAttackDone=true;
@@ -2224,23 +2268,8 @@ function update(dt){
      particle(player.x,player.y,'ドン！','#555',.34,17);
      hitBoss(5,68,0,Math.PI*2);hitFireBoss(5,68,0,Math.PI*2);hitStage2(5,68,0,Math.PI*2);hitStage3(5,68,0,Math.PI*2,2,false);hitStage45(5,68,0,Math.PI*2,2);
      for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<68+e.r){e.hp-=5;e.flash=.18;enemyHitReact(e,65);if(e.hp<=0)e.dead=true}}
-   }else if(player.airMagic){
-     const m=player.airMagic;
-     particle(m.x,m.y,m.kind==='fire'?'ボォン！':'キィン！',m.kind==='fire'?'#e43':'#268bc1',.55,20);
-     // 着地点中心の魔法柱/氷トゲ
-     const rad=82,dmg=5;
-     const hit=(e)=>{if(!e||e.dead)return;if(dist(m.x,m.y,e.x,e.y)<rad+(e.r||20)){e.hp-=dmg;e.flash=.2;particle(e.x,e.y-25,`-${dmg}`,m.kind==='fire'?'#e43':'#268bc1',.4,16);if(e.hp<=0)e.dead=true}};
-     for(const e of enemies)hit(e);for(const e of stage2Enemies)hit(e);
-     for(const e of stage3Enemies){
-       if(e.type==='spinnerflower'&&dist(m.x,m.y,e.x,e.y)<rad+e.r)particle(e.x,e.y-25,'キン！','#111',.3,14);
-       else hit(e);
-     }for(const e of stage4Enemies)hit(e);for(const e of stage6Enemies)hit(e);for(const e of bossWalnuts)hit(e);
-     hit(boss);hit(seedBoss);hit(grassFinalBoss);hit(rockBoss);
-     if(m.kind==='fire'){for(const g of props.grass){if(!g.dead&&dist(m.x,m.y,g.x,g.y)<95){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}}}
-     else {
-       const wa=props.water;if(m.x>wa.x-80&&m.x<wa.x+wa.w+80&&m.y>wa.y-80&&m.y<wa.y+wa.h+80)wa.frozen=5;
-       freezeStreamsAt(m.x,m.y,95);
-     }
+   }else if(player.airMagic&&!player.airMagic.done){
+     resolveAirMagic(player.airMagic);
    }
  }
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
@@ -4214,6 +4243,26 @@ function drawWorld(){
  // 杖スキルの炎輪・氷板は全地形の上、プレイヤーの直前に描く。
  drawStaffSkillEffects();
 
+ // 杖ジャンプ攻撃の弾。プレイヤーの高さから地面へ斜めに飛ぶ。
+ if(player.airMagic&&!player.airMagic.done){
+   const m=player.airMagic,q=Math.min(1,m.t/m.dur);
+   const ex=m.sx+(m.x-m.sx)*q,ey=m.sy+(m.y-m.sy)*q;
+   const lift=(m.startLift||70)*(1-q);
+   ctx.save();ctx.translate(ex,ey-lift);
+   if(m.kind==='fire'){
+     ctx.globalAlpha=.22;circle(0,0,25,'#ff9b35','transparent',0);ctx.globalAlpha=1;
+     circle(0,0,15,'#ff5a2d','#111',4);circle(4,-2,7,'#ffd65a','transparent',0);
+     ctx.fillStyle='#ff7a2c';ctx.beginPath();ctx.moveTo(-12,0);ctx.lineTo(-31,-9);ctx.lineTo(-24,2);ctx.lineTo(-32,12);ctx.closePath();ctx.fill();
+   }else{
+     ctx.rotate(performance.now()*.012);
+     ctx.globalAlpha=.2;circle(0,0,25,'#bfeeff','transparent',0);ctx.globalAlpha=1;
+     ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;
+     ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(14,-3);ctx.lineTo(8,17);ctx.lineTo(-10,16);ctx.lineTo(-15,-2);ctx.closePath();ctx.fill();ctx.stroke();
+     ctx.strokeStyle='#78cfee';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,23,0,Math.PI*1.5);ctx.stroke();
+   }
+   ctx.restore();
+ }
+
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
  drawPlayer();
@@ -4443,15 +4492,22 @@ function drawPlayer(){
  }
  // ジャンプ通常攻撃：剣/槍は下突き、ハンマーは着地へ振り下ろす。
  if(player.airAttack&&player.jumpT>0){
-   if(player.weapon===0||player.weapon===1){
-     // ジャンプ剣・槍は向いている方向に関係なく、武器を画面上の真下へ向けて突き刺す。
-     wa=Math.PI/2;
-     thrust=player.weapon===1?20:16;
-   }else if(player.weapon===2){const jp=1-player.jumpT/player.jumpDur;wa=player.aim-1.25+Math.max(0,(jp-.65)/.35)*2.4}
+   const jp=1-player.jumpT/player.jumpDur;
+   if(player.weapon===0){
+     // 剣：真下へ構え、落下直前に短く振り抜く。
+     wa=Math.PI/2 + (jp>.72?(jp-.72)*1.15:0);
+     thrust=12;
+   }else if(player.weapon===1){
+     // 槍：剣より長く真下へ突き出す。
+     wa=Math.PI/2;thrust=30;
+   }else if(player.weapon===2){
+     // ハンマー：空中で大きく振りかぶり、着地直前に真下へ叩きつける。
+     wa=player.aim-1.35+Math.max(0,(jp-.58)/.42)*2.7;
+   }
  }
 
  // 武器アニメーションはここだけで決める。後段で wa / thrust を上書きしない。
- if(player.attacking>0 && !player.spin && player.skillKind!=='sword'){
+ if(player.attacking>0 && !player.spin && player.skillKind!=='sword' && !(player.airAttack&&player.jumpT>0)){
    const t=1-Math.max(0,Math.min(1,player.attacking/player.attackMax));
 
    if(player.weapon===0){
