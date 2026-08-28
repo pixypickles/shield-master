@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 104: 最初の浮遊草原ステージ
+// Prototype 106: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -2066,8 +2066,11 @@ function update(dt){
      }
      if(seedBoss.hp<=0){
        seedBoss.dead=true;seedBoss.active=false;stage2BossDefeated=true;stage2BridgeOpen=true;
+       // 生命の盾と同じ方式：ボスが消えたその場所に報酬を残す。
+       spearPickup.x=seedBoss.x;
+       spearPickup.y=seedBoss.y;
        particle(seedBoss.x,seedBoss.y,'撃破！','#fff',.8,26);
-       say('次の島へ虹の橋！');
+       say('ボスがいた場所に槍が残った！');
      }
    }
  }
@@ -2079,7 +2082,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
 
- if(stage3Started&&!spearPickup.taken&&dist(player.x,player.y,spearPickup.x,spearPickup.y)<58){
+ if(stage2BossDefeated&&!spearPickup.taken&&dist(player.x,player.y,spearPickup.x,spearPickup.y)<58){
    spearPickup.taken=true;
    unlockedWeapons[1]=true;
    player.weapon=1;
@@ -2190,8 +2193,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
     if(grassFinalBoss.hp<=0){
      grassFinalBoss.dead=true;grassFinalBoss.active=false;grassAreaClear=true;area1Cleared=true;
      particle(grassFinalBoss.x,grassFinalBoss.y,'AREA CLEAR！','#fff',1.0,28);
-     say('草原エリア クリア！');
-     setTimeout(()=>openAreaMap(),850);
+     say('草原エリア クリア！ そのまま風の庭園へ進める！');
     }
    }
  }
@@ -2199,7 +2201,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
 
  // 草原クリア後：風の庭園
- if(false&&grassAreaClear&&player.x>8010&&!stage6Started){
+ if(grassAreaClear&&player.x>8010&&!stage6Started){
    stage6Started=true;currentStage=6;stage.checkpoint={x:8170,y:545};
    say('風の庭園：風を操る植物たち');
  }
@@ -2897,7 +2899,7 @@ function drawWorld(){
  }
 
 
- if(stage3Started&&!spearPickup.taken){
+ if(stage2BossDefeated&&!spearPickup.taken){
    ctx.save();ctx.translate(spearPickup.x,spearPickup.y);
    // 拾った直後にそのまま使う槍なので、装備中と同じ金属製の槍として描く。
    ctx.rotate(-.28);
@@ -3345,8 +3347,8 @@ function drawObjectiveArrow(){
  if(!stage.bossDefeated){tx=boss.x;ty=boss.y;}
  else if(!stage2Started){tx=stage2Geo.path[0].x+120;ty=stage2Geo.path[0].y+150;}
  else if(!stage2BossDefeated){tx=seedBoss.x;ty=seedBoss.y;}
- else if(!stage3Started){tx=stage3Geo.path[0].x+130;ty=stage3Geo.path[0].y+150;}
  else if(!spearPickup.taken){tx=spearPickup.x;ty=spearPickup.y;}
+ else if(!stage3Started){tx=stage3Geo.path[0].x+130;ty=stage3Geo.path[0].y+150;}
  else if(!stage3BridgeOpen){tx=stage3Geo.path[stage3Geo.path.length-1].x+150;ty=550;}
  else if(!stage4Started){tx=stage4Geo.path[0].x+120;ty=540;}
  else if(!stage4Cleared){tx=stage4Geo.path[stage4Geo.path.length-1].x+180;ty=540;}
