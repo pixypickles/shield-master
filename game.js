@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 86: 最初の浮遊草原ステージ
+// Prototype 88: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -261,10 +261,21 @@ let islandBossDefeated=false;
 // 次区間は右へ延々伸ばさず、ボス島から上へ登って左へ折り返す。
 // 同じ横幅を再利用してマップ密度を上げる。
 const stage10Geo={
- up:{x:14170,y:70,w:300,h:250},
- left:{x:13280,y:70,w:950,h:250},
- connector:{x:14170,y:250,w:270,h:150}
+ // ボス島の上端から上へ虹橋。地面が突然生えるのではなく、橋を渡って次の高台へ。
+ bridge:{x:14055,y1:300,y2:205,w:190},
+ path:[
+   {x:13915,y:20,w:340,h:190},    // 虹の着地点
+   {x:13460,y:20,w:500,h:210},    // 左へ折れる高庭
+   {x:12910,y:90,w:500,h:230},    // 少し下がる広場
+   {x:12380,y:35,w:475,h:230}     // 左奥の終点
+ ]
 };
+let stage10Started=false;
+const stage10Enemies=[
+ {x:13610,y:125,r:26,hp:3,maxHp:3,type:'fanleaf',attackCd:1.5,flash:0,dead:false},
+ {x:13110,y:205,r:27,hp:3,maxHp:3,type:'dandelion',attackCd:1.8,flash:0,dead:false},
+ {x:12580,y:145,r:28,hp:4,maxHp:4,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:.7}
+];
 
 // 各エリアに「攻略とは無関係な自然物」を少量散らす。
 // 木・岩など、世界に生活感/自然さを出すための飾り。水は必ず発生源と流れ先が分かる形だけにする。
@@ -398,13 +409,12 @@ function visibleGroundRects(){
  }
  if(islandBossDefeated){
    grounds.push({
-     x:Math.min(stage9Geo.exitBridge.x1,stage9Geo.exitBridge.x2)-30,
-     y:stage9Geo.exitBridge.y1-105,
-     w:Math.abs(stage9Geo.exitBridge.x2-stage9Geo.exitBridge.x1)+60,
-     h:210
+     x:stage10Geo.bridge.x-stage10Geo.bridge.w/2,
+     y:stage10Geo.bridge.y2-20,
+     w:stage10Geo.bridge.w,
+     h:stage10Geo.bridge.y1-stage10Geo.bridge.y2+40
    });
-   grounds.push(stage9Geo.exitIsland);
-   grounds.push(stage10Geo.up,stage10Geo.left,stage10Geo.connector);
+   grounds.push(...stage10Geo.path);
  }
  return grounds;
 }
@@ -637,10 +647,13 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
  for(const e of stage3Enemies)if(!e.dead)candidates.push(e);
  for(const e of stage4Enemies)if(!e.dead)candidates.push(e);
  for(const e of stage6Enemies)if(!e.dead)candidates.push(e);
+ for(const e of stage8Enemies)if(!e.dead)candidates.push(e);
+ if(typeof stage10Enemies!=='undefined')for(const e of stage10Enemies)if(!e.dead)candidates.push(e);
  if(boss.active&&!boss.dead)candidates.push(boss);
  if(seedBoss.active&&!seedBoss.dead)candidates.push(seedBoss);
  if(grassFinalBoss.active&&!grassFinalBoss.dead)candidates.push(grassFinalBoss);
  if(rockBoss.active&&!rockBoss.dead)candidates.push(rockBoss);
+ if(islandBoss.active&&!islandBoss.dead)candidates.push(islandBoss);
  for(const e of bossWalnuts)if(!e.dead)candidates.push(e);
 
  let best=null,bestScore=1e9,bestA=base;
@@ -789,12 +802,14 @@ function hitStage3(damage,range,base,cone,weapon,charged=false){
 
 
 function hitStage8Spinner(range,base){
- if(!stage8Started)return;
  const fx=Math.cos(base),fy=Math.sin(base);
- for(const e of stage8Enemies){
+ const lists=[];
+ if(stage8Started)lists.push(stage8Enemies);
+ if(stage10Started)lists.push(stage10Enemies);
+ for(const list of lists)for(const e of list){
    if(e.dead||e.type!=='spinnerflower')continue;
    const dx=e.x-player.x,dy=e.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-   if(along>0&&along<range+e.r+18&&side<22){
+   if(along>0&&along<range+e.r+18&&side<24){
      e.hp=0;e.dead=true;e.flash=.2;particle(e.x,e.y-25,'中心！','#fff',.38,16);particle(e.x,e.y,'パァン！','#fff',.4,15);
    }
  }
@@ -908,7 +923,24 @@ function hitElementalObstacle(x,y,r,kind,power=1){
    }
   }
  }
+ if(stage10Started){
+  for(const e of stage10Enemies){
+   if(e.dead)continue;
+   const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(e.y-player.y,e.x-player.x);
+   if(d>range+e.r||Math.abs(angleDiff(a,base))>cone/2)continue;
+   if(e.type==='spinnerflower'){
+    if(weapon===1&&Math.abs(angleDiff(a,base))<.24){
+      e.dead=true;e.hp=0;particle(e.x,e.y-22,'中心！','#fff',.38,16);
+    }else particle(e.x,e.y-22,'キン！','#111',.28,13);
+   }else{
+    e.hp-=damage;e.flash=.18;enemyHitReact(e,45);
+    particle(e.x,e.y-22,`-${damage}`,'#b31313',.35,14);
+    if(e.hp<=0){e.dead=true;killDrop(e,.45)}
+   }
+  }
+ }
 }
+
 
 function hitIslandBoss(damage,range,base,cone){
  if(!stage9Started||!islandBoss.active||islandBoss.dead)return;
@@ -938,8 +970,11 @@ function doAttack(charged=false){
  let range=wp.range*(charged?1.45:1);
  let base=autoAim(faceAngle(player.face),Math.PI*.58,w>=3?440:range+90);
  if(w===1&&charged){
-   const stickDir=stickAngle();
-   if(stickDir!==null)base=stickDir;
+   // 入力方向（無入力なら向いている方向）を基準に、近い敵へ軽く吸い付く。
+   // 完全自動ではなく、約35度以内の敵だけを補正する。
+   const intended=stickAngle()??faceAngle(player.face);
+   const snap=skillAutoAim(intended,350,.62);
+   base=snap.target?snap.angle:intended;
  }
  player.aim=base;
 
@@ -1999,7 +2034,34 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    if(islandBoss.hp<=0){
      islandBoss.dead=true;islandBoss.active=false;islandBossDefeated=true;
      particle(islandBoss.x,islandBoss.y,'撃破！','#fff',.9,26);
-     say('右側に虹の橋が現れた！');
+     say('上へ続く虹の橋が現れた！');
+   }
+ }
+
+ // 大輪ボス後：虹を上へ渡り、そこから左へ折り返す高庭コース。
+ if(islandBossDefeated&&!stage10Started&&player.y<245&&player.x>13870&&player.x<14280){
+   stage10Started=true;currentStage=10;stage.checkpoint={x:14080,y:120};
+   say('高庭の折り返し道：ここから左へ');
+ }
+ if(stage10Started){
+   for(const e of stage10Enemies){
+     if(e.dead)continue;
+     e.flash=Math.max(0,e.flash-dt);
+     if(e.type==='spinnerflower'){
+       e.petalA=(e.petalA||0)+dt*5.2;
+       // 回転花は接触ダメージ。槍の中心突き/スパイラルで処理。
+       if(dist(player.x,player.y,e.x,e.y)<player.r+e.r+10&&player.jumpT<=0&&player.inv<=0){
+         const got=takeDamage(4);player.inv=.5;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16);
+       }
+       continue;
+     }
+     e.attackCd-=dt;
+     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+     if(e.attackCd<=0&&d<360){
+       e.attackCd=e.type==='dandelion'?1.9:1.55;
+       const a=Math.atan2(dy,dx);
+       projectiles.push({x:e.x,y:e.y-12,vx:Math.cos(a)*175,vy:Math.sin(a)*175,r:10,life:2.2,kind:e.type==='dandelion'?'puff':'wind',damage:4,enemyShot:true,hit:false});
+     }
    }
  }
 
@@ -2349,14 +2411,14 @@ function drawWorld(){
 
  if(stage3Started&&!spearPickup.taken){
    ctx.save();ctx.translate(spearPickup.x,spearPickup.y);
-   // 地面に斜めに刺さった槍
+   // 拾った直後にそのまま使う槍なので、装備中と同じ金属製の槍として描く。
    ctx.rotate(-.28);
-   line(0,18,0,-54,12,'#111');
-   line(0,18,0,-54,6,'#8b5a35');
+   line(0,20,0,-55,12,'#111');
+   line(0,20,0,-55,6,'#e9eef2');
    ctx.fillStyle='#e9eef2';ctx.strokeStyle='#111';ctx.lineWidth=5;
-   ctx.beginPath();ctx.moveTo(0,-74);ctx.lineTo(-10,-50);ctx.lineTo(10,-50);ctx.closePath();ctx.fill();ctx.stroke();
-   line(-14,-42,14,-42,7,'#111');
-   line(-12,-42,12,-42,3,'#e5b33b');
+   ctx.beginPath();ctx.moveTo(0,-82);ctx.lineTo(-11,-53);ctx.lineTo(0,-47);ctx.lineTo(11,-53);ctx.closePath();ctx.fill();ctx.stroke();
+   line(-14,-43,14,-43,7,'#111');
+   line(-12,-43,12,-43,3,'#e5b33b');
    ctx.restore();
    particle(spearPickup.x,spearPickup.y-70,'！','#ffe15a',.12,18);
  }
@@ -2563,22 +2625,23 @@ function drawWorld(){
      ctx.stroke();
    });
 
-   // 撃破後だけ右の虹＋出口小島
+   // 撃破後は上方向へ虹の橋。その先で左へ折り返す。
    if(islandBossDefeated){
+     // 上向きなので、横方向に色帯を並べて縦へ伸ばす。
      cols.forEach((c,i)=>{
-       ctx.strokeStyle=c;ctx.lineWidth=30;ctx.lineCap='butt';ctx.beginPath();
-       ctx.moveTo(stage9Geo.exitBridge.x1-20,stage9Geo.exitBridge.y1+i*19-48);
-       ctx.quadraticCurveTo(14535,520+i*8,stage9Geo.exitBridge.x2+20,stage9Geo.exitBridge.y2+i*19-48);
+       const ox=(i-2.5)*18;
+       ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();
+       ctx.moveTo(stage10Geo.bridge.x+ox,stage10Geo.bridge.y1+16);
+       ctx.quadraticCurveTo(stage10Geo.bridge.x+ox+8,252,stage10Geo.bridge.x+ox,stage10Geo.bridge.y2-12);
        ctx.stroke();
      });
-     const ex=stage9Geo.exitIsland;
-     ctx.fillStyle='#8fd27a';ctx.strokeStyle='#111';ctx.lineWidth=7;
-     ctx.beginPath();ctx.roundRect(ex.x,ex.y,ex.w,ex.h,60);ctx.fill();ctx.stroke();
 
-     // 次は上へ進み、その先で左へ折り返す。横方向のワールドを無駄に増やさない構成。
-     for(const r of [stage10Geo.connector,stage10Geo.up,stage10Geo.left]){
+     for(const r of stage10Geo.path){
        ctx.fillStyle='#83cf72';ctx.strokeStyle='#111';ctx.lineWidth=7;
        ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,55);ctx.fill();ctx.stroke();
+       // 浮島の厚みを少しだけ見せる
+       ctx.fillStyle='rgba(110,77,52,.82)';
+       ctx.beginPath();ctx.moveTo(r.x+45,r.y+r.h);ctx.lineTo(r.x+r.w-45,r.y+r.h);ctx.lineTo(r.x+r.w-75,r.y+r.h+36);ctx.lineTo(r.x+75,r.y+r.h+36);ctx.closePath();ctx.fill();
      }
    }
  }
@@ -2672,6 +2735,24 @@ function drawWorld(){
      }
    }
  }
+ if(stage10Started){
+   for(const e of stage10Enemies){
+     if(e.dead)continue;
+     ctx.save();ctx.translate(e.x,e.y);
+     if(e.flash>0)ctx.globalAlpha=.62;
+     if(e.type==='spinnerflower'){
+       ctx.save();ctx.rotate(e.petalA||0);
+       for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.save();ctx.rotate(a);ctx.translate(27,0);ctx.fillStyle=i%2?'#f08acb':'#ffb0dc';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,17,9,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+       ctx.restore();circle(0,0,13,'#ffd85a','#111',5);line(0,12,0,31,8,'#111');line(0,12,0,31,4,'#4fae52');
+     }else{
+       line(0,5,0,28,9,'#111');line(0,5,0,28,5,'#4f9f49');
+       const col=e.type==='dandelion'?'#eef8e8':'#8ddc72';
+       for(let i=0;i<7;i++){const a=i*Math.PI*2/7;circle(Math.cos(a)*18,Math.sin(a)*18-8,9,col,'#111',3)}
+       circle(0,-8,11,'#d9a94d','#111',4);
+     }
+     ctx.restore();
+   }
+ }
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
  drawPlayer();
@@ -2700,7 +2781,8 @@ function drawObjectiveArrow(){
  else if(!hammerPickup.taken){tx=hammerPickup.x;ty=hammerPickup.y;}
  else if(!rockBossDefeated){tx=rockBoss.x;ty=rockBoss.y;}
  else if(!islandBossDefeated){tx=islandBoss.x;ty=islandBoss.y;}
- else return;
+ else if(!stage10Started){tx=stage10Geo.bridge.x;ty=stage10Geo.bridge.y2;}
+ else {tx=12480;ty=145;}
 
  const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy);
  if(d<220)return;
