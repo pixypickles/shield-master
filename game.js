@@ -24,9 +24,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 97: 最初の浮遊草原ステージ
+// Prototype 99: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -820,34 +820,70 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
 function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
 
 function fireMagic(w,charged,base){
- // 杖チャージ：単発大弾ではなく、扇状の炎/吹雪を噴射する。
+ // 杖チャージは「弾を大量に出す」のではなく、武器ごとの固有範囲技。
  if(charged){
-   const kind=w===3?'fire':'ice';
-   const count=11;
-   for(let i=0;i<count;i++){
-     const spread=(i-(count-1)/2)/(count-1);
-     const a=base+spread*.72;
-     const speed=350+Math.random()*90;
-     const r=10+Math.random()*4;
-     projectiles.push({
-       x:player.x+Math.cos(a)*48,
-       y:player.y+Math.sin(a)*48,
-       vx:Math.cos(a)*speed,
-       vy:Math.sin(a)*speed,
-       r,life:.48+Math.random()*.18,kind,damage:1,charged:true,hit:false,spray:true
-     });
+   const kind=w===3?'fireCone':'blizzardCone';
+   player.staffChargeFx={kind,base,t:.52,max:.52};
+
+   const maxRange=w===3?260:275;
+   const half=w===3?.52:.58;
+   const damage=w===3?7:6;
+
+   // 扇形の中にいる敵へ一度だけダメージ。
+   const hitOne=(e)=>{
+     if(!e||e.dead)return;
+     const dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
+     if(d>maxRange+(e.r||20))return;
+     const a=Math.atan2(dy,dx);
+     if(Math.abs(angleDiff(a,base))>half)return;
+     e.hp-=damage;e.flash=.22;
+     if(w===4)e.stagger=Math.max(e.stagger||0,.65);
+     particle(e.x,e.y-24,`-${damage}`,w===3?'#e34a3a':'#d9f7ff',.42,16);
+     if(e.hp<=0)e.dead=true;
+   };
+
+   for(const e of enemies)hitOne(e);
+   for(const e of stage2Enemies)hitOne(e);
+   for(const e of stage3Enemies){
+     if(e.type==='spinnerflower'){
+       if(w===4&&dist(player.x,player.y,e.x,e.y)<maxRange+e.r)particle(e.x,e.y-24,'キン！','#fff',.3,14);
+     }else hitOne(e);
    }
-   particle(player.x+Math.cos(base)*48,player.y+Math.sin(base)*48,w===3?'ゴォッ！':'ブワァ！',w===3?'#e43':'#268bc1',.35,17);
+   for(const e of stage4Enemies)hitOne(e);
+   for(const e of stage6Enemies)hitOne(e);
+   for(const e of stage10Enemies)if(e.type!=='spinnerflower')hitOne(e);
+   for(const e of bossWalnuts)hitOne(e);
+
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss]){
+     if(!b||b.dead||!b.active)continue;
+     const dx=b.x-player.x,dy=b.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
+     if(d<=maxRange+b.r&&Math.abs(angleDiff(a,base))<=half){
+       b.hp-=damage;b.flash=.22;particle(b.x,b.y-45,`-${damage}`,w===3?'#e34a3a':'#d9f7ff',.42,17);
+     }
+   }
+
+   if(w===3){
+     // 赤杖：草を広く燃やす。
+     for(const g of props.grass){
+       if(g.dead)continue;
+       const dx=g.x-player.x,dy=g.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
+       if(d<maxRange&&Math.abs(angleDiff(a,base))<half){g.dead=true;particle(g.x,g.y,'ボワッ','#e43',.35,14)}
+     }
+     particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'ゴォォッ！','#e43',.4,18);
+   }else{
+     // 青杖：前方の水流をまとめて凍結。
+     for(let d=55;d<=maxRange;d+=45)freezeStreamsAt(player.x+Math.cos(base)*d,player.y+Math.sin(base)*d,58);
+     particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'キィィン！','#eafaff',.4,18);
+   }
    return;
  }
 
  const speed=470,damage=2,radius=11;
- const fa=faceAngle(player.face), rx=Math.cos(fa+Math.PI/2), ry=Math.sin(fa+Math.PI/2), fx=Math.cos(fa), fy=Math.sin(fa);
+ const fa=faceAngle(player.face),rx=Math.cos(fa+Math.PI/2),ry=Math.sin(fa+Math.PI/2),fx=Math.cos(fa),fy=Math.sin(fa);
  let hx=player.x+rx*23+fx*5,hy=player.y+ry*19+fy*5+3;
  if(player.face==='right'){hx=player.x+20;hy=player.y+13;}
  else if(player.face==='left'){hx=player.x-18;hy=player.y+12;}
- const tip=56;
- const sx=hx+Math.cos(base)*tip,sy=hy+Math.sin(base)*tip;
+ const tip=56,sx=hx+Math.cos(base)*tip,sy=hy+Math.sin(base)*tip;
  projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.05,kind:w===3?'fire':'ice',damage,charged:false,hit:false});
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
@@ -1115,7 +1151,7 @@ function hitFireBoss(damage,range,base,cone=Math.PI*2){
  if(!fireBoss.active||fireBoss.dead)return;
  const d=dist(player.x,player.y,fireBoss.x,fireBoss.y);
  const a=Math.atan2(fireBoss.y-player.y,fireBoss.x-player.x);
- if(d<=range+fireBoss.r&&Math.abs(angleDiff(a,base))<=cone/2){
+ if(d<=range+fireBoss.r+34&&Math.abs(angleDiff(a,base))<=cone/2+.20){
    fireBoss.hp-=damage;fireBoss.flash=.18;
    particle(fireBoss.x,fireBoss.y-55,`-${damage}`,'#b31313',.4,17);
  }
@@ -1144,6 +1180,10 @@ function doAttack(charged=false){
    const intended=stickAngle()??faceAngle(player.face);
    const snap=skillAutoAim(intended,350,.62);
    base=snap.target?snap.angle:intended;
+ }
+ if(fireBoss.active&&!fireBoss.dead&&w<=2){
+   const fd=dist(player.x,player.y,fireBoss.x,fireBoss.y),fa=Math.atan2(fireBoss.y-player.y,fireBoss.x-player.x);
+   if(fd<370&&Math.abs(angleDiff(fa,base))<.95)base=fa;
  }
  player.aim=base;
 
@@ -1313,6 +1353,7 @@ function update(dt){
 
  // P16 チャージ攻撃の時間処理
  if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
+ if(player.staffChargeFx){player.staffChargeFx.t-=dt;if(player.staffChargeFx.t<=0)player.staffChargeFx=null;}
  if(player.hammerSmash>0){
    player.hammerSmash-=dt;player.hammerSmashT+=dt;
    const p=Math.min(1,player.hammerSmashT/.72);
@@ -1552,7 +1593,8 @@ function update(dt){
      }
 
    }else if(player.skillKind==='fire'){
-     // 赤杖：かなり強く旋回できる。燃えるタイヤのような操作感。
+     // 赤杖：燃えるタイヤのように旋回。
+     player.fireWheelVisual=(player.fireWheelVisual||0)+dt*18;
      const inputA=stickAngle();
      if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*5.2);
      player.aim=player.skillBase;
@@ -1849,7 +1891,7 @@ function update(dt){
      continue;
    }
 
-   if(pr.kind==='fire'){
+   if(pr.kind==='fire'||pr.kind==='fireWheel'){
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
    }else{
      const wa=props.water;
@@ -1857,11 +1899,11 @@ function update(dt){
      if(!pr.hit&&freezeStreamsAt(pr.x,pr.y,pr.r+16))pr.hit=true;
    }
    if(pr.hit)continue;
-   if(pr.kind==='fire'||pr.kind==='ice'){
+   if(pr.kind==='fire'||pr.kind==='fireWheel'||pr.kind==='ice'){
      for(const o of elementalObstacles){
        if(o.dead)continue;
        if(dist(pr.x,pr.y,o.x,o.y)<pr.r+o.r){
-         hitElementalObstacle(o.x,o.y,o.r,pr.kind,1);pr.hit=true;break;
+         hitElementalObstacle(o.x,o.y,o.r,pr.kind==='fireWheel'?'fire':pr.kind,1);pr.hit=true;break;
        }
      }
    }
@@ -1872,6 +1914,10 @@ function update(dt){
    if(pr.hit)continue;
    if(boss.active&&!boss.dead&&dist(pr.x,pr.y,boss.x,boss.y)<pr.r+boss.r){
      boss.hp-=pr.damage;boss.flash=.14;particle(boss.x,boss.y-35,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);pr.hit=true;
+   }
+   if(pr.hit)continue;
+   if(fireBoss.active&&!fireBoss.dead&&dist(pr.x,pr.y,fireBoss.x,fireBoss.y)<pr.r+fireBoss.r+14){
+     fireBoss.hp-=pr.damage;fireBoss.flash=.14;particle(fireBoss.x,fireBoss.y-45,`-${pr.damage}`,'#b31313',.4,16);pr.hit=true;
    }
    if(pr.hit)continue;
    for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;enemyHitReact(e,14);particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
@@ -2482,11 +2528,82 @@ function line(x1,y1,x2,y2,w=5,color='#111'){ctx.strokeStyle=color;ctx.lineWidth=
 function circle(x,y,r,fill,stroke='#111',lw=5){ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke()}
 function roundRect(x,y,w,h,r,fill,stroke='#111',lw=5){ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();ctx.stroke()}
 
+
+function traceStreamPath(st){
+ ctx.beginPath();ctx.moveTo(st.pts[0].x,st.pts[0].y);
+ for(let i=1;i<st.pts.length;i++)ctx.lineTo(st.pts[i].x,st.pts[i].y);
+}
+function clipVisibleGround(){
+ ctx.beginPath();
+ for(const g of visibleGroundRects()){
+   const rr=Math.max(10,Math.min(48,g.h*.2,g.w*.2));
+   ctx.roundRect(g.x,g.y,g.w,g.h,rr);
+ }
+ ctx.clip();
+}
+function streamHasSurface(st){
+ const p=st.pts[0];return pointSupportedByGround(p.x,p.y,28);
+}
+function streamExitPoint(st){
+ let had=false,last=null;
+ for(let i=0;i<st.pts.length-1;i++){
+   const a=st.pts[i],b=st.pts[i+1];
+   for(let k=0;k<=30;k++){
+     const t=k/30,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
+     const on=pointSupportedByGround(x,y,5);
+     if(on){had=true;last={x,y};}
+     else if(had&&last)return last;
+   }
+ }
+ return null;
+}
+function drawStreamCloud(st){
+ if(st.source!=='cloud'||!streamHasSurface(st))return;
+ const active=st.frozen<=0,cx=st.cloudX,cy=st.cloudY,first=st.pts[0];
+ circle(cx-42,cy+22,32,'#eef5f8','#111',5);circle(cx,cy+8,42,'#f7fbfd','#111',5);circle(cx+43,cy+24,31,'#e7f1f5','#111',5);
+ const bottom=Math.max(cy+85,first.y+12),span=Math.max(70,bottom-(cy+48)),tm=performance.now()*.012*(st.speed/100);
+ for(let i=0;i<9;i++){const yy=cy+48+((tm*18+i*27)%span);line(cx-60+i*15,yy,cx-60+i*15,Math.min(yy+21,bottom),4,active?'#45aef0':'#d9f6ff')}
+}
+function drawStreamFalls(){
+ for(const st of currentStreams){
+   if(!streamHasSurface(st))continue;
+   const p=streamExitPoint(st);if(!p)continue;
+   const active=st.frozen<=0,drop=185;
+   ctx.save();
+   const grad=ctx.createLinearGradient(0,p.y,0,p.y+drop);
+   if(active){grad.addColorStop(0,'rgba(70,174,240,.82)');grad.addColorStop(.56,'rgba(95,190,242,.40)');grad.addColorStop(1,'rgba(95,190,242,0)')}
+   else{grad.addColorStop(0,'rgba(210,245,255,.78)');grad.addColorStop(.60,'rgba(220,248,255,.32)');grad.addColorStop(1,'rgba(220,248,255,0)')}
+   ctx.strokeStyle=grad;ctx.lineWidth=Math.max(20,st.width*.55);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.bezierCurveTo(p.x+5,p.y+48,p.x-4,p.y+118,p.x,p.y+drop);ctx.stroke();
+   ctx.restore();
+ }
+}
+function drawSurfaceStreams(){
+ for(const st of currentStreams){
+   if(!streamHasSurface(st))continue;
+   const active=st.frozen<=0;
+   ctx.save();clipVisibleGround();ctx.globalAlpha=.84;ctx.lineJoin='round';ctx.lineCap='round';
+   ctx.strokeStyle=active?'#159fe9':'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
+   ctx.strokeStyle=active?'#72d0f6':'#e9fbff';ctx.lineWidth=Math.max(14,st.width-7);traceStreamPath(st);ctx.stroke();
+   if(active){
+     const tm=performance.now()/1000*st.speed*.72;
+     for(let i=0;i<st.pts.length-1;i++){
+       const a=st.pts[i],b=st.pts[i+1],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,nx=dx/len,ny=dy/len,px=-ny,py=nx;
+       for(let q=((tm+i*19)%58)-58;q<len;q+=58){
+         if(q<0)continue;
+         const side=((Math.floor(q/58)+i)%3-1)*st.width*.18,x=a.x+nx*q+px*side,y=a.y+ny*q+py*side;
+         line(x-nx*13,y-ny*13,x+nx*13,y+ny*13,4,'rgba(255,255,255,.88)');
+       }
+     }
+   }
+   ctx.restore();drawStreamCloud(st);
+ }
+}
 function drawWorld(){
 
  // 空と雲
  ctx.fillStyle='#82c9ef';ctx.fillRect(0,0,W,H);
  ctx.save();ctx.translate(-camera.x,-camera.y);
+ drawStreamFalls();
 
  // ステージ1：二段に見えない、一枚の浮遊島として描画。
  const s1=stageGeo.path[0];
@@ -2595,56 +2712,7 @@ function drawWorld(){
  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=245;ctx.beginPath();ctx.moveTo(170,570);ctx.lineTo(520,560);ctx.lineTo(800,580);ctx.lineTo(1060,520);ctx.lineTo(1330,620);ctx.lineTo(1190,860);ctx.stroke();
  ctx.restore();
 
- // 大陸を横切る水流。白い波紋の移動速度で流速が読める。
- for(const st of currentStreams){
-   const active=st.frozen<=0;
-   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
-   ctx.strokeStyle=active?'#43aaf0':'#bdeeff';ctx.lineWidth=st.width+8;
-   ctx.beginPath();ctx.moveTo(st.pts[0].x,st.pts[0].y);
-   for(let i=1;i<st.pts.length;i++)ctx.lineTo(st.pts[i].x,st.pts[i].y);
-   ctx.stroke();
-   ctx.strokeStyle=active?'#82d7fa':'#e9fbff';ctx.lineWidth=st.width-7;ctx.stroke();
-
-   // 岩から発生するタイプは、水源を岩の割れ目として見せる。
-   if(st.source==='cloud'){
-     const cx=st.cloudX,cy=st.cloudY;
-     circle(cx-42,cy+22,32,'#eef5f8','#111',5);circle(cx,cy+8,42,'#f7fbfd','#111',5);circle(cx+43,cy+24,31,'#e7f1f5','#111',5);
-     const rainT=performance.now()*.012*(st.speed/100);
-     const first=st.pts[0],rainBottom=Math.max(cy+85,first.y+12),rainSpan=Math.max(70,rainBottom-(cy+48));
-     for(let i=0;i<7;i++){
-       const yy=cy+48+((rainT*18+i*29)%rainSpan);
-       line(cx-48+i*16,yy,cx-48+i*16,Math.min(yy+18,rainBottom),4,active?'#45aef0':'#d9f6ff');
-     }
-   }
-
-   // 曲線上を流れる白い短線。speedが大きいほど移動が速い。
-   if(active){
-     const tm=performance.now()/1000*st.speed*.72;
-     for(let i=0;i<st.pts.length-1;i++){
-       const a=st.pts[i],b=st.pts[i+1],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
-       const nx=dx/len,ny=dy/len,px=-ny,py=nx;
-       const spacing=58;
-       for(let q=((tm+i*19)%spacing)-spacing;q<len;q+=spacing){
-         if(q<0)continue;
-         const side=((Math.floor(q/spacing)+i)%3-1)*st.width*.18;
-         const x=a.x+nx*q+px*side,y=a.y+ny*q+py*side;
-         ctx.strokeStyle='rgba(255,255,255,.88)';ctx.lineWidth=4;
-         ctx.beginPath();ctx.moveTo(x-nx*13,y-ny*13);ctx.lineTo(x+nx*13,y+ny*13);ctx.stroke();
-       }
-     }
-   }else{
-     // 凍結時は流れる波を止め、氷の亀裂に切り替える。
-     ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
-     for(let i=0;i<st.pts.length-1;i++){
-       const a=st.pts[i],b=st.pts[i+1];
-       for(let t=.18;t<1;t+=.28){
-         const x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
-         line(x-11,y-7,x+9,y+8,3,'rgba(255,255,255,.9)');
-       }
-     }
-   }
-   ctx.restore();
- }
+ // 水流は全地形描画後に描く。
  // 丸い模様：緑丸は外枠の黒線より内側に完全に収まる場合だけ描く。
  // 中心だけ地面判定にすると崖から半分はみ出すため、円周8方向も確認する。
  for(let x=world.minX+80;x<world.w;x+=150)for(let y=90;y<world.h;y+=140){
@@ -3170,6 +3238,9 @@ function drawWorld(){
    line(br.x-7,br.y-br.z*.45-4,br.x+7,br.y-br.z*.45-10,3,'#666');
  }
 
+ // 全ての大陸を描いたあと、水面だけ地面上に重ねる。
+ drawSurfaceStreams();
+
  // スタート左のハンマー岩壁。ゲーム開始時から見えて、後で戻る理由になる。
  if(!startRockWall.dead){
    ctx.save();
@@ -3246,6 +3317,16 @@ function drawObjectiveArrow(){
 }
 
 function drawProjectile(pr){
+ if(pr.kind==='fireWheel'){
+   ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(performance.now()*.018);
+   ctx.globalAlpha=.25;circle(0,0,43,'#ffb128','transparent',0);ctx.globalAlpha=1;
+   ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,30,0,Math.PI*2);ctx.stroke();
+   ctx.strokeStyle='#ff5a2d';ctx.lineWidth=13;ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.stroke();
+   ctx.strokeStyle='#ffd24a';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.stroke();
+   for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.fillStyle='#ff6a2a';ctx.beginPath();ctx.moveTo(Math.cos(a)*27,Math.sin(a)*27);ctx.lineTo(Math.cos(a-.22)*45,Math.sin(a-.22)*45);ctx.lineTo(Math.cos(a+.22)*39,Math.sin(a+.22)*39);ctx.closePath();ctx.fill();}
+   ctx.restore();return;
+ }
+
  if(pr.kind==='enemyFire'){
    ctx.save();ctx.translate(pr.x,pr.y);
    const a=Math.atan2(pr.vy,pr.vx);ctx.rotate(a);
@@ -3706,6 +3787,65 @@ function drawSwordSkillEffect(){
  ctx.restore();
 }
 function drawChargeEffects(){
+ if(player.staffChargeFx){
+   const fx=player.staffChargeFx;
+   const life=clamp(fx.t/fx.max,0,1);
+   ctx.save();ctx.translate(player.x,player.y);ctx.rotate(fx.base);
+
+   if(fx.kind==='fireCone'){
+     // 半透明の炎が幾重にも重なり、前へ広がる扇。
+     ctx.globalCompositeOperation='source-over';
+     for(let i=0;i<14;i++){
+       const p=i/13;
+       const x=50+p*205;
+       const side=Math.sin(i*2.17+performance.now()*.01)*(20+p*65);
+       const wob=Math.sin(performance.now()*.018+i)*8;
+       ctx.globalAlpha=(.11+.20*(1-p))*life;
+       ctx.fillStyle=i%3===0?'#ff2f2f':(i%3===1?'#ff6b32':'#ffb13b');
+       ctx.beginPath();
+       ctx.moveTo(x-28,side+18);
+       ctx.quadraticCurveTo(x-10,side-8-wob,x+8,side-30-wob);
+       ctx.quadraticCurveTo(x+18,side-5,x+30,side+12);
+       ctx.quadraticCurveTo(x,side+28,x-28,side+18);
+       ctx.fill();
+     }
+     // 外周に薄い熱気の扇形。
+     ctx.globalAlpha=.13*life;ctx.fillStyle='#ff3a30';ctx.beginPath();ctx.moveTo(28,0);
+     ctx.arc(28,0,250,-.52,.52);ctx.closePath();ctx.fill();
+
+   }else{
+     // 白く冷たい吹雪。小さな氷結晶とキラキラを扇状に流す。
+     const tm=performance.now()*.016;
+     for(let i=0;i<28;i++){
+       const p=(i%14)/13;
+       const x=45+p*220;
+       const side=((i%7)-3)*14 + Math.sin(tm+i*1.7)*10*(.3+p);
+       const r=3+(i%4);
+       ctx.globalAlpha=(.42+.42*(1-p))*life;
+       ctx.save();ctx.translate(x,side);ctx.rotate(tm*.2+i);
+       ctx.strokeStyle=i%3===0?'#ffffff':'#d9f7ff';ctx.lineWidth=2;
+       for(let a=0;a<3;a++){
+         ctx.rotate(Math.PI/3);
+         ctx.beginPath();ctx.moveTo(-r*1.8,0);ctx.lineTo(r*1.8,0);ctx.stroke();
+       }
+       ctx.restore();
+     }
+     // 冷気の白い霧。
+     const grad=ctx.createLinearGradient(30,0,275,0);
+     grad.addColorStop(0,'rgba(235,250,255,.24)');
+     grad.addColorStop(.55,'rgba(220,246,255,.17)');
+     grad.addColorStop(1,'rgba(255,255,255,0)');
+     ctx.globalAlpha=life;ctx.fillStyle=grad;ctx.beginPath();ctx.moveTo(25,0);ctx.lineTo(245,-145);ctx.lineTo(285,0);ctx.lineTo(245,145);ctx.closePath();ctx.fill();
+   }
+   ctx.restore();
+ }
+
+ if(player.skillKind==='fire'&&player.skillT>0){
+   ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.fireWheelVisual||0);
+   ctx.globalAlpha=.36;ctx.strokeStyle='#ff6a2a';ctx.lineWidth=13;ctx.beginPath();ctx.arc(0,0,48,0,Math.PI*2);ctx.stroke();
+   ctx.globalAlpha=.82;ctx.strokeStyle='#ffd34d';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,38,0,Math.PI*2);ctx.stroke();ctx.restore();
+ }
+
  // drawWorld() のカメラ変換内で呼ぶためワールド座標をそのまま使う。
  const px=player.x,py=player.y-(player.jumpZ||0);
 
