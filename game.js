@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 117: 最初の浮遊草原ステージ
+// Prototype 118: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -283,6 +283,19 @@ const vineAreaGeo={
  ],
  arena:{x:2750,y:-980,w:720,h:500}
 };
+// 植物エリア上空：小島と雲を交互に跳ぶルート。
+const vineSkyGeo={
+ islands:[
+  {x:650,y:-1160,w:230,h:155},{x:1080,y:-1400,w:240,h:155},
+  {x:1510,y:-1190,w:230,h:150},{x:1930,y:-1450,w:250,h:160},
+  {x:2370,y:-1230,w:240,h:155},{x:2780,y:-1480,w:270,h:170}
+ ],
+ clouds:[
+  {x:930,y:-1280,r:62},{x:1360,y:-1300,r:62},{x:1790,y:-1330,r:64},
+  {x:2220,y:-1360,r:64},{x:2650,y:-1380,r:66}
+ ]
+};
+
 const vineWalls=[
  {x:620,y:-690,r:48,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
  {x:720,y:-620,r:50,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
@@ -674,7 +687,7 @@ function visibleGroundRects(){
  }
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
-   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads);
+   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
  }
  if(islandBossDefeated){
    grounds.push({
@@ -1454,7 +1467,7 @@ function hitVineContent(damage,range,base,cone,kind='physical'){
        continue;
      }
      v.hp-=damage;
-     if(v.hp<=0){v.dead=true;v.burned=kind==='fire';v.regenT=kind==='fire'?10:5;particle(v.x,v.y,kind==='fire'?'ボワッ！':'ザシュ！',kind==='fire'?'#e43':'#2e843a',.4,15);}
+     if(v.hp<=0){v.dead=true;v.burned=kind==='fire';v.regenT=kind==='fire'?5:3;particle(v.x,v.y,kind==='fire'?'ボワッ！':'ザシュ！',kind==='fire'?'#e43':'#2e843a',.4,15);}
    }
  }
  for(const v of vineKnot){
@@ -1688,6 +1701,14 @@ function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
  return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
 
 function update(dt){
+ // 凍結ツタはガードステップのシールドアタックでも永久破壊。
+ if((player.guardStepT||0)>0){
+  for(const v of vineWalls){
+   if(!v.dead&&!v.perma&&v.iceStage===2&&dist(player.x,player.y,v.x,v.y)<player.r+v.r+34){
+    v.perma=true;v.dead=true;v.iceStage=0;v.regenT=999999;particle(v.x,v.y,'パキィン！','#e9fbff',.75,22);
+   }
+  }
+ }
  if(areaMapOpen||!equipPanel.classList.contains('hidden'))return;
  player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
@@ -1947,7 +1968,7 @@ function update(dt){
      for(const v of [...vineWalls,...vineKnot]){
        if(!v.dead&&!v.perma&&dist(player.x,player.y,v.x,v.y)<115){
          if(v.iceStage){v.iceStage=0;v.iceT=0;}
-         v.hp-=2;if(v.hp<=0){v.dead=true;v.burned=true;v.regenT=10;particle(v.x,v.y,'ボワッ！','#e43',.4,15);}
+         v.hp-=2;if(v.hp<=0){v.dead=true;v.burned=true;v.regenT=5;particle(v.x,v.y,'ボワッ！','#e43',.4,15);}
        }
      }
      player.fireWheelVisual=(player.fireWheelVisual||0)+dt*18;
@@ -2355,7 +2376,7 @@ function update(dt){
          }else if(v.iceStage===1){
            // 縮んだ後は根元付近に当てる。根元は壁中心より下側。
            if(pr.y>v.y-8){
-             v.iceStage=2;v.iceT=10;pr.hit=true;
+             v.iceStage=2;v.iceT=5;pr.hit=true;
              particle(v.x,v.y+22,'カチコチ！','#e8fbff',.65,19);
            }
          }else{
@@ -2363,7 +2384,7 @@ function update(dt){
          }
        }else{
          const dmg=pr.damage||2;v.hp-=dmg;pr.hit=true;
-         if(v.hp<=0){v.dead=true;v.burned=pr.kind==='fire';v.regenT=pr.kind==='fire'?10:5;particle(v.x,v.y,pr.kind==='fire'?'ボワッ！':'ザシュ！',pr.kind==='fire'?'#e43':'#2e843a',.4,15);}
+         if(v.hp<=0){v.dead=true;v.burned=pr.kind==='fire';v.regenT=pr.kind==='fire'?5:3;particle(v.x,v.y,pr.kind==='fire'?'ボワッ！':'ザシュ！',pr.kind==='fire'?'#e43':'#2e843a',.4,15);}
        }
        break;
      }
@@ -2947,6 +2968,13 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    say('赤杖を手に入れた！');
  }
 
+ // 上空ルートの雲ジャンプ台。
+ for(const c of vineSkyGeo.clouds){
+  if(dist(player.x,player.y,c.x,c.y)<c.r+player.r+10&&player.jumpT<=0&&!player.falling){
+   player.jumpDur=player.shieldType===4?1.05:.78;player.jumpHeight=player.shieldType===4?165:135;player.jumpT=player.jumpDur;
+   particle(c.x,c.y,'ぽよん！','#fff',.3,14);
+  }
+ }
  // 右分岐：再生ツタ壁。
  for(const v of vineWalls){
    if(v.perma)continue;
@@ -3945,6 +3973,14 @@ function drawWorld(){
    }
    for(const r of vineAreaGeo.safePads){
      ctx.fillStyle='#b8e9a4';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,32);ctx.fill();ctx.stroke();
+   }
+   // 上空は小島と雲を交互に渡る。
+   for(const q of vineSkyGeo.islands){
+    ctx.fillStyle='#63b85b';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(q.x,q.y,q.w,q.h,40);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#8a5934';ctx.beginPath();ctx.moveTo(q.x+20,q.y+q.h-8);ctx.lineTo(q.x+q.w-20,q.y+q.h-8);ctx.lineTo(q.x+q.w*.56,q.y+q.h+65);ctx.lineTo(q.x+q.w*.44,q.y+q.h+65);ctx.closePath();ctx.fill();ctx.stroke();
+   }
+   for(const c of vineSkyGeo.clouds){
+    circle(c.x-28,c.y+5,c.r*.48,'#f8fdff','#111',5);circle(c.x,c.y-10,c.r*.58,'#f8fdff','#111',5);circle(c.x+30,c.y+7,c.r*.45,'#f8fdff','#111',5);
    }
    // 大きな幹ツタ＋再生壁
    for(const v of vineWalls){
