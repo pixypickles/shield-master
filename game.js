@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 121: 最初の浮遊草原ステージ
+// Prototype 122: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1755,11 +1755,12 @@ function resolveAirMagic(m){
 }
 
 function update(dt){
- // 凍結ツタはガードステップのシールドアタックでも永久破壊。
- if((player.guardStepT||0)>0){
+ // 凍結ツタは実際のガードステップ（shieldStepT）で永久破壊。
+ if((player.shieldStepT||0)>0){
   for(const v of vineWalls){
-   if(!v.dead&&!v.perma&&v.iceStage===2&&dist(player.x,player.y,v.x,v.y)<player.r+v.r+34){
-    v.perma=true;v.dead=true;v.iceStage=0;v.regenT=999999;particle(v.x,v.y,'パキィン！','#e9fbff',.75,22);
+   if(!v.dead&&!v.perma&&v.iceStage===2&&dist(player.x,player.y,v.x,v.y)<player.r+v.r+40){
+    v.perma=true;v.dead=true;v.iceStage=0;v.regenT=999999;
+    particle(v.x,v.y,'パキィン！','#e9fbff',.75,22);
    }
   }
  }
@@ -2045,6 +2046,14 @@ function update(dt){
 
    }else if(player.skillKind==='ice'){
      // 青杖：サーフィンらしく、急には曲がれず大きな弧で旋回。
+     // 完全凍結した再生ツタへアイスサーフで体当たりすると、そのまま永久破壊。
+     for(const v of vineWalls){
+       if(v.dead||v.perma||v.iceStage!==2)continue;
+       if(dist(player.x,player.y,v.x,v.y)<player.r+v.r+44){
+         v.perma=true;v.dead=true;v.iceStage=0;v.regenT=999999;
+         particle(v.x,v.y,'パキィン！','#e9fbff',.75,22);
+       }
+     }
      const inputA=stickAngle();
      if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.7);
      player.aim=player.skillBase;
