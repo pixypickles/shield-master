@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 123: 最初の浮遊草原ステージ
+// Prototype 124: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -2207,6 +2207,15 @@ function update(dt){
  };
  // 地面の見た目に使う矩形と、落下判定に使う矩形を同じ定義から取る。
  let safe=pointSupportedByGround(player.x,player.y,groundSupport);
+
+ // ジャンプ中は足元の地面判定が切れて当然なので、崖落下にはしない。
+ // 「十分な高さで空中にいるのに落下扱い」になっていた原因は、
+ // ワールド座標だけを見て地面から外れた瞬間に falling を開始していたこと。
+ // 通常ジャンプ・雲ジャンプ・打ち上げ台の飛行は、着地するまで空中移動として扱う。
+ if(player.jumpT>0 || player.launchTravel){
+   safe=true;
+ }
+
  // 岩クルミ後の跳び石区間：ジャンプ中は短い隙間を空中移動できる。
  // 従来は地面判定が切れた瞬間に崖際処理が発動し、ジャンプしても引っ掛かっていた。
  if(rockBossDefeated&&player.jumpT>0&&player.x>=11670&&player.x<=13490){
@@ -2230,6 +2239,8 @@ function update(dt){
  // 以前の「おっと！」連打式の崖粘りは廃止。復帰先はチェックポイントではなく、
  // 落ちた場所から最も近い安全な地面なので、滝から落ちてもスタートへ飛ばされない。
  const inWaterfall=player.x>props.waterfall.x&&player.x<props.waterfall.x+props.waterfall.w&&player.y>props.waterfall.y;
+ player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
+ if(player.fallGrace>0)safe=true;
  if(player.falling){
    player.inv=Math.max(player.inv,.2);
    player.fallT+=dt;
@@ -2248,6 +2259,22 @@ function update(dt){
    }
  }else if(!safe){
    const grounds=visibleGroundRects();let best=null,bestD=1e18;
+   // ジャンプ終了直後、島の縁を数pxだけ外した場合は着地として吸着させる。
+   // モバイル操作で「届いて見えるのに落ちる」を防ぐ。
+   let landingSnap=null,landingSnapD=1e18;
+   for(const r of grounds){
+     const sx=clamp(player.x,r.x+8,r.x+r.w-8);
+     const sy=clamp(player.y,r.y+8,r.y+r.h-8);
+     const sd=Math.hypot(sx-player.x,sy-player.y);
+     if(sd<landingSnapD){landingSnapD=sd;landingSnap={x:sx,y:sy};}
+   }
+   if(landingSnap&&landingSnapD<=42){
+     player.x=landingSnap.x;player.y=landingSnap.y;
+     safe=true;player.fallGrace=.18;
+   }
+   if(safe){
+     player.ledgeT=0;
+   }else{
    // 直前の位置を最優先候補にしつつ、現在地点に最も近い地面内側へ戻す。
    for(const r of grounds){
      const rx=clamp(player.x,r.x+player.r+5,r.x+r.w-player.r-5);
@@ -2260,6 +2287,7 @@ function update(dt){
    player.fallReturnX=best?best.x:prevX;player.fallReturnY=best?best.y:prevY;
    player.shield=false;player.charging=false;
    if(player.skillT>0){player.skillT=0;player.skillKind='';player.skillZ=0}
+   }
  }else{
    player.ledgeT=0;
  }
@@ -3068,10 +3096,21 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
   }
  }
  // 上空ルートの雲ジャンプ台。
- for(const c of [...vineSkyGeo.clouds,...(vineBossDefeated?vineSkyGeo.postBossClouds:[])]){
-  if(dist(player.x,player.y,c.x,c.y)<c.r+player.r+10&&player.jumpT<=0&&!player.falling){
-   player.jumpDur=player.shieldType===4?1.05:.78;player.jumpHeight=player.shieldType===4?165:135;player.jumpT=player.jumpDur;
-   particle(c.x,c.y,'ぽよん！','#fff',.3,14);
+ // 空中から雲へ乗るルートなので、fallingになる前提ではなく現在の見た目上の足位置で判定する。
+ player.vineCloudCd=Math.max(0,(player.vineCloudCd||0)-dt);
+ if(player.vineCloudCd<=0){
+  const lift=jumpLiftNow();
+  for(const c of [...vineSkyGeo.clouds,...(vineBossDefeated?vineSkyGeo.postBossClouds:[])]){
+   const footY=player.y-lift;
+   if(dist(player.x,footY,c.x,c.y)<c.r+player.r*.8+16){
+    player.jumpDur=player.shieldType===4?1.12:.88;
+    player.jumpHeight=player.shieldType===4?190:158;
+    player.jumpT=player.jumpDur;
+    player.vineCloudCd=.55;
+    player.fallGrace=Math.max(player.fallGrace||0,.75);
+    particle(c.x,c.y-25,'ぽよん！','#fff',.35,15);
+    break;
+   }
   }
  }
  // 右分岐：再生ツタ壁。
