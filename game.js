@@ -2169,6 +2169,10 @@ function drawWorld(){
  if(!boss.dead){
    ctx.save();ctx.translate(boss.x,boss.y);if(boss.flash>0)ctx.globalAlpha=.55;
    line(0,15,0,55,18,'#111');line(0,15,0,55,10,'#4e9e49');
+   // 最初の大花ボスも、茎の根元に左右2枚の葉っぱ。
+   ctx.fillStyle='#58b957';ctx.strokeStyle='#111';ctx.lineWidth=6;
+   ctx.beginPath();ctx.moveTo(-2,42);ctx.quadraticCurveTo(-30,31,-42,48);ctx.quadraticCurveTo(-24,62,-2,52);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.moveTo(2,43);ctx.quadraticCurveTo(31,31,43,49);ctx.quadraticCurveTo(24,62,2,53);ctx.closePath();ctx.fill();ctx.stroke();
    line(-4,48,-28,68,12,'#111');line(-4,48,-28,68,6,'#765038');
    line(4,48,28,68,12,'#111');line(4,48,28,68,6,'#765038');
    for(let i=0;i<10;i++){const aa=i*Math.PI/5;ctx.save();ctx.translate(Math.cos(aa)*39,Math.sin(aa)*39-15);ctx.rotate(aa);ctx.fillStyle=i%2?'#f092ce':'#ef70bd';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,0,15,28,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
