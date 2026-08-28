@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 94: 最初の浮遊草原ステージ
+// Prototype 95: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -141,7 +141,10 @@ const currentStreams=[
  {id:'upper',source:'rock',width:64,speed:82,frozen:0,
   pts:[{x:7560,y:85},{x:7460,y:115},{x:7350,y:150},{x:7240,y:150}]},
  {id:'leftfire',source:'edge',width:72,speed:132,frozen:0,
-  pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-890,y:560}]}
+  pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-890,y:560}]},
+ {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9470,y:155}]},
+ {id:'cloudUpperB',source:'cloud',cloudX:6350,cloudY:-40,width:86,speed:188,frozen:0,pts:[{x:6350,y:55},{x:6350,y:125},{x:6160,y:155},{x:5860,y:155}]},
+ {id:'cloudUpperC',source:'cloud',cloudX:3050,cloudY:-45,width:80,speed:72,frozen:0,pts:[{x:3050,y:55},{x:3050,y:130},{x:2890,y:155},{x:2620,y:155}]}
 ];
 
 function nearestStreamSegment(st,x,y,pad=0){
@@ -180,6 +183,7 @@ const fireBoss={
 };
 let fireBossDefeated=false;
 const redStaffPickup={x:-760,y:545,taken:false,active:false};
+const healShieldPickup={x:14060,y:555,active:false,taken:false};
 
 // 上段ルートの新敵：跳ねる岩を投げる植物。
 const bouncingRocks=[];
@@ -381,7 +385,16 @@ const stage10Enemies=[
  {x:13610,y:125,r:26,hp:3,maxHp:3,type:'fanleaf',attackCd:1.5,flash:0,dead:false},
  {x:13110,y:165,r:27,hp:3,maxHp:3,type:'dandelion',attackCd:1.8,flash:0,dead:false},
  {x:12580,y:145,r:30,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:.7},
- {x:11620,y:145,r:27,hp:3,maxHp:3,type:'fanleaf',attackCd:1.4,flash:0,dead:false}
+ {x:11620,y:145,r:27,hp:3,maxHp:3,type:'fanleaf',attackCd:1.4,flash:0,dead:false},
+ {x:9650,y:145,r:28,hp:4,maxHp:4,type:'dandelion',attackCd:1.2,flash:0,dead:false},
+ {x:8840,y:130,r:27,hp:4,maxHp:4,type:'fanleaf',attackCd:.9,flash:0,dead:false},
+ {x:8060,y:145,r:30,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:1.4},
+ {x:6740,y:135,r:28,hp:4,maxHp:4,type:'dandelion',attackCd:1.1,flash:0,dead:false},
+ {x:5720,y:145,r:27,hp:4,maxHp:4,type:'fanleaf',attackCd:1.0,flash:0,dead:false},
+ {x:4630,y:135,r:30,hp:1,maxHp:1,type:'spinnerflower',attackCd:0,flash:0,dead:false,petalA:2.1},
+ {x:3540,y:145,r:28,hp:5,maxHp:5,type:'dandelion',attackCd:1.0,flash:0,dead:false},
+ {x:2470,y:135,r:27,hp:5,maxHp:5,type:'fanleaf',attackCd:.9,flash:0,dead:false},
+ {x:1430,y:145,r:28,hp:5,maxHp:5,type:'dandelion',attackCd:.95,flash:0,dead:false}
 ];
 
 // 各エリアに「攻略とは無関係な自然物」を少量散らす。
@@ -842,6 +855,10 @@ function fireMagic(w,charged,base){
 function takeDamage(amount){
  const dmg=amount;
  player.hp=Math.max(1,player.hp-dmg);
+ if(player.shieldType===1){
+   const heal=Math.min(3,player.maxHp-player.hp);
+   if(heal>0){player.hp+=heal;particle(player.x,player.y-55,`+${heal}`,'#3aa85a',.38,14)}
+ }
  return dmg;
 }
 function maybeDropHeal(x,y,chance=.48){
@@ -2254,9 +2271,17 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
    if(islandBoss.hp<=0){
      islandBoss.dead=true;islandBoss.active=false;islandBossDefeated=true;
+     healShieldPickup.active=true;healShieldPickup.x=islandBoss.x;healShieldPickup.y=islandBoss.y;
      particle(islandBoss.x,islandBoss.y,'撃破！','#fff',.9,26);
-     say('上へ続く虹の橋が現れた！');
+     say('上へ続く虹の橋と、生命の盾が現れた！');
    }
+ }
+
+ if(healShieldPickup.active&&!healShieldPickup.taken&&dist(player.x,player.y,healShieldPickup.x,healShieldPickup.y)<62){
+   healShieldPickup.taken=true;unlockedShields[1]=true;player.shieldType=1;
+   player.hp=Math.min(player.maxHp,player.hp+18);
+   particle(healShieldPickup.x,healShieldPickup.y-30,'生命の盾 GET！','#77dd8a',.8,21);
+   say('生命の盾：ガード回復が速い＋被弾時に少し回復');
  }
 
  // 大輪ボス後：虹を上へ渡り、そこから左へ折り返す高庭コース。
@@ -2567,6 +2592,12 @@ function drawWorld(){
      const p=st.pts[0];
      for(let i=-2;i<=2;i++)circle(p.x+i*17,p.y-10+Math.abs(i)*5,22,'#858781','#111',5);
      circle(p.x,p.y+3,15,active?'#55bff3':'#d9f5ff','#111',4);
+   }
+   if(st.source==='cloud'){
+     const cx=st.cloudX,cy=st.cloudY;
+     circle(cx-42,cy+22,32,'#eef5f8','#111',5);circle(cx,cy+8,42,'#f7fbfd','#111',5);circle(cx+43,cy+24,31,'#e7f1f5','#111',5);
+     const rainT=performance.now()*.012*(st.speed/100);
+     for(let i=0;i<7;i++){const yy=cy+48+((rainT*18+i*29)%88);line(cx-48+i*16,yy,cx-48+i*16,yy+16,4,active?'#45aef0':'#d9f6ff')}
    }
 
    // 曲線上を流れる白い短線。speedが大きいほど移動が速い。
@@ -3159,6 +3190,13 @@ function drawWorld(){
    });
    ctx.strokeStyle='#111';ctx.lineWidth=5;
    ctx.strokeRect(hb.x-hb.w/2,hb.y2-14,hb.w,hb.y1-hb.y2+28);
+ }
+
+ if(healShieldPickup.active&&!healShieldPickup.taken){
+   ctx.save();ctx.translate(healShieldPickup.x,healShieldPickup.y);
+   ctx.fillStyle='#74d88a';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();
+   ctx.moveTo(0,-38);ctx.quadraticCurveTo(38,-28,34,8);ctx.quadraticCurveTo(28,38,0,52);ctx.quadraticCurveTo(-28,38,-34,8);ctx.quadraticCurveTo(-38,-28,0,-38);ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#fff';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-15,5);ctx.lineTo(-4,17);ctx.lineTo(18,-10);ctx.stroke();ctx.restore();
  }
 
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
