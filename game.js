@@ -80,11 +80,11 @@ const props={
  rocks:[],
  water:{x:260,y:590,w:300,h:105,frozen:0},
  // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
- shallowWater:{x:650,y:610,w:500,h:72,flowX:34,flowY:0},
- spring:{x:620,y:646,r:42},
+ shallowWater:{x:620,y:610,w:530,h:72,flowX:34,flowY:0},
+ spring:{x:620,y:646,r:36},
  // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
  upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0},
- waterfall:{x:1408,y:425,w:72,h:390,flowX:0,flowY:58},
+ waterfall:{x:1396,y:454,w:72,h:390,flowX:0,flowY:58},
  smallTrees:[
   // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
@@ -1208,7 +1208,7 @@ function update(dt){
  if(stage.bridgeOpen){
    const bx1=Math.min(stageGeo.bridge.x1,stageGeo.bridge.x2)-25,bx2=Math.max(stageGeo.bridge.x1,stageGeo.bridge.x2)+25;
    const by=stageGeo.bridge.y1;
-   if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<100)safe=true;
+   if(player.x>=bx1&&player.x<=bx2&&Math.abs(player.y-by)<140)safe=true;
    if(stage2BridgeOpen){
      const b2x1=Math.min(stage2Geo.bridge.x1,stage2Geo.bridge.x2)-25,b2x2=Math.max(stage2Geo.bridge.x1,stage2Geo.bridge.x2)+25;
      if(player.x>=b2x1&&player.x<=b2x2&&Math.abs(player.y-stage2Geo.bridge.y1)<100)safe=true;
@@ -1410,6 +1410,9 @@ function update(dt){
    // ボスとは重ならない。近すぎれば離れ、適度な距離から葉っぱを飛ばす。
    if(d<150){boss.x-=dx/d*boss.speed*.85*dt;boss.y-=dy/d*boss.speed*.85*dt}
    else if(d>285){boss.x+=dx/d*boss.speed*.65*dt;boss.y+=dy/d*boss.speed*.65*dt}
+   // ボスは必ずボス広場の内側に留まる。
+   boss.x=clamp(boss.x,stageGeo.bossArena.x+boss.r,stageGeo.bossArena.x+stageGeo.bossArena.w-boss.r);
+   boss.y=clamp(boss.y,stageGeo.bossArena.y+boss.r,stageGeo.bossArena.y+stageGeo.bossArena.h-boss.r);
    if(d<boss.r+player.r+10){
      const push=boss.r+player.r+10-d;player.x+=dx/d*push;player.y+=dy/d*push;
    }
@@ -1886,9 +1889,9 @@ function drawWorld(){
  if(stage.bridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
    cols.forEach((c,i)=>{
-     ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();
-     ctx.moveTo(stageGeo.bridge.x1,stageGeo.bridge.y1+i*9-23);
-     ctx.quadraticCurveTo(1820,530+i*7,stageGeo.bridge.x2,stageGeo.bridge.y2+i*9-23);
+     ctx.strokeStyle=c;ctx.lineWidth=22;ctx.beginPath();
+     ctx.moveTo(stageGeo.bridge.x1,stageGeo.bridge.y1+i*12-30);
+     ctx.quadraticCurveTo(1820,530+i*8,stageGeo.bridge.x2,stageGeo.bridge.y2+i*12-30);
      ctx.stroke();
    });
    ctx.fillStyle='#82cc6b';ctx.strokeStyle='#111';ctx.lineWidth=7;
@@ -1920,29 +1923,54 @@ function drawWorld(){
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
 
- // 水系A：湧き水→浅い小川。別の滝とは交差させない。
+ // 水系A：湧き水→浅い小川。継ぎ目のない1本の形として描く。
  const sw=props.shallowWater,sp=props.spring;
- // 湧水口：岩ではなく地面から水がこんこん湧く丸い泉。
- ctx.fillStyle='#8edff1';ctx.strokeStyle='#329fca';ctx.lineWidth=4;ctx.beginPath();ctx.arc(sp.x,sp.y,sp.r,0,Math.PI*2);ctx.fill();ctx.stroke();
- ctx.fillStyle='rgba(235,253,255,.9)';ctx.beginPath();ctx.arc(sp.x-8,sp.y-7,12,0,Math.PI*2);ctx.fill();
- for(let i=0;i<3;i++){ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(sp.x,sp.y,17+i*8,-2.8,-.25);ctx.stroke()}
- // 泉から右へ流れ、崖際まで自然に続く浅瀬。
- ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(sw.x,sw.y,sw.w,sw.h,24);ctx.fill();ctx.stroke();
- for(let x=sw.x+18;x<sw.x+sw.w-10;x+=48){line(x,sw.y+22,x+24,sw.y+22,3,'rgba(255,255,255,.75)');line(x+10,sw.y+50,x+35,sw.y+50,3,'rgba(255,255,255,.6)')}
+ ctx.save();
+ ctx.fillStyle='#9fe5f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.lineJoin='round';
+ ctx.beginPath();
+ ctx.moveTo(sp.x,sw.y);
+ ctx.lineTo(sw.x+sw.w-22,sw.y);
+ ctx.quadraticCurveTo(sw.x+sw.w,sw.y,sw.x+sw.w,sw.y+22);
+ ctx.lineTo(sw.x+sw.w,sw.y+sw.h-22);
+ ctx.quadraticCurveTo(sw.x+sw.w,sw.y+sw.h,sw.x+sw.w-22,sw.y+sw.h);
+ ctx.lineTo(sp.x,sw.y+sw.h);
+ ctx.bezierCurveTo(sp.x-48,sw.y+sw.h,sp.x-48,sw.y,sp.x,sw.y);
+ ctx.closePath();ctx.fill();ctx.stroke();
+ // 湧水の泡・波紋だけを中に描く。境界線は増やさない。
+ ctx.fillStyle='rgba(235,253,255,.88)';ctx.beginPath();ctx.arc(sp.x-8,sp.y-5,10,0,Math.PI*2);ctx.fill();
+ for(let i=0;i<3;i++){ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(sp.x,sp.y,14+i*8,-2.75,-.35);ctx.stroke()}
+ for(let x=sp.x+70;x<sw.x+sw.w-18;x+=54){line(x,sw.y+22,x+26,sw.y+22,3,'rgba(255,255,255,.72)');line(x+9,sw.y+50,x+34,sw.y+50,3,'rgba(255,255,255,.55)')}
+ ctx.restore();
 
- // 小川の終点は途中で消えず、崖から細く下へ落ちる。
- const sx=sw.x+sw.w-58;
- ctx.fillStyle='rgba(151,229,245,.82)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=3;
- ctx.beginPath();ctx.roundRect(sx,sw.y+40,58,150,16);ctx.fill();ctx.stroke();
- for(let x=sx+14;x<sx+52;x+=18)line(x,sw.y+52,x,sw.y+178,2,'rgba(255,255,255,.7)');
+ // 小川の終点は島の縁から細い水膜になって落ちる。下ほど薄く細くなり、雲へ溶ける。
+ const sx=sw.x+sw.w-58,spillTop=sw.y+sw.h-8;
+ const grad=ctx.createLinearGradient(0,spillTop,0,spillTop+230);
+ grad.addColorStop(0,'rgba(151,229,245,.88)');grad.addColorStop(.72,'rgba(151,229,245,.42)');grad.addColorStop(1,'rgba(151,229,245,0)');
+ ctx.fillStyle=grad;ctx.beginPath();
+ ctx.moveTo(sx,spillTop);ctx.lineTo(sx+58,spillTop);ctx.lineTo(sx+45,spillTop+230);ctx.lineTo(sx+14,spillTop+230);ctx.closePath();ctx.fill();
+ // 水を受ける小さな雲
+ ctx.globalAlpha=.72;circle(sx+29,spillTop+220,24,'#f4fbff','transparent',0);circle(sx+9,spillTop+226,16,'#f4fbff','transparent',0);circle(sx+49,spillTop+227,17,'#f4fbff','transparent',0);ctx.globalAlpha=1;
 
- // 水系B：高台の池→下向きの滝。横小川とは離して独立させる。
+ // 水系B：高台の池→滝。池の水面から直接あふれ、緑や四角い継ぎ目を挟まない。
  const up=props.upperPond,wf=props.waterfall;
- ctx.fillStyle='rgba(137,221,246,.86)';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y,wf.w,wf.h,18);ctx.fill();ctx.stroke();
- for(let x=wf.x+14;x<wf.x+wf.w;x+=20)line(x,wf.y+8,x,wf.y+wf.h-8,3,'rgba(255,255,255,.72)');
- ctx.fillStyle='#6f9e55';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(up.x-22,up.y-24,up.w+44,up.h+46,28);ctx.fill();ctx.stroke();
- ctx.fillStyle='#a8e9f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(up.x,up.y,up.w,up.h,28);ctx.fill();ctx.stroke();
- ctx.fillStyle='#a8e9f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(wf.x,wf.y-4,wf.w,48,14);ctx.fill();ctx.stroke();
+ // 滝本体を先に描く。上端は池の内部まで差し込む。
+ const wgrad=ctx.createLinearGradient(0,wf.y,0,wf.y+wf.h);
+ wgrad.addColorStop(0,'rgba(137,221,246,.92)');wgrad.addColorStop(.78,'rgba(137,221,246,.72)');wgrad.addColorStop(1,'rgba(137,221,246,.18)');
+ ctx.fillStyle=wgrad;ctx.beginPath();
+ ctx.moveTo(wf.x,wf.y-18);ctx.lineTo(wf.x+wf.w,wf.y-18);
+ ctx.lineTo(wf.x+wf.w-7,wf.y+wf.h);ctx.lineTo(wf.x+7,wf.y+wf.h);ctx.closePath();ctx.fill();
+ for(let x=wf.x+16;x<wf.x+wf.w-6;x+=20)line(x,wf.y+4,x,wf.y+wf.h-20,3,'rgba(255,255,255,.66)');
+ // 高台は池の周囲だけ。滝口部分の下辺は水で覆い、緑の隙間を見せない。
+ ctx.fillStyle='#6f9e55';ctx.strokeStyle='#111';ctx.lineWidth=5;
+ ctx.beginPath();ctx.roundRect(up.x-22,up.y-24,up.w+44,up.h+46,28);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#a8e9f5';ctx.strokeStyle='#4ca6c8';ctx.lineWidth=4;
+ ctx.beginPath();ctx.roundRect(up.x,up.y,up.w,up.h,28);ctx.fill();ctx.stroke();
+ // 池から滝へつながる「切れ目」の水だけを重ね、四角い枠線は描かない。
+ ctx.fillStyle='#a8e9f5';ctx.strokeStyle='transparent';ctx.beginPath();
+ ctx.moveTo(wf.x-4,up.y+up.h-28);ctx.lineTo(wf.x+wf.w+4,up.y+up.h-28);
+ ctx.lineTo(wf.x+wf.w,up.y+up.h+18);ctx.lineTo(wf.x,up.y+up.h+18);ctx.closePath();ctx.fill();
+ // 下端は霧状にほどける。
+ ctx.globalAlpha=.58;circle(wf.x+wf.w*.5,wf.y+wf.h-5,26,'#eefcff','transparent',0);circle(wf.x+15,wf.y+wf.h+8,16,'#eefcff','transparent',0);circle(wf.x+wf.w-12,wf.y+wf.h+10,18,'#eefcff','transparent',0);ctx.globalAlpha=1;
 
 
  // 崖際の自然なガードレール。全部は囲わず、落ちられる場所も残す。
