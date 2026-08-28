@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={minX:-1500,w:15050,h:1100};
+const world={minX:-1500,minY:-1850,w:15050,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 107: 最初の浮遊草原ステージ
+// Prototype 108: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -115,7 +115,7 @@ const props={
   // この3本だけは序盤の道を塞ぐ「剣で切って進む」木。
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
   // それ以外は意味のない自然配置。斬っても斬らなくてもよい。
-  {x:615,y:410,dead:false},{x:790,y:675,dead:false},{x:1040,y:515,dead:false},
+  {x:790,y:675,dead:false},{x:1040,y:515,dead:false},
   {x:1280,y:390,dead:false},{x:1340,y:675,dead:false},{x:455,y:470,dead:false}
  ]
 };
@@ -195,6 +195,34 @@ const fireBoss={
 };
 let fireBossDefeated=false;
 const redStaffPickup={x:-760,y:545,taken:false,active:false};
+// 灼熱花の先：右へ進める通常分岐と、上へ長く登る氷ルート。
+// 青杖は必須ではなく、右ルートはそのまま進行可能。
+const postFireGeo={
+ junction:{x:-920,y:40,w:520,h:300},
+ right:[
+   {x:-430,y:-20,w:520,h:250},
+   {x:30,y:40,w:520,h:250}
+ ],
+ ice:[
+   {x:-1110,y:-250,w:420,h:360},
+   {x:-1080,y:-590,w:420,h:360},
+   {x:-1030,y:-930,w:460,h:360},
+   {x:-960,y:-1270,w:520,h:380},
+   {x:-860,y:-1630,w:680,h:420}
+ ]
+};
+const iceRouteBlocks=[
+ {x:-1040,y:-150,r:42,hp:1,dead:false},
+ {x:-1010,y:-470,r:44,hp:1,dead:false},
+ {x:-960,y:-810,r:46,hp:1,dead:false},
+ {x:-900,y:-1150,r:48,hp:1,dead:false},
+ {x:-790,y:-1460,r:50,hp:1,dead:false}
+];
+const iceBoss={
+ x:-520,y:-1460,r:86,hp:48,maxHp:48,active:false,dead:false,flash:0,attackCd:1.05
+};
+const blueStaffPickup={x:-520,y:-1460,active:false,taken:false};
+
 const healShieldPickup={x:14060,y:555,active:false,taken:false};
 
 // 上段ルートの新敵：跳ねる岩を投げる植物。
@@ -545,6 +573,9 @@ function visibleGroundRects(){
    grounds.push(stage9Geo.arena);
  }
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
+ if(fireBossDefeated){
+   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.ice);
+ }
  if(islandBossDefeated){
    grounds.push({
      x:stage10Geo.bridge.x-stage10Geo.bridge.w/2,
@@ -867,7 +898,7 @@ function fireMagic(w,charged,base){
    for(const e of stage10Enemies)if(e.type!=='spinnerflower')hitOne(e);
    for(const e of bossWalnuts)hitOne(e);
 
-   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss]){
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,iceBoss]){
      if(!b||b.dead||!b.active)continue;
      const dx=b.x-player.x,dy=b.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
      if(d<=maxRange+b.r&&Math.abs(angleDiff(a,base))<=half){
@@ -876,6 +907,13 @@ function fireMagic(w,charged,base){
    }
 
    if(w===3){
+     for(const o of iceRouteBlocks){
+       if(o.dead)continue;
+       const dx=o.x-player.x,dy=o.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
+       if(d<maxRange+o.r&&Math.abs(angleDiff(a,base))<half){
+         o.dead=true;particle(o.x,o.y,'ジュワァ！','#bfeeff',.5,17);
+       }
+     }
      // 赤杖：草を広く燃やす。
      for(const g of props.grass){
        if(g.dead)continue;
@@ -1168,6 +1206,13 @@ function hitIslandBoss(damage,range,base,cone){
  }
 }
 
+function hitIceBoss(damage,range,base,cone=Math.PI*2){
+ if(!iceBoss.active||iceBoss.dead)return;
+ const d=dist(player.x,player.y,iceBoss.x,iceBoss.y),a=Math.atan2(iceBoss.y-player.y,iceBoss.x-player.x);
+ if(d<=range+iceBoss.r+24&&Math.abs(angleDiff(a,base))<=cone/2+.16){
+   iceBoss.hp-=damage;iceBoss.flash=.2;particle(iceBoss.x,iceBoss.y-50,`-${damage}`,'#9ddff6',.4,16);
+ }
+}
 function hitFireBoss(damage,range,base,cone=Math.PI*2){
  if(!fireBoss.active||fireBoss.dead)return;
  const d=dist(player.x,player.y,fireBoss.x,fireBoss.y);
@@ -1298,7 +1343,7 @@ function doAttack(charged=false){
    if(d<range+38&&Math.abs(angleDiff(aa,base))<cone*.75)damageAmbient(a,w,1);
  }
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
- hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitFireBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
+ hitBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIslandBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitFireBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitIceBoss(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);
  hitStage2(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone);hitStage3(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w,false);hitStage45(jumpStrike?5:(wasDash?5:(w===2?4:3)),range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
  if(w===0){
@@ -1538,7 +1583,7 @@ function update(dt){
      if(t<.60&&local>.055&&local<.12&&!player.skillHit.has('s'+phase)){
        player.skillHit.add('s'+phase);
        particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,'ザシュ！','#fff',.25,15);
-       hitBoss(3,112,sa,1.25);hitIslandBoss(3,112,sa,1.25);hitStage2(3,112,sa,1.25);hitStage3(3,112,sa,1.25,0,false);hitStage45(3,112,sa,1.25,0);
+       hitBoss(3,112,sa,1.25);hitIslandBoss(3,112,sa,1.25);hitFireBoss(3,112,sa,1.25);hitIceBoss(3,112,sa,1.25);hitStage2(3,112,sa,1.25);hitStage3(3,112,sa,1.25,0,false);hitStage45(3,112,sa,1.25,0);
        for(const e of enemies){
          if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
          if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=3;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
@@ -1561,7 +1606,7 @@ function update(dt){
        const key='p'+tick;
        if(!player.skillHit.has(key)){
          player.skillHit.add(key);
-         hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
+         hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitFireBoss(2,76,sa,Math.PI*2);hitIceBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
          for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<76+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
@@ -1571,7 +1616,7 @@ function update(dt){
        if(p>.35&&!player.skillHit.has('finish')){
          player.skillHit.add('finish');
          particle(player.x+Math.cos(sa)*90,player.y+Math.sin(sa)*90,'ズドッ！','#fff',.3,17);
-         hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
+         hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitFireBoss(6,165,sa,.42);hitIceBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
          for(const e of enemies){if(e.dead)continue;const dx=e.x-player.x,dy=e.y-player.y,along=dx*Math.cos(sa)+dy*Math.sin(sa),side=Math.abs(dx*Math.sin(sa)-dy*Math.cos(sa));if(along>0&&along<165&&side<35+e.r*.4){e.hp-=6;e.flash=.18;enemyHitReact(e,70);if(e.hp<=0)e.dead=true}}
        }
      }
@@ -1654,13 +1699,19 @@ function update(dt){
  }
  if(player.falling){mx=0;my=0;}
  const prevX=player.x,prevY=player.y;
- player.x=clamp(player.x+mx*speed*dt,world.minX+45,world.w-45);player.y=clamp(player.y+my*speed*dt,45,world.h-45);
+ player.x=clamp(player.x+mx*speed*dt,world.minX+45,world.w-45);player.y=clamp(player.y+my*speed*dt,world.minY+45,world.h-45);
  for(const o of elementalObstacles){if(o.type==='regenVine'&&!o.dead)o.wiggle=(o.wiggle||0)+dt*7;}
  // 意味のない浅い水流。入っても通れるが、少しだけ流される。
  for(const a of ambientTerrain){
    if(a.kind!=='stream')continue;
    if(player.x>a.x&&player.x<a.x+a.w&&player.y>a.y&&player.y<a.y+a.h){
      player.x+=(a.fx||0)*dt;player.y+=(a.fy||0)*dt;
+   }
+ }
+ // 氷ルートの氷塊。赤杖で溶かすまで通れない。
+ for(const o of iceRouteBlocks){
+   if(!o.dead&&dist(player.x,player.y,o.x,o.y)<player.r+o.r-5){
+     player.x=prevX;player.y=prevY;break;
    }
  }
  // 属性障害物は壊すまで通行不可。
@@ -1869,6 +1920,11 @@ function update(dt){
 
  // 赤杖スキルの火の跡
  for(const f of player.fireTrail){
+   for(const o of iceRouteBlocks){
+     if(!o.dead&&dist(f.x,f.y,o.x,o.y)<48){
+       o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.4,15);
+     }
+   }
    f.life-=dt;
    for(const e of enemies){
      if(e.dead||f.life<=0)continue;
@@ -1915,6 +1971,11 @@ function update(dt){
    }
 
    if(pr.kind==='fire'||pr.kind==='fireWheel'){
+     for(const o of iceRouteBlocks){
+       if(!o.dead&&dist(pr.x,pr.y,o.x,o.y)<pr.r+o.r){
+         o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.45,16);pr.hit=true;
+       }
+     }
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
    }else{
      const wa=props.water;
@@ -2511,6 +2572,35 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    say('赤杖を手に入れた！');
  }
 
+ // 灼熱花撃破後、上の氷ルートは任意攻略。右分岐は青杖なしでも通れる。
+ if(fireBossDefeated&&!iceBoss.dead&&player.y<-1320&&player.x<-250){
+   iceBoss.active=true;
+ }
+ if(iceBoss.active&&!iceBoss.dead){
+   iceBoss.flash=Math.max(0,iceBoss.flash-dt);iceBoss.attackCd-=dt;
+   if(iceBoss.attackCd<=0){
+     iceBoss.attackCd=1.2;
+     const base=Math.atan2(player.y-iceBoss.y,player.x-iceBoss.x);
+     for(const off of [-.28,0,.28]){
+       const a=base+off;
+       projectiles.push({x:iceBoss.x,y:iceBoss.y-20,vx:Math.cos(a)*210,vy:Math.sin(a)*210,r:12,life:2.1,kind:'iceShard',damage:6,enemyShot:true,hit:false});
+     }
+     particle(iceBoss.x,iceBoss.y-55,'シャァッ！','#eafaff',.35,16);
+   }
+   if(iceBoss.hp<=0){
+     iceBoss.dead=true;iceBoss.active=false;blueStaffPickup.active=true;
+     blueStaffPickup.x=iceBoss.x;blueStaffPickup.y=iceBoss.y;
+     particle(iceBoss.x,iceBoss.y,'氷王 撃破！','#fff',.85,24);
+     say('氷のボスがいた場所に青杖が残った！');
+   }
+ }
+ if(blueStaffPickup.active&&!blueStaffPickup.taken&&dist(player.x,player.y,blueStaffPickup.x,blueStaffPickup.y)<62){
+   blueStaffPickup.taken=true;unlockedWeapons[4]=true;player.weapon=4;weaponNameEl.textContent=weapons[4].name;
+   particle(blueStaffPickup.x,blueStaffPickup.y-30,'青杖 GET！','#dff8ff',.8,22);
+   say('青杖を手に入れた！ 水流を凍らせられる！');
+ }
+
+
  // 転がる岩
  for(const r of rollingRocks){
    if(r.dead)continue;
@@ -2580,7 +2670,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;leafStockEl.textContent=`🍃 ${floatLeafStock}`;
- camera.x=clamp(player.x-W/2,world.minX,Math.max(world.minX,world.w-W));camera.y=clamp(player.y-H/2,0,Math.max(0,world.h-H));
+ camera.x=clamp(player.x-W/2,world.minX,Math.max(world.minX,world.w-W));camera.y=clamp(player.y-H/2,world.minY,Math.max(world.minY,world.h-H));
 }
 
 function line(x1,y1,x2,y2,w=5,color='#111'){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
@@ -3311,6 +3401,33 @@ function drawWorld(){
  }
 
 
+ // 灼熱花の先の分岐。右は通常ルート、上は長い氷ルート。
+ if(fireBossDefeated){
+   for(const r of [postFireGeo.junction,...postFireGeo.right]){
+     ctx.fillStyle='#6f9f61';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
+   }
+   for(const r of postFireGeo.ice){
+     ctx.fillStyle='#d8f3f8';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
+     ctx.globalAlpha=.35;ctx.fillStyle='#fff';for(let k=0;k<4;k++)circle(r.x+70+k*95,r.y+70+(k%2)*80,24,'#fff','transparent',0);ctx.globalAlpha=1;
+   }
+   for(const o of iceRouteBlocks){
+     if(o.dead)continue;
+     ctx.save();ctx.translate(o.x,o.y);ctx.fillStyle='#bcecff';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.moveTo(0,-o.r);ctx.lineTo(o.r*.78,-o.r*.25);ctx.lineTo(o.r*.55,o.r*.8);ctx.lineTo(-o.r*.55,o.r*.8);ctx.lineTo(-o.r*.8,-o.r*.2);ctx.closePath();ctx.fill();ctx.stroke();
+     line(-14,-7,8,13,3,'#fff');line(5,-20,20,-3,3,'#fff');ctx.restore();
+   }
+   if(!iceBoss.dead){
+     ctx.save();ctx.translate(iceBoss.x,iceBoss.y);if(iceBoss.flash>0)ctx.globalAlpha=.58;
+     for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.save();ctx.rotate(a);ctx.translate(57,0);ctx.fillStyle='#bfeeff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-13,0);ctx.lineTo(0,-22);ctx.lineTo(13,0);ctx.lineTo(0,22);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()}
+     circle(0,0,35,'#e8fbff','#111',7);circle(-11,-7,5,'#111','#111',1);circle(11,-7,5,'#111','#111',1);line(-13,13,13,13,4,'#5e7f88');
+     ctx.restore();
+     if(iceBoss.active){ctx.fillStyle='#111';ctx.fillRect(iceBoss.x-105,iceBoss.y-110,210,15);ctx.fillStyle='#73c8e8';ctx.fillRect(iceBoss.x-101,iceBoss.y-106,202*Math.max(0,iceBoss.hp/iceBoss.maxHp),7);}
+   }
+   if(blueStaffPickup.active&&!blueStaffPickup.taken){
+     ctx.save();ctx.translate(blueStaffPickup.x,blueStaffPickup.y);ctx.rotate(-.3);line(0,28,0,-45,11,'#111');line(0,28,0,-45,6,'#7b5b44');circle(0,-56,15,'#82dcff','#111',5);line(-8,-56,8,-56,3,'#fff');line(0,-64,0,-48,3,'#fff');ctx.restore();
+   }
+ }
+
  // 岩壁の先の火山草地。
  if(startRockWall.dead){
    for(const r of leftZoneGeo.path){
@@ -3438,6 +3555,11 @@ function drawObjectiveArrow(){
 }
 
 function drawProjectile(pr){
+ if(pr.kind==='iceShard'){
+   ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));
+   ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-7,-9);ctx.lineTo(-2,0);ctx.lineTo(-7,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();return;
+ }
+
  if(pr.kind==='fireWheel'){
    ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(performance.now()*.018);
    ctx.globalAlpha=.25;circle(0,0,43,'#ffb128','transparent',0);ctx.globalAlpha=1;
