@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false};
 
-// Prototype 85: 最初の浮遊草原ステージ
+// Prototype 86: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -258,6 +258,13 @@ const islandBoss={
 };
 let stage9Started=false;
 let islandBossDefeated=false;
+// 次区間は右へ延々伸ばさず、ボス島から上へ登って左へ折り返す。
+// 同じ横幅を再利用してマップ密度を上げる。
+const stage10Geo={
+ up:{x:14170,y:70,w:300,h:250},
+ left:{x:13280,y:70,w:950,h:250},
+ connector:{x:14170,y:250,w:270,h:150}
+};
 
 // 各エリアに「攻略とは無関係な自然物」を少量散らす。
 // 木・岩など、世界に生活感/自然さを出すための飾り。水は必ず発生源と流れ先が分かる形だけにする。
@@ -397,6 +404,7 @@ function visibleGroundRects(){
      h:210
    });
    grounds.push(stage9Geo.exitIsland);
+   grounds.push(stage10Geo.up,stage10Geo.left,stage10Geo.connector);
  }
  return grounds;
 }
@@ -2100,9 +2108,9 @@ function drawWorld(){
  if(stage2BridgeOpen){
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
    cols.forEach((c,i)=>{
-     ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();
-     ctx.moveTo(stage2Geo.bridge.x1,stage2Geo.bridge.y1+i*9-23);
-     ctx.quadraticCurveTo(3420,535+i*6,stage2Geo.bridge.x2,stage2Geo.bridge.y2+i*9-23);
+     ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();
+     ctx.moveTo(stage2Geo.bridge.x1-18,stage2Geo.bridge.y1+i*18-45);
+     ctx.quadraticCurveTo(3420,535+i*8,stage2Geo.bridge.x2+18,stage2Geo.bridge.y2+i*18-45);
      ctx.stroke();
    });
  }
@@ -2126,7 +2134,7 @@ function drawWorld(){
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
   }
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(4770,570+i*9-23);ctx.quadraticCurveTo(4865,530+i*6,4950,570+i*9-23);ctx.stroke()});
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(4752,570+i*18-45);ctx.quadraticCurveTo(4865,530+i*8,4968,570+i*18-45);ctx.stroke()});
  }
  if(stage4BridgeOpen){
   for(const r of stage5Geo.path){
@@ -2134,13 +2142,13 @@ function drawWorld(){
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,50);ctx.fill();ctx.stroke();
   }
   const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1,stage4Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(6190,530+i*6,stage4Geo.bridge.x2,stage4Geo.bridge.y2+i*9-23);ctx.stroke()});
+  cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(stage4Geo.bridge.x1-18,stage4Geo.bridge.y1+i*18-45);ctx.quadraticCurveTo(6190,530+i*8,stage4Geo.bridge.x2+18,stage4Geo.bridge.y2+i*18-45);ctx.stroke()});
  }
 
  if(stage6Started){
    // 風の庭園から岩の分かれ道への橋
    const cols=['#ff6b6b','#ffb84d','#ffe55c','#6edb79','#5ecbff','#8e78ff'];
-   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(stage7Geo.bridge.x1,stage7Geo.bridge.y1+i*9-23);ctx.quadraticCurveTo(9505,505+i*6,stage7Geo.bridge.x2,stage7Geo.bridge.y2+i*9-23);ctx.stroke()});
+   cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=29;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(stage7Geo.bridge.x1-18,stage7Geo.bridge.y1+i*18-45);ctx.quadraticCurveTo(9505,505+i*8,stage7Geo.bridge.x2+18,stage7Geo.bridge.y2+i*18-45);ctx.stroke()});
    for(const r of stage7Geo.path){
      ctx.fillStyle='#89bf68';ctx.strokeStyle='#111';ctx.lineWidth=7;
      ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
@@ -2292,7 +2300,6 @@ function drawWorld(){
  // rocks
  for(const r of props.rocks){if(r.dead)continue;ctx.fillStyle='#999';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(r.x-30,r.y+18);ctx.lineTo(r.x-23,r.y-22);ctx.lineTo(r.x+5,r.y-34);ctx.lineTo(r.x+31,r.y-10);ctx.lineTo(r.x+24,r.y+24);ctx.closePath();ctx.fill();ctx.stroke()}
  for(const s of []){circle(s.x,s.y,24,s.on?'#7cff78':'#ffdb55','#111',6);circle(s.x,s.y,9,'#fff','#111',4)}
- for(const pr of projectiles)drawProjectile(pr);
  for(const e of enemies)if(!e.dead)drawEnemy(e);
 
  
@@ -2567,6 +2574,12 @@ function drawWorld(){
      const ex=stage9Geo.exitIsland;
      ctx.fillStyle='#8fd27a';ctx.strokeStyle='#111';ctx.lineWidth=7;
      ctx.beginPath();ctx.roundRect(ex.x,ex.y,ex.w,ex.h,60);ctx.fill();ctx.stroke();
+
+     // 次は上へ進み、その先で左へ折り返す。横方向のワールドを無駄に増やさない構成。
+     for(const r of [stage10Geo.connector,stage10Geo.up,stage10Geo.left]){
+       ctx.fillStyle='#83cf72';ctx.strokeStyle='#111';ctx.lineWidth=7;
+       ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,55);ctx.fill();ctx.stroke();
+     }
    }
  }
 
@@ -2578,10 +2591,11 @@ function drawWorld(){
    ctx.beginPath();ctx.ellipse(-42,62,40,18,-.45,0,Math.PI*2);ctx.fill();ctx.stroke();
    ctx.beginPath();ctx.ellipse(42,62,40,18,.45,0,Math.PI*2);ctx.fill();ctx.stroke();
    line(0,18,0,76,24,'#111');line(0,18,0,76,13,'#4d9f48');
-   ctx.save();ctx.rotate(islandBoss.petalA*.18);
+   // 花びらは顔の中心(0,-18)を軸に回す。以前は回転軸と描画中心がズレていた。
+   ctx.save();ctx.translate(0,-18);ctx.rotate(islandBoss.petalA*.18);
    for(let i=0;i<14;i++){
      const aa=i*Math.PI*2/14;
-     ctx.save();ctx.translate(Math.cos(aa)*58,Math.sin(aa)*58-18);ctx.rotate(aa);
+     ctx.save();ctx.translate(Math.cos(aa)*58,Math.sin(aa)*58);ctx.rotate(aa);
      ctx.fillStyle=i%2?'#ff9f45':'#ffd24f';ctx.strokeStyle='#111';ctx.lineWidth=6;
      ctx.beginPath();ctx.ellipse(0,0,18,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
    }
@@ -2658,6 +2672,8 @@ function drawWorld(){
      }
    }
  }
+ // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
+ for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
  drawPlayer();
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
  drawSwordSkillEffect();
@@ -2706,6 +2722,11 @@ function drawProjectile(pr){
    ctx.fillStyle='#718f39';ctx.strokeStyle='#111';ctx.lineWidth=4;
    ctx.beginPath();ctx.ellipse(0,0,pr.r+3,pr.r*.65,0,0,Math.PI*2);ctx.fill();ctx.stroke();
    line(-pr.r-10,0,-pr.r+2,0,5,'#a8c35e');
+ }else if(pr.kind==='leafshot'){
+   ctx.globalAlpha=.18;circle(0,0,pr.r+7,'#bde99a','transparent',0);ctx.globalAlpha=1;
+   ctx.fillStyle='#65b84d';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(pr.r+5,0);ctx.quadraticCurveTo(0,-pr.r,-pr.r-5,0);ctx.quadraticCurveTo(0,pr.r,pr.r+5,0);ctx.fill();ctx.stroke();
+   line(-pr.r-7,0,pr.r+2,0,3,'#397a35');
  }else{
    ctx.globalAlpha=.28;
    circle(0,0,pr.r+9,pr.kind==='fire'?'#ff9b45':'#b8ecff','transparent',0);
