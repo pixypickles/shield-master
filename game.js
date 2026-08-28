@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 113: 最初の浮遊草原ステージ
+// Prototype 114: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -47,7 +47,7 @@ const shields=[
  {name:'生命の盾',heal:11,move:.96,jump:1,magic:false,reflect:false},
  {name:'ミラーシールド',heal:5,move:1,jump:1,magic:false,reflect:true},
  {name:'マジックシールド',heal:4,move:.92,jump:1,magic:true,reflect:false},
- {name:'ウイングシールド',heal:5,move:1.12,jump:1.25,magic:false,reflect:false}
+ {name:'雲の盾',heal:5,move:1.08,jump:1.42,magic:false,reflect:false}
 ];
 const unlockedShields=[true,false,false,false,false];
 
@@ -235,6 +235,11 @@ const postFireGeo={
  ]
 };
 const iceRouteBlocks=[
+ {x:-950,y:-940,r:48,hp:1,dead:false},{x:-850,y:-935,r:48,hp:1,dead:false},
+ {x:-750,y:-930,r:48,hp:1,dead:false},{x:-650,y:-925,r:48,hp:1,dead:false},
+ {x:-950,y:-1020,r:48,hp:1,dead:false},{x:-850,y:-1015,r:48,hp:1,dead:false},
+ {x:-750,y:-1010,r:48,hp:1,dead:false},{x:-650,y:-1005,r:48,hp:1,dead:false},
+
  {x:-1040,y:-150,r:42,hp:1,dead:false},{x:-1010,y:-470,r:44,hp:1,dead:false},{x:-960,y:-810,r:46,hp:1,dead:false},
  // 3つ目より上は「氷で封鎖された道」。横に何個も並び、赤杖で崩して進む。
  {x:-900,y:-1130,r:48,hp:1,dead:false},{x:-760,y:-1145,r:47,hp:1,dead:false},{x:-620,y:-1125,r:46,hp:1,dead:false},
@@ -246,15 +251,65 @@ const iceRouteBlocks=[
  {x:-500,y:-3170,r:59,hp:1,dead:false},{x:-250,y:-3190,r:58,hp:1,dead:false},{x:10,y:-3165,r:57,hp:1,dead:false}
 ];
 const iceEnemies=[
-{x:-920,y:-520,r:28,hp:3,maxHp:3,type:'penguin',attackCd:1.2,flash:0,dead:false},{x:-760,y:-900,r:30,hp:3,maxHp:3,type:'seal',attackCd:1.7,flash:0,dead:false},
-{x:-650,y:-1260,r:31,hp:4,maxHp:4,type:'penguin',attackCd:1.1,flash:0,dead:false},{x:-470,y:-1570,r:34,hp:5,maxHp:5,type:'seal',attackCd:1.6,flash:0,dead:false},
-{x:-380,y:-1930,r:39,hp:7,maxHp:7,type:'polarbear',attackCd:1.8,flash:0,dead:false},{x:-210,y:-2280,r:31,hp:4,maxHp:4,type:'penguin',attackCd:1,flash:0,dead:false},
-{x:-80,y:-2640,r:35,hp:5,maxHp:5,type:'seal',attackCd:1.5,flash:0,dead:false},{x:80,y:-2990,r:42,hp:8,maxHp:8,type:'polarbear',attackCd:1.7,flash:0,dead:false}];
+ {x:-930,y:-900,r:30,hp:4,maxHp:4,type:'penguin',attackCd:1.2,flash:0,dead:false},
+ {x:-720,y:-1260,r:30,hp:4,maxHp:4,type:'penguin',attackCd:1.05,flash:0,dead:false},
+ {x:-520,y:-1570,r:31,hp:5,maxHp:5,type:'penguin',attackCd:1.0,flash:0,dead:false},
+ {x:-300,y:-1930,r:31,hp:5,maxHp:5,type:'penguin',attackCd:.95,flash:0,dead:false},
+ {x:-120,y:-2280,r:32,hp:6,maxHp:6,type:'penguin',attackCd:.9,flash:0,dead:false},
+ {x:40,y:-2640,r:32,hp:6,maxHp:6,type:'penguin',attackCd:.9,flash:0,dead:false}
+];
+const iceThrowers=[
+ {x:-760,y:-1180,r:34,hp:6,maxHp:6,attackCd:1.45,flash:0,dead:false},
+ {x:-450,y:-1730,r:34,hp:7,maxHp:7,attackCd:1.3,flash:0,dead:false},
+ {x:-180,y:-2420,r:36,hp:8,maxHp:8,attackCd:1.2,flash:0,dead:false}
+];
 
 const iceBoss={
  x:-250,y:-3260,r:86,hp:48,maxHp:48,active:false,dead:false,flash:0,attackCd:1.05
 };
 const blueStaffPickup={x:-250,y:-3260,active:false,taken:false};
+// 右分岐：動く植物エリア。ツタ壁は時間で再生する。
+const vineAreaGeo={
+ path:[
+   {x:360,y:-820,w:650,h:300},
+   {x:940,y:-900,w:680,h:330},
+   {x:1550,y:-830,w:720,h:330},
+   {x:2200,y:-900,w:720,h:360}
+ ],
+ safePads:[
+   {x:2450,y:-1220,w:150,h:115},
+   {x:2690,y:-1370,w:150,h:115},
+   {x:2930,y:-1220,w:150,h:115}
+ ],
+ arena:{x:2750,y:-980,w:720,h:500}
+};
+const vineWalls=[
+ {x:720,y:-690,r:52,hp:3,maxHp:3,dead:false,regenT:0,burned:false},
+ {x:1260,y:-760,r:55,hp:3,maxHp:3,dead:false,regenT:0,burned:false},
+ {x:1860,y:-700,r:58,hp:4,maxHp:4,dead:false,regenT:0,burned:false}
+];
+const vineSeedFlowers=[
+ {x:1040,y:-770,r:30,hp:4,maxHp:4,attackCd:1.2,flash:0,dead:false},
+ {x:1660,y:-690,r:31,hp:5,maxHp:5,attackCd:1.0,flash:0,dead:false},
+ {x:2180,y:-760,r:32,hp:5,maxHp:5,attackCd:.95,flash:0,dead:false}
+];
+const whipVines=[
+ {x:1450,y:-760,r:34,hp:6,maxHp:6,attackCd:1.25,flash:0,dead:false},
+ {x:2350,y:-760,r:36,hp:7,maxHp:7,attackCd:1.15,flash:0,dead:false}
+];
+const vineKnot=[
+ {x:2020,y:-1020,r:35,hp:2,maxHp:2,dead:false,regenT:0},
+ {x:2110,y:-1055,r:35,hp:2,maxHp:2,dead:false,regenT:0},
+ {x:2200,y:-1020,r:35,hp:2,maxHp:2,dead:false,regenT:0}
+];
+let cloudShieldDropped=false;
+const cloudShieldPickup={x:2110,y:-1020,active:false,taken:false};
+
+const vineBoss={
+ x:3110,y:-760,r:92,hp:58,maxHp:58,active:false,dead:false,attackCd:1.3,flash:0,whipT:0
+};
+let vineBossDefeated=false;
+
 
 const healShieldPickup={x:14060,y:555,active:false,taken:false};
 
@@ -608,7 +663,7 @@ function visibleGroundRects(){
  }
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
-   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice);
+   grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads);
  }
  if(islandBossDefeated){
    grounds.push({
@@ -637,11 +692,11 @@ function pointSupportedByGround(x,y,pad=24){
 
 
 const SAVE_KEY='shieldHeroSave_v112';
-function saveProgress(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,seedBossDead:!!seedBoss.dead,fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,stage9Started:!!stage9Started,stage10Started:!!stage10Started,islandBossDefeated:!!islandBossDefeated}))}catch(e){}}
+function saveProgress(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,seedBossDead:!!seedBoss.dead,fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,stage9Started:!!stage9Started,stage10Started:!!stage10Started,islandBossDefeated:!!islandBossDefeated,cloudShieldTaken:!!cloudShieldPickup.taken,vineBossDead:!!vineBoss.dead}))}catch(e){}}
 function loadProgress(){let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d)return false;
 Object.assign(player,{x:d.x??player.x,y:d.y??player.y,hp:d.hp??player.hp,weapon:d.weapon??player.weapon,shieldType:d.shieldType??player.shieldType,swordPlus:!!d.swordPlus});if(d.inv)player.inv=d.inv;if(Number.isInteger(d.currentStage))currentStage=d.currentStage;if(d.checkpoint)stage.checkpoint=d.checkpoint;
 if(d.seedBossDead){seedBoss.dead=true;seedBoss.active=false}if(d.fireBossDead){fireBoss.dead=true;fireBoss.active=false}if(d.iceBossDead){iceBoss.dead=true;iceBoss.active=false}if(d.rockBossDead){rockBoss.dead=true;rockBoss.active=false}if(d.hammerGuardianDead){hammerGuardian.dead=true;hammerGuardian.active=false}if(d.islandBossDead){islandBoss.dead=true;islandBoss.active=false}
-spearPickup.taken=!!d.spearTaken;hammerPickup.taken=!!d.hammerTaken;upperSwordPickup.taken=!!d.upperSwordTaken;stage9Started=!!d.stage9Started;stage10Started=!!d.stage10Started;islandBossDefeated=!!d.islandBossDefeated;return true}
+spearPickup.taken=!!d.spearTaken;hammerPickup.taken=!!d.hammerTaken;upperSwordPickup.taken=!!d.upperSwordTaken;stage9Started=!!d.stage9Started;stage10Started=!!d.stage10Started;islandBossDefeated=!!d.islandBossDefeated;if(d.cloudShieldTaken){cloudShieldPickup.taken=true;unlockedShields[4]=true}if(d.vineBossDead){vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true}return true}
 setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},2500);window.addEventListener('pagehide',saveProgress);
 window.addEventListener('DOMContentLoaded',()=>{const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}c.disabled=!has;c.onclick=()=>{loadProgress();m.classList.add('hidden')};n.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}m.classList.add('hidden')}});
 
@@ -810,7 +865,7 @@ shortcutBtn.addEventListener('pointerup',releaseShortcut);
 shortcutBtn.addEventListener('pointercancel',ev=>{if(shortcutHoldTimer)clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null;shortcutPointer=null;shortcutLong=false;});
 
 
-function jump(){if(player.jumpT<=0){player.jumpDur=.62;player.jumpHeight=105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+function jump(){if(player.jumpT<=0){player.jumpDur=player.shieldType===4?.92:.62;player.jumpHeight=player.shieldType===4?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
 function steerAngle(current,target,maxStep){
  const d=angleDiff(target,current);
@@ -974,6 +1029,7 @@ function fireMagic(w,charged,base){
        if(d<maxRange&&Math.abs(angleDiff(a,base))<half){g.dead=true;particle(g.x,g.y,'ボワッ','#e43',.35,14)}
      }
      particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'ゴォォッ！','#e43',.4,18);
+     hitVineContent(7,maxRange,base,half*2,'fire');
    }else{
      // 青杖：前方の水流・池・滝をまとめて凍結。
      for(let d=55;d<=maxRange;d+=45){
@@ -1252,6 +1308,39 @@ function hitElementalObstacle(x,y,r,kind,power=1){
 }
 
 
+function hitVineContent(damage,range,base,cone,kind='physical'){
+ const hit=(e)=>{
+   if(!e||e.dead)return;
+   const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(e.y-player.y,e.x-player.x);
+   if(d>range+(e.r||25)||Math.abs(angleDiff(a,base))>cone/2+.12)return;
+   e.hp-=damage;e.flash=.16;if(e.hp<=0)e.dead=true;
+ };
+ for(const e of vineSeedFlowers)hit(e);
+ for(const e of whipVines)hit(e);
+ for(const e of iceThrowers)hit(e);
+ for(const e of iceEnemies)hit(e);
+ for(const v of vineWalls){
+   if(v.dead)continue;
+   const d=dist(player.x,player.y,v.x,v.y),a=Math.atan2(v.y-player.y,v.x-player.x);
+   if(d<=range+v.r&&Math.abs(angleDiff(a,base))<=cone/2+.12){
+     v.hp-=damage;
+     if(v.hp<=0){v.dead=true;v.burned=kind==='fire';v.regenT=kind==='fire'?10:5;particle(v.x,v.y,kind==='fire'?'ボワッ！':'ザシュ！',kind==='fire'?'#e43':'#2e843a',.4,15);}
+   }
+ }
+ for(const v of vineKnot){
+   if(v.dead)continue;
+   const d=dist(player.x,player.y,v.x,v.y),a=Math.atan2(v.y-player.y,v.x-player.x);
+   if(d<=range+v.r&&Math.abs(angleDiff(a,base))<=cone/2+.15){
+     v.hp-=damage;if(v.hp<=0){v.dead=true;v.regenT=5;particle(v.x,v.y,'ブチッ！','#2e843a',.4,15);}
+   }
+ }
+ if(vineBoss.active&&!vineBoss.dead){
+   const d=dist(player.x,player.y,vineBoss.x,vineBoss.y),a=Math.atan2(vineBoss.y-player.y,vineBoss.x-player.x);
+   if(d<=range+vineBoss.r&&Math.abs(angleDiff(a,base))<=cone/2+.12){
+     vineBoss.hp-=damage;vineBoss.flash=.16;particle(vineBoss.x,vineBoss.y-55,`-${damage}`,'#b31313',.4,16);
+   }
+ }
+}
 function hitIslandBoss(damage,range,base,cone){
  if(!stage9Started||!islandBoss.active||islandBoss.dead)return;
  const d=dist(player.x,player.y,islandBoss.x,islandBoss.y);
@@ -1402,6 +1491,7 @@ function doAttack(charged=false){
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)dmg=swordDamage(dmg);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
  let commonD=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)commonD=swordDamage(commonD);
  for(const e of iceEnemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<range+e.r&&Math.abs(angleDiff(aa,base))<cone){e.hp-=commonD;e.flash=.16;enemyHitReact(e,48);particle(e.x,e.y-20,`-${commonD}`,'#b31313',.35,15);if(e.hp<=0)e.dead=true}}
+ hitVineContent(commonD,range,base,cone,w===3?'fire':'physical');
  hitBoss(commonD,range,base,cone);hitIslandBoss(commonD,range,base,cone);hitFireBoss(commonD,range,base,cone);hitIceBoss(commonD,range,base,cone);
  hitStage2(commonD,range,base,cone);hitStage3(commonD,range,base,cone,w,false);hitStage45(commonD,range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
@@ -1643,7 +1733,7 @@ function update(dt){
        player.skillHit.add('s'+phase);
        particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,'ザシュ！','#fff',.25,15);
        const sd=swordDamage(3);
-       hitBoss(sd,112,sa,1.25);hitIslandBoss(sd,112,sa,1.25);hitFireBoss(sd,112,sa,1.25);hitIceBoss(sd,112,sa,1.25);hitStage2(sd,112,sa,1.25);hitStage3(sd,112,sa,1.25,0,false);hitStage45(sd,112,sa,1.25,0);
+       hitVineContent(sd,112,sa,1.25,'physical');hitBoss(sd,112,sa,1.25);hitIslandBoss(sd,112,sa,1.25);hitFireBoss(sd,112,sa,1.25);hitIceBoss(sd,112,sa,1.25);hitStage2(sd,112,sa,1.25);hitStage3(sd,112,sa,1.25,0,false);hitStage45(sd,112,sa,1.25,0);
        for(const e of enemies){
          if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
          if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=sd;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
@@ -1666,7 +1756,7 @@ function update(dt){
        const key='p'+tick;
        if(!player.skillHit.has(key)){
          player.skillHit.add(key);
-         hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitFireBoss(2,76,sa,Math.PI*2);hitIceBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
+         hitVineContent(2,76,sa,Math.PI*2,'physical');hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitFireBoss(2,76,sa,Math.PI*2);hitIceBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
          for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<76+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
@@ -1676,7 +1766,7 @@ function update(dt){
        if(p>.35&&!player.skillHit.has('finish')){
          player.skillHit.add('finish');
          particle(player.x+Math.cos(sa)*90,player.y+Math.sin(sa)*90,'ズドッ！','#fff',.3,17);
-         hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitFireBoss(6,165,sa,.42);hitIceBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
+         hitVineContent(6,165,sa,.42,'physical');hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitFireBoss(6,165,sa,.42);hitIceBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
          for(const e of enemies){if(e.dead)continue;const dx=e.x-player.x,dy=e.y-player.y,along=dx*Math.cos(sa)+dy*Math.sin(sa),side=Math.abs(dx*Math.sin(sa)-dy*Math.cos(sa));if(along>0&&along<165&&side<35+e.r*.4){e.hp-=6;e.flash=.18;enemyHitReact(e,70);if(e.hp<=0)e.dead=true}}
        }
      }
@@ -1724,6 +1814,9 @@ function update(dt){
          o.dead=true;particle(o.x,o.y,'ジュワァ！','#bfeeff',.45,16);
        }
      }
+     for(const v of [...vineWalls,...vineKnot]){
+       if(!v.dead&&dist(player.x,player.y,v.x,v.y)<115){v.hp-=2;if(v.hp<=0){v.dead=true;v.burned=true;v.regenT=10;particle(v.x,v.y,'ボワッ！','#e43',.4,15);}}
+     }
      player.fireWheelVisual=(player.fireWheelVisual||0)+dt*18;
      const inputA=stickAngle();
      if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*5.2);
@@ -1762,6 +1855,7 @@ function update(dt){
      }
    }
  }
+ if((player.vineBound||0)>0){mx=0;my=0;player.shield=false;}
  if(player.falling){mx=0;my=0;}
  const prevX=player.x,prevY=player.y;
  player.x=clamp(player.x+mx*speed*dt,world.minX+45,world.w-45);player.y=clamp(player.y+my*speed*dt,world.minY+45,world.h-45);
@@ -1771,6 +1865,12 @@ function update(dt){
    if(a.kind!=='stream')continue;
    if(player.x>a.x&&player.x<a.x+a.w&&player.y>a.y&&player.y<a.y+a.h){
      player.x+=(a.fx||0)*dt;player.y+=(a.fy||0)*dt;
+   }
+ }
+ // 再生ツタ壁は壊れている間だけ通れる。
+ for(const v of vineWalls){
+   if(!v.dead&&dist(player.x,player.y,v.x,v.y)<player.r+v.r-6){
+     player.x=prevX;player.y=prevY;break;
    }
  }
  // 氷ルートの氷塊。赤杖で溶かすまで通れない。
@@ -2107,6 +2207,20 @@ function update(dt){
      const dmg=pr.kind==='fire'?Math.max(3,pr.damage+1):pr.damage;
      iceBoss.hp-=dmg;iceBoss.flash=.18;particle(iceBoss.x,iceBoss.y-48,`-${dmg}`,'#e55232',.4,16);pr.hit=true;
    }
+   if(pr.hit)continue;
+   for(const e of [...vineSeedFlowers,...whipVines,...iceThrowers]){
+     if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r+8){let dmg=pr.damage||2;if(pr.kind==='fire')dmg++;e.hp-=dmg;e.flash=.15;pr.hit=true;if(e.hp<=0)e.dead=true;break}
+   }
+   if(pr.hit)continue;
+   for(const v of [...vineWalls,...vineKnot]){
+     if(v.dead)continue;if(dist(pr.x,pr.y,v.x,v.y)<pr.r+v.r){
+       const dmg=pr.damage||2;v.hp-=dmg;pr.hit=true;
+       if(v.hp<=0){v.dead=true;v.burned=pr.kind==='fire';v.regenT=pr.kind==='fire'?10:5;particle(v.x,v.y,pr.kind==='fire'?'ボワッ！':'ザシュ！',pr.kind==='fire'?'#e43':'#2e843a',.4,15);}
+       break;
+     }
+   }
+   if(pr.hit)continue;
+   if(vineBoss.active&&!vineBoss.dead&&dist(pr.x,pr.y,vineBoss.x,vineBoss.y)<pr.r+vineBoss.r+12){vineBoss.hp-=pr.damage;vineBoss.flash=.15;pr.hit=true;}
    if(pr.hit)continue;
    for(const e of iceEnemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r+10){let dmg=pr.damage||3;if(pr.kind==='fire')dmg++;e.hp-=dmg;e.flash=.16;particle(e.x,e.y-24,`-${dmg}`,'#b31313',.35,15);pr.hit=true;if(e.hp<=0)e.dead=true;break}}if(pr.hit)continue;
    for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;enemyHitReact(e,14);particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
@@ -2683,11 +2797,92 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    say('赤杖を手に入れた！');
  }
 
+ // 右分岐：再生ツタ壁。
+ for(const v of vineWalls){
+   if(v.dead){
+     v.regenT-=dt;
+     if(v.regenT<=0){v.dead=false;v.hp=v.maxHp;v.burned=false;particle(v.x,v.y,'モゾモゾ…','#2f8a45',.35,13);}
+   }
+ }
+ // ぐるぐるツタは約5秒で個別再生。3本全部が同時に倒れている時だけ報酬。
+ for(const v of vineKnot){
+   if(v.dead){v.regenT-=dt;if(v.regenT<=0&&!cloudShieldDropped){v.dead=false;v.hp=v.maxHp;}}
+ }
+ if(!cloudShieldDropped&&vineKnot.every(v=>v.dead)){
+   cloudShieldDropped=true;cloudShieldPickup.active=true;
+   particle(cloudShieldPickup.x,cloudShieldPickup.y,'雲の盾！','#fff',.75,20);
+   say('絡まったツタがほどけ、雲の盾が現れた！');
+ }
+ if(cloudShieldPickup.active&&!cloudShieldPickup.taken&&dist(player.x,player.y,cloudShieldPickup.x,cloudShieldPickup.y)<65){
+   cloudShieldPickup.taken=true;unlockedShields[4]=true;player.shieldType=4;
+   particle(player.x,player.y-50,'雲の盾 GET！','#eafcff',.8,21);
+   say('雲の盾：高く跳び、ゆっくり降りられる！');
+ }
+
+ // 種花とムチツタ。
+ for(const e of vineSeedFlowers){
+   if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   const d=dist(player.x,player.y,e.x,e.y);
+   if(d<430&&e.attackCd<=0){
+     const a=Math.atan2(player.y-e.y,player.x-e.x);
+     projectiles.push({x:e.x,y:e.y-8,vx:Math.cos(a)*190,vy:Math.sin(a)*190,r:10,life:2.3,kind:'seed',damage:5,enemyShot:true,hit:false});
+     e.attackCd=1.45;
+   }
+ }
+ for(const e of whipVines){
+   if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   const d=dist(player.x,player.y,e.x,e.y);
+   if(d<180&&e.attackCd<=0){
+     e.attackCd=1.55;
+     if(player.jumpT<=0&&player.inv<=0){
+       if(player.shield){player.vineBound=Math.max(player.vineBound||0,1.4);particle(player.x,player.y-40,'絡まった！','#236b38',.7,17);}
+       else{const got=takeDamage(6);player.inv=.55;particle(player.x,player.y-40,`-${got}`,'#c11',.4,15);}
+     }
+   }
+ }
+
+ // ツタボス。ガードすると捕まるので、ジャンプ回避→空中攻撃が基本。
+ if(!vineBoss.dead&&player.x>2740&&player.y<-520)vineBoss.active=true;
+ if(vineBoss.active&&!vineBoss.dead){
+   vineBoss.flash=Math.max(0,vineBoss.flash-dt);vineBoss.attackCd-=dt;vineBoss.whipT=Math.max(0,vineBoss.whipT-dt);
+   const d=dist(player.x,player.y,vineBoss.x,vineBoss.y);
+   if(vineBoss.attackCd<=0&&d<420){
+     vineBoss.attackCd=1.7;vineBoss.whipT=.42;
+     if(d<230&&player.jumpT<=0){
+       if(player.shield){player.vineBound=Math.max(player.vineBound||0,2.4);particle(player.x,player.y-42,'盾ごと絡まれた！','#256b38',.8,17);}
+       else if(player.inv<=0){const got=takeDamage(8);player.inv=.65;particle(player.x,player.y-40,`-${got}`,'#c11',.45,16);}
+     }
+   }
+   if(vineBoss.hp<=0){vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！');}
+ }
+ player.vineBound=Math.max(0,(player.vineBound||0)-dt);
+
  // 灼熱花撃破後、上の氷ルートは任意攻略。右分岐は青杖なしでも通れる。
  if(fireBossDefeated&&!iceBoss.dead&&player.y<-3050&&player.x<100){
    iceBoss.active=true;
  }
- for(const e of iceEnemies){if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;const d=dist(player.x,player.y,e.x,e.y);if(d<390&&e.attackCd<=0){const a=Math.atan2(player.y-e.y,player.x-e.x);if(e.type==='penguin'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*175,vy:Math.sin(a)*175,r:9,life:2.2,kind:'snowball',damage:4,enemyShot:true,hit:false});e.attackCd=1.6}else if(e.type==='seal'){projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*135,vy:Math.sin(a)*135,r:12,life:2.5,kind:'icechunk',damage:5,enemyShot:true,hit:false});e.attackCd=2}else{e.x+=Math.cos(a)*48;e.y+=Math.sin(a)*48;e.attackCd=2.2;if(d<82&&!player.shield&&player.inv<=0){const got=takeDamage(6);player.inv=.55;particle(player.x,player.y-35,`-${got}`,'#c11',.4,16)}}}}
+ // 氷ルートの敵は、分岐の氷壁を越えて入った時だけ反応する。
+ const enteredIceDanger=player.y<-1030;
+ for(const e of iceEnemies){
+   if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   if(!enteredIceDanger)continue;
+   const d=dist(player.x,player.y,e.x,e.y);
+   if(d<410&&e.attackCd<=0){
+     const a=Math.atan2(player.y-e.y,player.x-e.x);
+     projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,r:9,life:2.2,kind:'snowball',damage:4,enemyShot:true,hit:false});
+     e.attackCd=1.45;
+   }
+ }
+ for(const e of iceThrowers){
+   if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+   if(!enteredIceDanger)continue;
+   const d=dist(player.x,player.y,e.x,e.y);
+   if(d<470&&e.attackCd<=0){
+     const a=Math.atan2(player.y-e.y,player.x-e.x);
+     projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*205,vy:Math.sin(a)*205,r:16,life:2.5,kind:'thrownIce',damage:6,enemyShot:true,hit:false});
+     e.attackCd=1.55;particle(e.x,e.y-30,'ポーン！','#d9f7ff',.25,13);
+   }
+ }
  if(iceBoss.active&&!iceBoss.dead){
    iceBoss.flash=Math.max(0,iceBoss.flash-dt);iceBoss.attackCd-=dt;
    if(iceBoss.attackCd<=0){
@@ -3537,24 +3732,18 @@ function drawWorld(){
      line(-14,-7,8,13,3,'#fff');line(5,-20,20,-3,3,'#fff');ctx.restore();
    }
 
-   // 氷エリアの雑魚は地形より後に描き、背景の下へ隠れない。
+   // 氷エリアはペンギン＋「岩投げ敵」の氷版。
    for(const e of iceEnemies){
-     if(e.dead)continue;
-     ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#31576a';ctx.beginPath();ctx.ellipse(e.x,e.y+27,e.r*.82,e.r*.27,0,0,Math.PI*2);ctx.fill();ctx.restore();
-     ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
-     if(e.type==='penguin'){
-       circle(0,2,27,'#202a32','#111',5);
-       ctx.fillStyle='#f5fbff';ctx.beginPath();ctx.ellipse(0,8,15,20,0,0,Math.PI*2);ctx.fill();
-       circle(-8,-7,3,'#111','transparent',0);circle(8,-7,3,'#111','transparent',0);
-       ctx.fillStyle='#f4a62a';ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(7,0);ctx.lineTo(0,7);ctx.closePath();ctx.fill();
-     }else if(e.type==='seal'){
-       ctx.fillStyle='#d9edf4';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,7,34,23,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-       circle(-9,0,3,'#111','transparent',0);circle(9,0,3,'#111','transparent',0);circle(0,7,4,'#333','transparent',0);
-       line(-18,12,-31,19,4,'#111');line(18,12,31,19,4,'#111');
-     }else{
-       circle(0,4,38,'#f5fbff','#111',6);circle(-24,-22,12,'#f5fbff','#111',5);circle(24,-22,12,'#f5fbff','#111',5);
-       circle(-11,-3,4,'#111','transparent',0);circle(11,-3,4,'#111','transparent',0);circle(0,9,7,'#333','transparent',0);
-     }
+     if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+     circle(0,2,27,'#202a32','#111',5);ctx.fillStyle='#f5fbff';ctx.beginPath();ctx.ellipse(0,8,15,20,0,0,Math.PI*2);ctx.fill();
+     circle(-8,-7,3,'#111','transparent',0);circle(8,-7,3,'#111','transparent',0);
+     ctx.fillStyle='#f4a62a';ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(7,0);ctx.lineTo(0,7);ctx.closePath();ctx.fill();ctx.restore();
+   }
+   for(const e of iceThrowers){
+     if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+     circle(0,0,31,'#8ba8b4','#111',6);circle(0,15,16,'#d9f5ff','#111',4);
+     circle(-10,-7,4,'#111','transparent',0);circle(10,-7,4,'#111','transparent',0);
+     circle(0,18,12,'#bdeeff','#111',4);line(-24,5,-39,15,7,'#111');line(24,5,39,15,7,'#111');
      ctx.restore();
    }
    if(!iceBoss.dead){
@@ -3566,6 +3755,52 @@ function drawWorld(){
    }
    if(blueStaffPickup.active&&!blueStaffPickup.taken){
      ctx.save();ctx.translate(blueStaffPickup.x,blueStaffPickup.y);ctx.rotate(-.3);line(0,28,0,-45,11,'#111');line(0,28,0,-45,6,'#7b5b44');circle(0,-56,15,'#82dcff','#111',5);line(-8,-56,8,-56,3,'#fff');line(0,-64,0,-48,3,'#fff');ctx.restore();
+   }
+ }
+
+ // 右分岐：動く植物エリア。
+ if(fireBossDefeated){
+   for(const r of [...vineAreaGeo.path,vineAreaGeo.arena]){
+     ctx.fillStyle='#69b65f';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
+   }
+   for(const r of vineAreaGeo.safePads){
+     ctx.fillStyle='#b8e9a4';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,32);ctx.fill();ctx.stroke();
+   }
+   // 大きな幹ツタ＋再生壁
+   for(const v of vineWalls){
+     if(v.dead)continue;ctx.save();ctx.translate(v.x,v.y);ctx.strokeStyle='#154f28';ctx.lineWidth=22;ctx.lineCap='round';
+     ctx.beginPath();ctx.moveTo(0,60);ctx.bezierCurveTo(-45,15,45,-18,0,-62);ctx.stroke();
+     ctx.strokeStyle='#36a94f';ctx.lineWidth=11;ctx.stroke();
+     for(let y=-40;y<=40;y+=27){circle(Math.sin(y*.1)*22,y,13,'#58c65d','#111',4)}
+     ctx.restore();
+   }
+   for(const e of vineSeedFlowers){
+     if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+     line(0,15,0,45,10,'#111');line(0,15,0,45,5,'#3d9b45');
+     for(let i=0;i<7;i++){const a=i*Math.PI*2/7;ctx.save();ctx.rotate(a);ctx.translate(29,0);ctx.fillStyle='#dc78c5';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,10,17,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+     circle(0,0,20,'#ffd453','#111',5);circle(-7,-4,3.5,'#111','transparent',0);circle(7,-4,3.5,'#111','transparent',0);ctx.restore();
+   }
+   for(const e of whipVines){
+     if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.6;
+     ctx.strokeStyle='#174f28';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(0,35);ctx.quadraticCurveTo(-35,0,0,-42);ctx.stroke();
+     ctx.strokeStyle='#4fc25b';ctx.lineWidth=8;ctx.stroke();circle(0,-48,18,'#64cb5f','#111',5);ctx.restore();
+   }
+   for(const v of vineKnot){
+     if(v.dead)continue;ctx.save();ctx.translate(v.x,v.y);ctx.strokeStyle='#174f28';ctx.lineWidth=13;
+     for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(0,0,20+i*5,i*.7,Math.PI*2+i*.7);ctx.stroke()}ctx.restore();
+   }
+   if(cloudShieldPickup.active&&!cloudShieldPickup.taken){
+     ctx.save();ctx.translate(cloudShieldPickup.x,cloudShieldPickup.y);ctx.fillStyle='#eefcff';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.moveTo(0,-35);ctx.quadraticCurveTo(36,-25,34,10);ctx.quadraticCurveTo(26,38,0,50);ctx.quadraticCurveTo(-26,38,-34,10);ctx.quadraticCurveTo(-36,-25,0,-35);ctx.fill();ctx.stroke();
+     circle(-10,2,11,'#fff','#79bcd3',3);circle(6,-5,14,'#fff','#79bcd3',3);circle(18,5,9,'#fff','#79bcd3',3);ctx.restore();
+   }
+   if(!vineBoss.dead){
+     ctx.save();ctx.translate(vineBoss.x,vineBoss.y);if(vineBoss.flash>0)ctx.globalAlpha=.6;
+     ctx.strokeStyle='#163f22';ctx.lineWidth=20;for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(Math.cos(a+.6)*75,Math.sin(a+.6)*75,Math.cos(a)*115,Math.sin(a)*115);ctx.stroke()}
+     circle(0,0,48,'#5bb44c','#111',7);circle(-14,-8,5,'#111','transparent',0);circle(14,-8,5,'#111','transparent',0);
+     if(vineBoss.whipT>0){ctx.strokeStyle='#59c85c';ctx.lineWidth=14;ctx.beginPath();ctx.arc(0,0,175,-.8,.8);ctx.stroke();}
+     ctx.restore();
+     if(vineBoss.active){ctx.fillStyle='#111';ctx.fillRect(vineBoss.x-115,vineBoss.y-120,230,15);ctx.fillStyle='#55b94f';ctx.fillRect(vineBoss.x-111,vineBoss.y-116,222*Math.max(0,vineBoss.hp/vineBoss.maxHp),7);}
    }
  }
 
@@ -3697,6 +3932,12 @@ function drawObjectiveArrow(){
 }
 
 function drawProjectile(pr){
+ if(pr.kind==='thrownIce'){
+   ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(performance.now()*.012);
+   ctx.fillStyle='#bdeeff';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(0,-pr.r);ctx.lineTo(pr.r*.85,-3);ctx.lineTo(pr.r*.45,pr.r);ctx.lineTo(-pr.r*.65,pr.r*.7);ctx.lineTo(-pr.r,-4);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();return;
+ }
+
  if(pr.kind==='iceShard'){
    ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));
    ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-7,-9);ctx.lineTo(-2,0);ctx.lineTo(-7,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();return;
