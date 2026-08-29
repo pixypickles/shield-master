@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 133: 最初の浮遊草原ステージ
+// Prototype 134: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -372,15 +372,15 @@ const vegGeo={path:[
  {x:7220,y:-2810,w:720,h:700},{x:7840,y:-2740,w:760,h:620}
 ]};
 const vegArmy=[
- {type:'carrotSword',x:6710,y:-2440,r:27,hp:9,maxHp:9,speed:76,attackCd:.6,flash:0,dead:false},
- {type:'leekSpear',x:6900,y:-2620,r:29,hp:10,maxHp:10,speed:68,attackCd:1.0,flash:0,dead:false},
- {type:'turnipHammer',x:7120,y:-2290,r:32,hp:12,maxHp:12,speed:58,attackCd:1.2,flash:0,dead:false},
+ {type:'carrotSword',x:6450,y:-2390,r:27,hp:9,maxHp:9,speed:76,attackCd:.6,flash:0,dead:false},
+ {type:'leekSpear',x:6680,y:-2520,r:29,hp:10,maxHp:10,speed:68,attackCd:1.0,flash:0,dead:false},
+ {type:'turnipHammer',x:6900,y:-2320,r:32,hp:12,maxHp:12,speed:58,attackCd:1.2,flash:0,dead:false},
  {type:'carrotSword',x:7420,y:-2600,r:27,hp:9,maxHp:9,speed:82,attackCd:.7,flash:0,dead:false},
  {type:'leekSpear',x:7700,y:-2350,r:29,hp:10,maxHp:10,speed:72,attackCd:.9,flash:0,dead:false},
  {type:'turnipHammer',x:8100,y:-2500,r:32,hp:12,maxHp:12,speed:60,attackCd:1.1,flash:0,dead:false}
 ];
 const vegFireFlowers=[
- {x:6820,y:-2240,r:25,hp:7,maxHp:7,attackCd:.8,flash:0,dead:false},
+ {x:6570,y:-2260,r:25,hp:7,maxHp:7,attackCd:.8,flash:0,dead:false},
  {x:7310,y:-2400,r:25,hp:7,maxHp:7,attackCd:1.2,flash:0,dead:false},
  {x:7900,y:-2600,r:25,hp:7,maxHp:7,attackCd:.9,flash:0,dead:false},
  {x:8350,y:-2320,r:25,hp:7,maxHp:7,attackCd:1.4,flash:0,dead:false}
@@ -832,7 +832,14 @@ function pointSupportedByGround(x,y,pad=24){
 
 function enemySupportedByGround(e,pad=10){
  if(!e||!Number.isFinite(e.x)||!Number.isFinite(e.y))return false;
- return pointSupportedByGround(e.x,e.y,Math.max(pad,(e.r||18)*.35));
+ const p=Math.max(pad,(e.r||18)*.35);
+ // 野菜軍団エリアは専用地形でも明示判定。追加直後の敵が一斉に崖落下扱いになるのを防ぐ。
+ if(cloudRaceWon && typeof vegGeo!=='undefined'){
+   for(const r of vegGeo.path){
+     if(e.x>=r.x-p&&e.x<=r.x+r.w+p&&e.y>=r.y-p&&e.y<=r.y+r.h+p)return true;
+   }
+ }
+ return pointSupportedByGround(e.x,e.y,p);
 }
 function keepGroundEnemyOnGround(e,dt){
  if(!e||e.dead||e.enemyFalling)return;
@@ -850,7 +857,7 @@ function updateGroundEnemyFall(e,dt){
  return true;
 }
 function enforceAllGroundEnemies(dt){
- const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,vegArmy,vegFireFlowers];
+ const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,vegArmy];
  if(typeof stage10Enemies!=='undefined')lists.push(stage10Enemies);
  if(typeof iceEnemies!=='undefined')lists.push(iceEnemies);
  if(typeof iceThrowers!=='undefined')lists.push(iceThrowers);
@@ -3418,7 +3425,11 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      if(e.dead||e.enemyFalling)continue;
      e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;e.swingT=Math.max(0,(e.swingT||0)-dt);
      const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
-     if(d>74&&d<460){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+     if(d>74&&d<460){
+       const ox=e.x,oy=e.y;
+       e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;
+       if(!enemySupportedByGround(e,5)){e.x=ox;e.y=oy;}
+     }
      const reach=e.type==='leekSpear'?116:(e.type==='turnipHammer'?82:76);
      if(d<reach&&e.attackCd<=0){
        e.attackCd=e.type==='turnipHammer'?1.45:(e.type==='leekSpear'?1.05:.78);e.swingT=.28;
@@ -3479,7 +3490,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
          if(cloudRace.cp>=cloudRaceGeo.checkpoints.length){
            const firstWin=!cloudRaceWon;cloudRaceWon=true;cloudRace.started=false;cloudRace.retryCd=2.2;
            particle(player.x,player.y-60,'YOU WIN!','#fff',1.0,25);
-           say(firstWin?'レース勝利！ 次の島へ虹の橋がかかった！':'再戦勝利！ スタート門で何度でも挑戦できる！');
+           say(firstWin?'レース勝利！ 虹の橋の先に武器を持った野菜軍団がいる！':'再戦勝利！ スタート門で何度でも挑戦できる！');
            saveProgress();
          }
        }
