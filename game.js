@@ -25,9 +25,9 @@ const weapons=[
  {name:'青杖',range:150,color:'#70c8ff'},
  {name:'光の杖',range:190,color:'#fff5a8'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 151: 最初の浮遊草原ステージ
+// Prototype 152: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -350,7 +350,6 @@ const vineSkyGeo={
  ],
  // 杖スキルの高速移動で踏み込むと、下から突き上げる特殊ジャンプ台。
  launchPads:[
-  {x:560,y:-670,r:48,dir:-1.42,tx:760,ty:-1110},
   {x:1185,y:-1325,r:44,dir:-.22,tx:1570,ty:-1140},
   {x:2035,y:-1370,r:46,dir:.10,tx:2440,ty:-1180},
   // ツタボス撃破後、右端から上空ルートへ復帰する打ち上げ台。
@@ -413,6 +412,10 @@ const cloudRaceTrackRects=(()=>{
 
 let cloudRaceWon=false;
 let cloudRaceUnlocked=false;
+function raceRouteOpen(){
+ return vineBossDefeated||vineBoss.dead||cloudRaceUnlocked||cloudRaceWon;
+}
+
 const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6,intro:false,introPage:0,introT:0,lastIntroPage:-1,startHold:0};
 const vegGeo={path:[
  {x:6200,y:-2520,w:500,h:400},{x:6600,y:-2750,w:720,h:650},
@@ -1003,9 +1006,9 @@ function visibleGroundRects(){
    grounds.push(stage9Geo.arena);
  }
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
- if(fireBossDefeated){
+ if(fireBossDefeated||raceRouteOpen()){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
-   if(vineBossDefeated||cloudRaceWon||cloudRaceUnlocked){
+   if(raceRouteOpen()){
      grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge,cloudRaceGeo.entryIsland,...cloudRaceTrackRects);
      if(cloudRaceWon){
        grounds.push(cloudRaceGeo.nextIsland,...vegGeo.path,{
@@ -1238,6 +1241,7 @@ function loadProgress(){
  vineBossDefeated=!!d.vineBossDefeated || !!d.vineBossDead;
  cloudRaceWon=!!d.cloudRaceWon;
  cloudRaceUnlocked=!!d.cloudRaceUnlocked || vineBossDefeated || cloudRaceWon;
+ if(vineBossDefeated||cloudRaceUnlocked||cloudRaceWon)fireBossDefeated=true;
  vegBossDefeated=!!d.vegBossDefeated||!!d.vegBossDead;
 
  // 後続エリアまで進んでいるなら、レース通過済みを確定扱いにして前提を復元。
@@ -2459,7 +2463,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
 
  // P16 チャージ攻撃の時間処理
  if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
- if(player.flameCharge>0)player.flameCharge=Math.max(0,player.flameCharge-dt);if(player.lightLaser>0)player.lightLaser=Math.max(0,player.lightLaser-dt);
+ if(player.flameCharge>0)player.flameCharge=Math.max(0,player.flameCharge-dt);if(player.lightLaser>0)player.lightLaser=Math.max(0,player.lightLaser-dt);if(player.hammerShockFx>0)player.hammerShockFx=Math.max(0,player.hammerShockFx-dt);
  if(player.flameCharge>0&&player.flameSword){
    const fp=1-player.flameCharge/(player.flameChargeMax||.78);
    const ringR=48+fp*205, band=42, dmg=swordDamage(7);
@@ -2506,23 +2510,23 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      particle(player.x,player.y,'ドゴォン！','#111',.55,24);
      if(stage7Started){
        for(const r of stage7Rocks){
-         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<155){
+         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<(player.hammerPlus?285:155)){
            r.dead=true;particle(r.x,r.y,'粉砕！','#444',.45,17);
          }
        }
        for(const e of bossWalnuts){
-         if(!e.dead&&dist(player.x,player.y,e.x,e.y)<165){
+         if(!e.dead&&dist(player.x,player.y,e.x,e.y)<(player.hammerPlus?285:165)){
            e.dead=true;particle(e.x,e.y,'パカン！','#9b6637',.45,17);killDrop(e,.55);
          }
        }
        for(const r of rollingRocks){
-         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<165){
+         if(!r.dead&&dist(player.x,player.y,r.x,r.y)<(player.hammerPlus?285:165)){
            r.dead=true;particle(r.x,r.y,'ガシャッ！','#666',.4,16);
          }
        }
      }
      for(const o of elementalObstacles){
-       if(!o.dead&&dist(player.x,player.y,o.x,o.y)<155)hitElementalObstacle(o.x,o.y,2,'hammer',1);
+       if(!o.dead&&dist(player.x,player.y,o.x,o.y)<(player.hammerPlus?285:155))hitElementalObstacle(o.x,o.y,2,'hammer',1);
      }
      if(!startRockWall.dead){
        const wx=startRockWall.x+startRockWall.w/2,wy=clamp(player.y,startRockWall.y-startRockWall.h/2,startRockWall.y+startRockWall.h/2);
@@ -2539,14 +2543,25 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      if(stage10Started&&!rockThrower.dead&&dist(player.x,player.y,rockThrower.x,rockThrower.y)<185){
        rockThrower.hp-=8;rockThrower.flash=.2;if(rockThrower.hp<=0)rockThrower.dead=true;
      }
-     for(const e of enemies){
-       if(e.dead)continue;
-       const d=dist(player.x,player.y,e.x,e.y);
-       if(d<62){e.hp-=5;e.flash=.2;particle(e.x,e.y-22,'-5','#b31313',.5,17)}
-       else if(d<145){e.hp-=1;e.flash=.14;e.stagger=.75;particle(e.x,e.y-20,'よろっ','#555',.45,14)}
-       if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}
+     const pine=!!player.hammerPlus;
+     const smashInner=pine?112:62, smashOuter=pine?285:145;
+     const smashDirect=pine?34:5, smashWave=pine?16:1;
+     player.hammerShockFx=pine?.72:.42;
+     const smashTarget=(e)=>{
+       if(!e||e.dead)return;const d=dist(player.x,player.y,e.x,e.y);if(d>=smashOuter+(e.r||20)*.25)return;
+       const dmg=d<smashInner+(e.r||20)*.25?smashDirect:smashWave;
+       e.hp=(e.hp??1)-dmg;e.flash=.24;
+       if('stagger' in e)e.stagger=Math.max(e.stagger||0,pine?1.25:.75);
+       particle(e.x,e.y-22,`-${dmg}`,pine?'#e0a52f':'#b31313',.5,18);
+       if(e.hp<=0)e.dead=true;
+     };
+     for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,
+       vineSeedFlowers,whipVines,bossWalnuts,vegArmy,vegFireFlowers,roadVegSoldiers,roadFlowers,fruitMiniBosses,waterRaiders,lavaThrowers,
+       crystalPlants,crystalThrowers,rapidFlowers,ultraVines,walkingGrass,rushFlowers,rushMiniBosses])for(const e of list)smashTarget(e);
+     for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss]){
+       if(b&&(!('active' in b)||b.active))smashTarget(b);
      }
-     if(boss.active&&!boss.dead&&dist(player.x,player.y,boss.x,boss.y)<145){boss.hp-=dist(player.x,player.y,boss.x,boss.y)<62?5:1;boss.flash=.16;}
+     if(pine)particle(player.x,player.y-20,'パイン大震撃！！','#ffd34d',.7,23);
      for(const e of stage3Enemies){
        if(e.dead||dist(player.x,player.y,e.x,e.y)>=110)continue;
        if(e.type==='spinnerflower'){particle(e.x,e.y-25,'キン！','#111',.3,14);continue}
@@ -3932,7 +3947,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  player.launchPadCd=Math.max(0,(player.launchPadCd||0)-dt);
  if(player.launchPadCd<=0&&(player.skillKind==='fire'||player.skillKind==='ice')&&player.skillT>0){
   for(const p of vineSkyGeo.launchPads){
-   if(p.x>3000&&!vineBossDefeated)continue;
+   if(p.x>3000&&!raceRouteOpen())continue;
    if(dist(player.x,player.y,p.x,p.y)<p.r+player.r+12){
     // スキルの勢いを実座標の放物移動へ変換。巨大な見た目ジャンプだけにしない。
     player.skillT=0;
@@ -4075,7 +4090,8 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
    }
    if(vineBoss.hp<=0){
-     vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;cloudRaceUnlocked=true;
+     vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;cloudRaceUnlocked=true;fireBossDefeated=true;
+      cloudRace.started=false;cloudRace.intro=false;cloudRace.cp=0;cloudRace.startHold=0;
       particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！ レース場への道が開いた！');saveProgress();
    }
  }
@@ -5317,7 +5333,7 @@ function drawWorld(){
  }
 
  // 右分岐：動く植物エリア。
- if(fireBossDefeated){
+ if(fireBossDefeated||raceRouteOpen()){
    for(const r of [...vineAreaGeo.path,vineAreaGeo.arena]){
      ctx.fillStyle='#69b65f';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,44);ctx.fill();ctx.stroke();
    }
@@ -5330,7 +5346,7 @@ function drawWorld(){
     ctx.fillStyle='#8a5934';ctx.beginPath();ctx.moveTo(q.x+20,q.y+q.h-8);ctx.lineTo(q.x+q.w-20,q.y+q.h-8);ctx.lineTo(q.x+q.w*.56,q.y+q.h+65);ctx.lineTo(q.x+q.w*.44,q.y+q.h+65);ctx.closePath();ctx.fill();ctx.stroke();
    }
    // ボス撃破後だけ現れる、上空ルートへの帰り道。
-   if(vineBossDefeated){
+   if(raceRouteOpen()){
     const br=vineSkyGeo.postBossBridge;
     ctx.fillStyle='#77c96b';ctx.strokeStyle='#111';ctx.lineWidth=7;
     ctx.beginPath();ctx.roundRect(br.x,br.y,br.w,br.h,35);ctx.fill();ctx.stroke();
@@ -5362,7 +5378,7 @@ function drawWorld(){
    }
 
 
-   if(vineBossDefeated||cloudRaceWon||cloudRaceUnlocked){
+   if(raceRouteOpen()){
      // 雲ジャンプの出口と、巨大な歪んだ楕円ドーナツ型レース場。
      // レース勝利済みなら、旧セーブのボスフラグが欠けていても必ず表示する。
      const ei=cloudRaceGeo.entryIsland;
@@ -6433,7 +6449,20 @@ function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translat
    ctx.beginPath();ctx.moveTo(58,0);ctx.lineTo(68,-9);ctx.lineTo(88,0);ctx.lineTo(68,9);ctx.closePath();ctx.fill();ctx.stroke();
    ctx.strokeStyle=water?'#e9fbff':'#edf4f7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(65,-4);ctx.lineTo(82,0);ctx.lineTo(65,2);ctx.stroke();
  }
- else if(w===2){line(0,0,38,0,11,'#111');line(0,0,38,0,5,'#8b5c3b');roundRect(29,-17,34,34,7,'#9ea6ad','#111',6)}
+ else if(w===2){
+   line(0,0,40,0,12,'#111');line(0,0,40,0,6,'#8b5c3b');
+   if(player.hammerPlus){
+     // パインハンマー：金属塊ではなく、巨大なパイナップルそのものがヘッド。
+     ctx.save();ctx.translate(53,0);
+     ctx.fillStyle='#e5ad34';ctx.strokeStyle='#111';ctx.lineWidth=6;
+     ctx.beginPath();ctx.ellipse(0,0,24,31,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+     ctx.strokeStyle='#9b6b22';ctx.lineWidth=3;
+     for(let yy=-18;yy<=18;yy+=12){ctx.beginPath();ctx.moveTo(-17,yy-7);ctx.lineTo(17,yy+7);ctx.stroke();ctx.beginPath();ctx.moveTo(-17,yy+7);ctx.lineTo(17,yy-7);ctx.stroke();}
+     ctx.fillStyle='#45a44b';ctx.strokeStyle='#111';ctx.lineWidth=4;
+     for(let i=-2;i<=2;i++){ctx.save();ctx.rotate(i*.25);ctx.beginPath();ctx.moveTo(-7,-27);ctx.lineTo(0,-51-Math.abs(i)*3);ctx.lineTo(8,-27);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+     ctx.restore();
+   }else roundRect(29,-17,34,34,7,'#9ea6ad','#111',6);
+ }
  else {line(-2,0,45,0,10,'#111');line(-2,0,45,0,5,'#6d3e2a');circle(50,0,11,w===3?'#ff5a4f':'#69c9ff','#111',5);circle(50,0,4,'#fff','#111',2)}ctx.restore()}
 function drawShield(hx,hy,a,raised,sideView=false){
  ctx.save();ctx.translate(hx,hy);const r=raised?34:27;
@@ -6569,6 +6598,14 @@ function drawSwordSkillEffect(){
  ctx.restore();
 }
 function drawChargeEffects(){
+ if(player.hammerShockFx>0){
+   const max=player.hammerPlus?.72:.42,p=1-player.hammerShockFx/max,rad=(player.hammerPlus?55:38)+p*(player.hammerPlus?245:105);
+   ctx.save();ctx.translate(player.x,player.y);ctx.globalAlpha=(1-p)*.65;ctx.strokeStyle=player.hammerPlus?'#e0aa32':'#777';ctx.lineWidth=player.hammerPlus?18:10;
+   ctx.beginPath();ctx.arc(0,0,rad,0,Math.PI*2);ctx.stroke();
+   if(player.hammerPlus){ctx.globalAlpha=(1-p)*.38;ctx.strokeStyle='#ffe36a';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,rad*.82,0,Math.PI*2);ctx.stroke();}
+   ctx.restore();
+ }
+
  if(player.lightLaser>0){const p=player.lightLaser/.48;ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.lightLaserA);ctx.globalCompositeOperation='screen';ctx.globalAlpha=.25+.5*p;ctx.strokeStyle='#fff7a8';ctx.lineWidth=34;ctx.beginPath();ctx.moveTo(28,0);ctx.lineTo(850,0);ctx.stroke();ctx.strokeStyle='#fff';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(28,0);ctx.lineTo(850,0);ctx.stroke();ctx.restore();}
 
  if(player.staffChargeFx){
