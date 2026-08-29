@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 137: 最初の浮遊草原ステージ
+// Prototype 138: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -383,11 +383,7 @@ const vegFireFlowers=[
  {x:7900,y:-2600,r:25,hp:7,maxHp:7,attackCd:.9,flash:0,dead:false},
  {x:8350,y:-2320,r:25,hp:7,maxHp:7,attackCd:1.4,flash:0,dead:false}
 ];
-const flyingVeg=[
- {type:'flyingPepper',x:7040,y:-2520,r:28,hp:8,maxHp:8,z:118,phase:.2,dropCd:.8,flash:0,dead:false},
- {type:'flyingEggplant',x:7590,y:-2510,r:30,hp:9,maxHp:9,z:128,phase:2.0,dropCd:1.4,flash:0,dead:false},
- {type:'flyingPepper',x:8190,y:-2450,r:28,hp:8,maxHp:8,z:122,phase:4.1,dropCd:1.0,flash:0,dead:false}
-];
+const flyingVeg=[]; // P138: 空からのタネ攻撃は撤去。飛行野菜も出さない。
 const fallingVegSeeds=[];
 const vegBoss={
  x:8350,y:-2440,r:88,hp:58,maxHp:58,active:false,dead:false,
@@ -395,6 +391,40 @@ const vegBoss={
 };
 let vegBossDefeated=false;
 const chargeShieldPickup={x:8350,y:-2440,active:false,taken:false};
+const fruitRoadGeo={path:[
+ {x:8580,y:-2555,w:720,h:210},
+ {x:9250,y:-2620,w:720,h:210},
+ {x:9920,y:-2545,w:720,h:210},
+ {x:10590,y:-2620,w:720,h:210},
+ {x:11260,y:-2555,w:760,h:210}
+]};
+const roadFlowers=[
+ {x:8810,y:-2745,r:25,hp:7,maxHp:7,attackCd:.6,flash:0,dead:false},
+ {x:9160,y:-2200,r:25,hp:7,maxHp:7,attackCd:1.0,flash:0,dead:false},
+ {x:9510,y:-2810,r:25,hp:7,maxHp:7,attackCd:.8,flash:0,dead:false},
+ {x:9860,y:-2180,r:25,hp:7,maxHp:7,attackCd:1.2,flash:0,dead:false},
+ {x:10210,y:-2740,r:25,hp:7,maxHp:7,attackCd:.7,flash:0,dead:false},
+ {x:10560,y:-2205,r:25,hp:7,maxHp:7,attackCd:1.1,flash:0,dead:false},
+ {x:10910,y:-2810,r:25,hp:7,maxHp:7,attackCd:.9,flash:0,dead:false},
+ {x:11260,y:-2200,r:25,hp:7,maxHp:7,attackCd:1.3,flash:0,dead:false},
+ {x:11610,y:-2740,r:25,hp:7,maxHp:7,attackCd:.8,flash:0,dead:false}
+];
+const roadVegSoldiers=[
+ {type:'carrotSword',x:9000,y:-2450,r:27,hp:11,maxHp:11,speed:62,attackCd:.6,flash:0,dead:false},
+ {type:'leekSpear',x:9370,y:-2515,r:29,hp:12,maxHp:12,speed:58,attackCd:.8,flash:0,dead:false},
+ {type:'turnipHammer',x:9750,y:-2440,r:32,hp:14,maxHp:14,speed:50,attackCd:1.0,flash:0,dead:false},
+ {type:'carrotSword',x:10150,y:-2460,r:27,hp:11,maxHp:11,speed:64,attackCd:.7,flash:0,dead:false},
+ {type:'leekSpear',x:10520,y:-2515,r:29,hp:12,maxHp:12,speed:60,attackCd:.9,flash:0,dead:false},
+ {type:'turnipHammer',x:10920,y:-2460,r:32,hp:14,maxHp:14,speed:52,attackCd:1.1,flash:0,dead:false},
+ {type:'carrotSword',x:11320,y:-2450,r:27,hp:12,maxHp:12,speed:66,attackCd:.8,flash:0,dead:false},
+ {type:'leekSpear',x:11710,y:-2470,r:29,hp:13,maxHp:13,speed:60,attackCd:1.0,flash:0,dead:false}
+];
+const fruitMiniBosses=[
+ {type:'apple',name:'リンゴ隊長',x:9550,y:-2470,r:52,hp:26,maxHp:26,attackCd:1.0,flash:0,dead:false,active:false,windup:0},
+ {type:'orange',name:'オレンジ親分',x:10320,y:-2460,r:55,hp:30,maxHp:30,attackCd:1.1,flash:0,dead:false,active:false,windup:0},
+ {type:'grape',name:'ブドウ団長',x:11100,y:-2470,r:58,hp:34,maxHp:34,attackCd:1.2,flash:0,dead:false,active:false,windup:0}
+];
+
 
 
 
@@ -805,6 +835,7 @@ function visibleGroundRects(){
          w:Math.abs(cloudRaceGeo.rainbow.x2-cloudRaceGeo.rainbow.x1)+60,
          h:cloudRaceGeo.rainbow.w
        });
+       if(vegBossDefeated)grounds.push(...fruitRoadGeo.path);
      }
    }
  }
@@ -868,6 +899,11 @@ function enemySupportedByGround(e,pad=10){
      if(e.x>=r.x-p&&e.x<=r.x+r.w+p&&e.y>=r.y-p&&e.y<=r.y+r.h+p)return true;
    }
  }
+ if(vegBossDefeated && typeof fruitRoadGeo!=='undefined'){
+   for(const r of fruitRoadGeo.path){
+     if(e.x>=r.x-p&&e.x<=r.x+r.w+p&&e.y>=r.y-p&&e.y<=r.y+r.h+p)return true;
+   }
+ }
  return pointSupportedByGround(e.x,e.y,p);
 }
 function keepGroundEnemyOnGround(e,dt){
@@ -909,7 +945,7 @@ function updateGroundEnemyFall(e,dt){
  return true;
 }
 function enforceAllGroundEnemies(dt){
- const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,vegArmy];
+ const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,vegArmy,roadVegSoldiers];
  if(typeof stage10Enemies!=='undefined')lists.push(stage10Enemies);
  if(typeof iceEnemies!=='undefined')lists.push(iceEnemies);
  if(typeof iceThrowers!=='undefined')lists.push(iceThrowers);
@@ -938,7 +974,7 @@ function saveProgress(){
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,vegBossDefeated,
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,vegBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
    healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,
@@ -1012,6 +1048,7 @@ function loadProgress(){
  if(cloudRaceWon){vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;}
  vegBossDefeated=!!d.vegBossDefeated||!!d.vegBossDead;
  if(vegBossDefeated){vegBoss.dead=true;vegBoss.active=false;}
+ if(Array.isArray(d.fruitMiniBossDead))fruitMiniBosses.forEach((b,i)=>{if(d.fruitMiniBossDead[i])b.dead=true;});
 
 
  spearPickup.taken=!!d.spearTaken;
@@ -1545,6 +1582,11 @@ function hitVegArea(damage,range,base,cone,weapon){
  };
  for(const e of vegArmy)hit(e);
  for(const e of vegFireFlowers)hit(e);
+ if(vegBossDefeated){
+   for(const e of roadVegSoldiers)hit(e);
+   for(const e of roadFlowers)hit(e);
+   for(const e of fruitMiniBosses)hit(e);
+ }
  for(const e of flyingVeg){
    if(e.dead)continue;
    if(weapon<=2 && player.jumpT<=0 && !player.airAttack)continue;
@@ -1986,7 +2028,7 @@ function releaseShieldEnergy(base){
      if(e.hp<=0)e.dead=true;
    }
  };
- for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg])for(const e of list)hit(e);
+ for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg,roadVegSoldiers,roadFlowers,fruitMiniBosses])for(const e of list)hit(e);
  for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss]){
    if(b&&(!('active' in b)||b.active)&&!b.dead)hit(b);
  }
@@ -2723,7 +2765,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    if(pr.hit)continue;
    if(cloudRaceWon){
      let vh=false;
-     for(const list of [vegArmy,vegFireFlowers,flyingVeg]){
+     for(const list of [vegArmy,vegFireFlowers,flyingVeg,roadVegSoldiers,roadFlowers,fruitMiniBosses]){
        for(const e of list){
          if(e.dead)continue;
          if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||25)){
@@ -3567,23 +3609,6 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
        particle(f.x,f.y-38,'ボッ！','#ff7a2d',.28,14);
      }
    }
-   for(const f of flyingVeg){
-     if(f.dead)continue;
-     f.flash=Math.max(0,f.flash-dt);f.phase+=dt;f.x+=Math.sin(f.phase*.9)*10*dt;f.dropCd-=dt;
-     if(f.dropCd<=0&&dist(player.x,player.y,f.x,f.y)<520){
-       f.dropCd=1.45+Math.random()*.55;
-       fallingVegSeeds.push({x:player.x+Math.cos(f.phase)*18,y:player.y+Math.sin(f.phase)*18,z:f.z+85,vz:230,life:1.2,dead:false});
-     }
-   }
-   for(const q of fallingVegSeeds){
-     if(q.dead)continue;q.z-=q.vz*dt;q.life-=dt;
-     if(q.z<=0||q.life<=0){
-       q.dead=true;particle(q.x,q.y,'ドン！','#718f39',.35,15);
-       if(dist(player.x,player.y,q.x,q.y)<46&&player.jumpT<=0&&player.inv<=0){
-         const got=takeDamage(5);player.inv=.45;particle(player.x,player.y-35,`-${got}`,'#c11',.4,15);
-       }
-     }
-   }
    for(let i=fallingVegSeeds.length-1;i>=0;i--)if(fallingVegSeeds[i].dead)fallingVegSeeds.splice(i,1);
  }
 
@@ -3594,6 +3619,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      vegBoss.flash=Math.max(0,vegBoss.flash-dt);
      vegBoss.attackCd-=dt;vegBoss.windup=Math.max(0,vegBoss.windup-dt);vegBoss.swing=Math.max(0,vegBoss.swing-dt);
      const dx=player.x-vegBoss.x,dy=player.y-vegBoss.y,d=Math.hypot(dx,dy)||1;
+     vegBoss.weaponSide=dx<0?-1:1;
      if(d>125&&d<600&&vegBoss.windup<=0){vegBoss.x+=dx/d*42*dt;vegBoss.y+=dy/d*42*dt;}
      if(d<180&&vegBoss.attackCd<=0&&vegBoss.windup<=0){
        vegBoss.attackCd=1.55;vegBoss.windup=.48;vegBoss.phase++;
@@ -3619,6 +3645,53 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    chargeShieldPickup.taken=true;unlockedShields[5]=true;player.shieldType=5;player.shieldEnergy=0;
    particle(player.x,player.y-55,'蓄力の盾 GET！','#ffd34d',.9,22);
    say('蓄力の盾：防ぐほど蓄積！ 次の攻撃でエネルギーを全放出！');saveProgress();
+ }
+
+ // カボチャ武将の先：細い一本道。外側の花は固定砲台、道上の兵士は待ち伏せ。
+ if(vegBossDefeated){
+   for(const f of roadFlowers){
+     if(f.dead)continue;f.flash=Math.max(0,f.flash-dt);f.attackCd-=dt;
+     const d=dist(player.x,player.y,f.x,f.y);
+     if(d<560&&f.attackCd<=0){
+       const a=Math.atan2(player.y-f.y,player.x-f.x);
+       projectiles.push({x:f.x,y:f.y,vx:Math.cos(a)*205,vy:Math.sin(a)*205,r:10,life:3.0,kind:'seed',damage:5,enemyShot:true,hit:false});
+       f.attackCd=1.65;
+       particle(f.x,f.y-18,'ポン！','#d9ef82',.22,11);
+     }
+   }
+   for(const e of roadVegSoldiers){
+     if(e.dead||e.waitForGround||e.enemyFalling)continue;
+     e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;e.swingT=Math.max(0,(e.swingT||0)-dt);
+     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+     if(d<360&&d>76&&groundEnemyCanChase(e,380)){
+       const ox=e.x,oy=e.y;e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;
+       if(!enemySupportedByGround(e,4)){e.x=ox;e.y=oy;}
+     }
+     const reach=e.type==='leekSpear'?116:(e.type==='turnipHammer'?86:78);
+     if(d<reach&&e.attackCd<=0){
+       e.attackCd=e.type==='turnipHammer'?1.5:1.05;e.swingT=.28;
+       if(player.jumpT<=0){
+         if(shieldBlocks(e))particle(player.x,player.y-32,'ガキン！','#fff',.3,15);
+         else if(player.inv<=0){const got=takeDamage(e.type==='turnipHammer'?7:5);player.inv=.5;particle(player.x,player.y-34,`-${got}`,'#c11',.4,16);}
+       }
+     }
+   }
+   for(const b of fruitMiniBosses){
+     if(b.dead)continue;b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.windup=Math.max(0,b.windup-dt);
+     const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;
+     if(!b.active&&d<360){b.active=true;say(`${b.name}！`);}
+     if(!b.active)continue;
+     if(d>105&&d<420){const ox=b.x,oy=b.y;b.x+=dx/d*34*dt;b.y+=dy/d*34*dt;if(!enemySupportedByGround(b,8)){b.x=ox;b.y=oy;}}
+     if(d<150&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.55;b.windup=.35;particle(b.x,b.y-58,'！','#fff',.25,15);}
+     if(b.windup>0&&b.windup<=.06&&!b.didHit){
+       b.didHit=true;
+       if(d<170&&player.jumpT<=0){
+         if(shieldBlocks(b))particle(player.x,player.y-32,'ガン！','#ffd34d',.32,16);
+         else if(player.inv<=0){const dmg=b.type==='grape'?8:(b.type==='orange'?7:6);const got=takeDamage(dmg);player.inv=.55;particle(player.x,player.y-34,`-${got}`,'#c11',.42,16);}
+       }
+     }
+     if(b.windup<=0)b.didHit=false;
+   }
  }
  cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
  if(vineBossDefeated){
@@ -4719,19 +4792,21 @@ function drawWorld(){
          else{ctx.fillStyle='#7750a8';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,25,31,0,0,Math.PI*2);ctx.fill();ctx.stroke();line(0,-28,0,-43,8,'#4ca052')}
          ctx.fillStyle='#9bdc76';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(-28,-2,18,8,-.3,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.ellipse(28,-2,18,8,.3,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
        }
-       for(const q of fallingVegSeeds){
-         if(q.dead)continue;ctx.save();ctx.translate(q.x,q.y-q.z);ctx.fillStyle='#718f39';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,9,14,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
-         ctx.save();ctx.globalAlpha=.22;circle(q.x,q.y,20,'#111','transparent',0);ctx.restore();
-       }
 
        if(!vegBoss.dead){
          ctx.save();ctx.translate(vegBoss.x,vegBoss.y);if(vegBoss.flash>0)ctx.globalAlpha=.55;
-         // 巨大カボチャ＋大包丁
+         // 巨大カボチャ＋顔＋大包丁。包丁は常にプレイヤーがいる左右へ持ち替える。
          circle(0,0,72,'#e8892f','#111',7);
          ctx.strokeStyle='#b95b24';ctx.lineWidth=5;
          for(const xx of [-38,-16,16,38]){ctx.beginPath();ctx.moveTo(xx,-57);ctx.quadraticCurveTo(xx*1.2,0,xx,57);ctx.stroke();}
          line(0,-66,8,-90,14,'#388c45');
-         ctx.save();ctx.rotate(vegBoss.swing>0?-1.05:.28);
+         // ハロウィン風の三角目＋ギザギザ口
+         ctx.fillStyle='#3b2415';ctx.strokeStyle='#111';ctx.lineWidth=4;
+         ctx.beginPath();ctx.moveTo(-38,-24);ctx.lineTo(-10,-30);ctx.lineTo(-22,-4);ctx.closePath();ctx.fill();ctx.stroke();
+         ctx.beginPath();ctx.moveTo(38,-24);ctx.lineTo(10,-30);ctx.lineTo(22,-4);ctx.closePath();ctx.fill();ctx.stroke();
+         ctx.beginPath();ctx.moveTo(-34,16);ctx.lineTo(-18,8);ctx.lineTo(-5,19);ctx.lineTo(8,8);ctx.lineTo(23,18);ctx.lineTo(36,10);ctx.lineTo(28,31);ctx.lineTo(-27,31);ctx.closePath();ctx.fill();ctx.stroke();
+         const ws=vegBoss.weaponSide||-1;
+         ctx.save();ctx.scale(ws,1);ctx.rotate(vegBoss.swing>0?-1.12:.26);
          line(52,-5,115,-5,18,'#111');line(52,-5,115,-5,10,'#6f4a2f');
          ctx.fillStyle='#dbe2e5';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(108,-34);ctx.lineTo(160,-25);ctx.lineTo(165,18);ctx.lineTo(108,20);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
          ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('カボチャ武将',0,-104);
@@ -4743,6 +4818,58 @@ function drawWorld(){
          ctx.fillStyle='#ffd34d';ctx.strokeStyle='#111';ctx.lineWidth=6;
          ctx.beginPath();ctx.moveTo(0,-38);ctx.lineTo(35,-22);ctx.lineTo(28,22);ctx.quadraticCurveTo(0,48,-28,22);ctx.lineTo(-35,-22);ctx.closePath();ctx.fill();ctx.stroke();
          circle(0,0,9,'#fff','#111',3);ctx.restore();
+       }
+
+       if(vegBossDefeated){
+         // 細い一本道：幅を抑え、敵と弾道が読みやすい構成。
+         for(const r of fruitRoadGeo.path){
+           ctx.fillStyle='#765638';ctx.strokeStyle='#111';ctx.lineWidth=7;
+           ctx.beginPath();ctx.roundRect(r.x+10,r.y+24,r.w-20,r.h+36,34);ctx.fill();ctx.stroke();
+           ctx.fillStyle='#7bc766';ctx.strokeStyle='#111';ctx.lineWidth=7;
+           ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,34);ctx.fill();ctx.stroke();
+           ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#f2e6a8';ctx.lineWidth=5;
+           ctx.beginPath();ctx.moveTo(r.x+35,r.y+r.h/2);ctx.lineTo(r.x+r.w-35,r.y+r.h/2);ctx.stroke();ctx.restore();
+         }
+         for(const f of roadFlowers){
+           if(f.dead)continue;ctx.save();ctx.translate(f.x,f.y);if(f.flash>0)ctx.globalAlpha=.55;
+           line(0,8,0,34,10,'#111');line(0,8,0,34,5,'#4a9443');
+           for(let i=0;i<8;i++){const a=i*Math.PI/4;circle(Math.cos(a)*20,Math.sin(a)*20-7,11,'#f5d64d','#111',3)}
+           circle(0,-7,12,'#6e4a2d','#111',4);circle(-4,-9,2,'#111','#111',1);circle(4,-9,2,'#111','#111',1);
+           ctx.restore();
+         }
+         for(const e of roadVegSoldiers){
+           if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.55;
+           const side=player.x<e.x?-1:1;
+           if(e.type==='carrotSword'){
+             ctx.fillStyle='#ef843b';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18,-20);ctx.lineTo(20,-20);ctx.lineTo(5,30);ctx.lineTo(-7,30);ctx.closePath();ctx.fill();ctx.stroke();
+             line(-8,-22,-18,-42,7,'#3e9c49');line(5,-22,15,-43,7,'#4fb455');
+             ctx.save();ctx.scale(side,1);ctx.rotate((e.swingT||0)>0?-.9:.25);line(20,0,64,0,10,'#111');line(20,0,64,0,5,'#e8edf0');ctx.restore();
+           }else if(e.type==='leekSpear'){
+             ctx.fillStyle='#eaf4d5';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,3,18,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();line(0,-26,0,-48,9,'#42a54b');
+             ctx.save();ctx.scale(side,1);ctx.rotate((e.swingT||0)>0?.18:0);line(18,0,88,0,9,'#111');line(18,0,88,0,4,'#dce7ea');ctx.restore();
+           }else{
+             circle(0,2,30,'#e8e5cf','#111',5);line(-10,-25,-20,-45,8,'#4a9f48');line(8,-25,18,-46,8,'#4a9f48');
+             ctx.save();ctx.scale(side,1);ctx.rotate((e.swingT||0)>0?-.72:.35);line(24,0,58,0,12,'#111');circle(67,0,18,'#8e8e8e','#111',5);ctx.restore();
+           }
+           ctx.restore();
+         }
+         for(const b of fruitMiniBosses){
+           if(b.dead)continue;ctx.save();ctx.translate(b.x,b.y);if(b.flash>0)ctx.globalAlpha=.55;
+           if(b.type==='apple'){
+             circle(0,0,46,'#e64a43','#111',6);line(0,-43,8,-63,9,'#705036');
+             ctx.fillStyle='#63ae50';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(18,-52,18,9,.4,0,Math.PI*2);ctx.fill();ctx.stroke();
+           }else if(b.type==='orange'){
+             circle(0,0,49,'#f39a31','#111',6);ctx.strokeStyle='#cf7427';ctx.lineWidth=3;
+             for(let i=0;i<7;i++){const a=i*Math.PI*2/7;line(Math.cos(a)*20,Math.sin(a)*20,Math.cos(a)*42,Math.sin(a)*42,3,'#cf7427');}
+           }else{
+             for(const [gx,gy] of [[0,-28],[-22,-10],[22,-10],[-32,14],[0,14],[32,14],[-18,38],[18,38]])circle(gx,gy,21,'#7850a5','#111',5);
+             line(0,-47,6,-68,8,'#4b8f45');
+           }
+           circle(-13,-9,4,'#111','#111',1);circle(13,-9,4,'#111','#111',1);line(-15,13,15,13,5,'#111');
+           ctx.fillStyle='#111';ctx.font='900 14px system-ui';ctx.textAlign='center';ctx.fillText(b.name,0,-76);
+           ctx.fillRect(-54,64,108,10);ctx.fillStyle='#fff';ctx.fillRect(-50,67,100*Math.max(0,b.hp/b.maxHp),4);
+           ctx.restore();
+         }
        }
      }
    }
