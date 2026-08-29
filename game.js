@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 129: 最初の浮遊草原ステージ
+// Prototype 130: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -328,7 +328,7 @@ const cloudRaceGeo={
  outerRx:1280,outerRy:610,
  innerRx:1040,innerRy:390,
 
- start:{x:2920,y:-2320,r:78},
+ start:{x:2920,y:-2320,r:96},
  checkpoints:[
   {x:3360,y:-2830,r:92,label:'1'},
   {x:4310,y:-2970,r:92,label:'2'},
@@ -338,8 +338,8 @@ const cloudRaceGeo={
   {x:3300,y:-1880,r:92,label:'6'},
   {x:2920,y:-2320,r:92,label:'GOAL'}
  ],
- nextIsland:{x:5520,y:-2320,w:460,h:390},
- rainbow:{x1:5260,y1:-2320,x2:5550,y2:-2320,w:150}
+ nextIsland:{x:5520,y:-2520,w:460,h:390},
+ rainbow:{x1:5215,y1:-2325,x2:5560,y2:-2325,w:150}
 };
 
 // 物理的な足場も「巨大な楕円ドーナツ」に近づける。
@@ -364,7 +364,7 @@ const cloudRaceTrackRects=(()=>{
 })();
 
 let cloudRaceWon=false;
-const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6,intro:false,introPage:0,introT:0,lastIntroPage:-1};
+const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6,intro:false,introPage:0,introT:0,lastIntroPage:-1,startHold:0};
 
 
 const vineWalls=[
@@ -802,6 +802,43 @@ function pointSupportedByGround(x,y,pad=24){
 }
 
 
+
+function enemySupportedByGround(e,pad=10){
+ if(!e||!Number.isFinite(e.x)||!Number.isFinite(e.y))return false;
+ return pointSupportedByGround(e.x,e.y,Math.max(pad,(e.r||18)*.35));
+}
+function keepGroundEnemyOnGround(e,dt){
+ if(!e||e.dead||e.enemyFalling)return;
+ // 敵はプレイヤーのように空中ジャンプしない。足場を外れたらその場から落下。
+ if(!enemySupportedByGround(e,8)){
+   e.enemyFalling=true;e.enemyFallT=0;e.enemyFallX=e.x;e.enemyFallY=e.y;
+ }
+}
+function updateGroundEnemyFall(e,dt){
+ if(!e||!e.enemyFalling)return false;
+ e.enemyFallT=(e.enemyFallT||0)+dt;
+ // 下へ落ちて小さくなる代わりに、一定時間後に消滅。
+ e.y=(e.enemyFallY||e.y)+260*e.enemyFallT*e.enemyFallT;
+ if(e.enemyFallT>.75){e.dead=true;e.enemyFalling=false;}
+ return true;
+}
+function enforceAllGroundEnemies(dt){
+ const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies];
+ if(typeof stage10Enemies!=='undefined')lists.push(stage10Enemies);
+ if(typeof iceEnemies!=='undefined')lists.push(iceEnemies);
+ if(typeof iceThrowers!=='undefined')lists.push(iceThrowers);
+ if(typeof vineSeedFlowers!=='undefined')lists.push(vineSeedFlowers);
+ if(typeof whipVines!=='undefined')lists.push(whipVines);
+ for(const list of lists)for(const e of list){
+   if(!e||e.dead)continue;
+   if(updateGroundEnemyFall(e,dt))continue;
+   keepGroundEnemyOnGround(e,dt);
+ }
+ // 単体の地上雑魚も同じ扱い。ボスは各専用アリーナ制御を優先。
+ if(typeof rockThrower!=='undefined'&&rockThrower&&!rockThrower.dead){
+   if(!updateGroundEnemyFall(rockThrower,dt))keepGroundEnemyOnGround(rockThrower,dt);
+ }
+}
 const SAVE_KEY='shieldHeroSave_v112';
 function saveProgress(){
  try{
@@ -3301,7 +3338,12 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
  if(vineBossDefeated){
    const st=cloudRaceGeo.start;
-   if(!cloudRace.started&&!cloudRace.intro&&cloudRace.retryCd<=0&&dist(player.x,player.y,st.x,st.y)<st.r){startCloudRaceIntro();}
+   if(!cloudRace.started&&!cloudRace.intro&&cloudRace.retryCd<=0){
+     if(dist(player.x,player.y,st.x,st.y)<st.r){
+       cloudRace.startHold+=dt;
+       if(cloudRace.startHold>=.7){cloudRace.startHold=0;startCloudRaceIntro();}
+     }else cloudRace.startHold=0;
+   }
    if(cloudRace.started){
      if(cloudRace.countdown>0){
        cloudRace.countdown=Math.max(0,cloudRace.countdown-dt);
@@ -3449,6 +3491,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  for(const p of particles)p.life-=dt;while(particles.length&&particles[0].life<=0)particles.shift();
  hpfill.style.width=`${player.hp/player.maxHp*100}%`;leafStockEl.textContent=`🍃 ${floatLeafStock}`;
+  enforceAllGroundEnemies(dt);
  camera.x=clamp(player.x-W/2,world.minX,Math.max(world.minX,world.w-W));camera.y=clamp(player.y-H/2,world.minY,Math.max(world.minY,world.h-H));
 }
 
@@ -4311,9 +4354,16 @@ function drawWorld(){
        ctx.beginPath();ctx.arc(g.x,g.y,g.r*.55,0,Math.PI*2);ctx.stroke();
      }
      ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.font='900 20px system-ui';
+     // 開始位置を見失わない大きなチェッカー円＋START矢印。クリア後も常時表示。
+     const st=cloudRaceGeo.start;
+     ctx.save();ctx.globalAlpha=.95;ctx.strokeStyle='#111';ctx.lineWidth=14;ctx.beginPath();ctx.arc(st.x,st.y,76,0,Math.PI*2);ctx.stroke();
+     ctx.strokeStyle='#fff';ctx.lineWidth=8;ctx.setLineDash([18,14]);ctx.beginPath();ctx.arc(st.x,st.y,61,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+     ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.font='900 30px system-ui';
+     ctx.strokeText('▼ START ▼',st.x-92,st.y-112);ctx.fillText('▼ START ▼',st.x-92,st.y-112);
+     ctx.restore();
      const raceLabel=cloudRaceWon?'CLOUD RACE / 再戦':'CLOUD RACE';
-     ctx.strokeText(raceLabel,cloudRaceGeo.start.x-82,cloudRaceGeo.start.y-82);
-     ctx.fillText(raceLabel,cloudRaceGeo.start.x-82,cloudRaceGeo.start.y-82);
+     ctx.strokeText(raceLabel,st.x-82,st.y-82);
+     ctx.fillText(raceLabel,st.x-82,st.y-82);
 
      // 対戦相手の雲ライダー。時間でコースを1周する。
      if(cloudRace.started){
@@ -4331,6 +4381,8 @@ function drawWorld(){
        ctx.fillStyle='#68bc61';ctx.strokeStyle='#111';ctx.lineWidth=7;
        ctx.beginPath();ctx.roundRect(ni.x,ni.y,ni.w,ni.h,55);ctx.fill();ctx.stroke();
        const cols=['#ef5350','#ff9f43','#f5dc4d','#69c56a','#55aee8','#8e67d5'];
+       // 新コース右端から次島へ接続。黒い土台を先に引いてズレを見やすくする。
+       line(rb.x1,rb.y1,rb.x2,rb.y2,158,'#111');
        for(let i=0;i<6;i++){
          const yy=rb.y1+(i-2.5)*22;
          line(rb.x1,yy,rb.x2,yy,25,cols[i]);
