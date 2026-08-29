@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 139: 最初の浮遊草原ステージ
+// Prototype 140: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -428,11 +428,25 @@ const roadFlowerPads=roadFlowers.map((f,i)=>({
  x:f.x,y:f.y+18,r:48,cloud:i%3===1
 }));
 const fruitSpearBoss={
- type:'pineapple',name:'パインランサー',x:11910,y:-2460,r:70,hp:54,maxHp:54,
+ type:'pineapple',name:'パインクラッシャー',x:11910,y:-2460,r:70,hp:54,maxHp:54,
  active:false,dead:false,attackCd:1.0,flash:0,windup:0,thrustT:0,side:-1
 };
 let fruitSpearBossDefeated=false;
-const spearUpgradePickup={x:11910,y:-2460,active:false,taken:false};
+const spearUpgradePickup={x:11910,y:-2460,active:false,taken:false}; // パインハンマー用（旧変数名をセーブ互換で維持）
+const waterGeo={
+ pool:{x:12120,y:-2750,w:1500,h:610},
+ bowl:{x:13420,y:-2745,rx:430,ry:300}
+};
+const waterRaiders=[
+ {type:'cucumber',x:12360,y:-2520,r:28,hp:12,maxHp:12,speed:115,attackCd:.5,flash:0,dead:false},
+ {type:'melon',x:12650,y:-2360,r:32,hp:15,maxHp:15,speed:105,attackCd:.8,flash:0,dead:false},
+ {type:'cucumber',x:12930,y:-2580,r:28,hp:12,maxHp:12,speed:120,attackCd:.7,flash:0,dead:false},
+ {type:'berry',x:13150,y:-2380,r:30,hp:14,maxHp:14,speed:112,attackCd:.9,flash:0,dead:false}
+];
+const waterBoss={type:'waterDragon',name:'水龍将',x:13420,y:-2445,r:78,hp:62,maxHp:62,active:false,dead:false,attackCd:1.0,flash:0,windup:0,thrustT:0,phase:0};
+let waterBossDefeated=false;
+const waterSpearPickup={x:13420,y:-2445,active:false,taken:false};
+
 
 
 
@@ -846,6 +860,7 @@ function visibleGroundRects(){
          h:cloudRaceGeo.rainbow.w
        });
        if(vegBossDefeated)grounds.push(...fruitRoadGeo.path);
+       if(fruitSpearBossDefeated){grounds.push(waterGeo.pool,{x:13020,y:-2750,w:820,h:610});}
      }
    }
  }
@@ -977,17 +992,17 @@ function saveProgress(){
   localStorage.setItem(SAVE_KEY,JSON.stringify({
    saveVersion:116,
    x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,
-   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,
+   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,
    unlockedWeapons:[...unlockedWeapons],unlockedShields:[...unlockedShields],
    stageBossDefeated:!!stage.bossDefeated,stageBridgeOpen:!!stage.bridgeOpen,
    stage2Started,stage2BossDefeated,stage2BridgeOpen,
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,vegBossDefeated,fruitSpearBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
-   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,
+   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,
    seedBossDead:!!seedBoss.dead,grassFinalBossDead:!!grassFinalBoss.dead,
    fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,
    hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,vegBossDead:!!vegBoss.dead,
@@ -1059,9 +1074,15 @@ function loadProgress(){
  vegBossDefeated=!!d.vegBossDefeated||!!d.vegBossDead;
  if(vegBossDefeated){vegBoss.dead=true;vegBoss.active=false;}
  fruitSpearBossDefeated=!!d.fruitSpearBossDefeated;
+ waterBossDefeated=!!d.waterBossDefeated;
+ if(waterBossDefeated){waterBoss.dead=true;waterBoss.active=false;}
+ waterSpearPickup.taken=!!d.waterSpearTaken||!!d.waterSpear;
+ waterSpearPickup.active=waterBossDefeated&&!waterSpearPickup.taken;
+ if(waterSpearPickup.taken){player.waterSpear=true;unlockedWeapons[1]=true;}
+
  if(fruitSpearBossDefeated){fruitSpearBoss.dead=true;fruitSpearBoss.active=false;}
  spearUpgradePickup.taken=!!d.spearUpgradeTaken||!!d.spearPlus;
- if(spearUpgradePickup.taken){player.spearPlus=true;unlockedWeapons[1]=true;}
+ if(spearUpgradePickup.taken){player.hammerPlus=true;unlockedWeapons[2]=true;}
  spearUpgradePickup.active=fruitSpearBossDefeated&&!spearUpgradePickup.taken;
 
  if(Array.isArray(d.fruitMiniBossDead))fruitMiniBosses.forEach((b,i)=>{if(d.fruitMiniBossDead[i])b.dead=true;});
@@ -1207,7 +1228,7 @@ function renderEquipPanel(){
    weapons.forEach((w,i)=>{
      const b=document.createElement('button');
      b.className='equipItem'+(!unlockedWeapons[i]?' locked':'')+(player.weapon===i?' selected':'');
-     b.textContent=unlockedWeapons[i]?(i===1&&player.spearPlus?'槍＋':w.name):'？？？';
+     b.textContent=unlockedWeapons[i]?(i===2&&player.hammerPlus?'パインハンマー':(i===1&&player.waterSpear?'水龍の槍':w.name)):'？？？';
      if(unlockedWeapons[i])b.onclick=()=>{
        player.weapon=i;weaponNameEl.textContent=w.name;
        say(`${w.name}に持ち替え`);renderEquipPanel()
@@ -1582,7 +1603,11 @@ function hitStage8Spinner(range,base){
 
 function hitVegArea(damage,range,base,cone,weapon){
  if(!cloudRaceWon)return;
- if(fruitSpearBoss.active&&!fruitSpearBoss.dead){
+  if(waterBoss.active&&!waterBoss.dead){
+   const wd=dist(player.x,player.y,waterBoss.x,waterBoss.y),wa=Math.atan2(waterBoss.y-player.y,waterBoss.x-player.x);
+   if(wd<=range+waterBoss.r+20&&Math.abs(angleDiff(wa,base))<=cone/2+.2){waterBoss.hp-=damage;waterBoss.flash=.2;particle(waterBoss.x,waterBoss.y-45,`-${damage}`,'#268bc1',.4,16);}
+ }
+if(fruitSpearBoss.active&&!fruitSpearBoss.dead){
    const fd=dist(player.x,player.y,fruitSpearBoss.x,fruitSpearBoss.y),fa=Math.atan2(fruitSpearBoss.y-player.y,fruitSpearBoss.x-player.x);
    if(fd<=range+fruitSpearBoss.r+20&&Math.abs(angleDiff(fa,base))<=cone/2+.2){fruitSpearBoss.hp-=damage;fruitSpearBoss.flash=.2;particle(fruitSpearBoss.x,fruitSpearBoss.y-45,`-${damage}`,'#b31313',.4,16);}
  }
@@ -1606,6 +1631,7 @@ function hitVegArea(damage,range,base,cone,weapon){
    for(const e of roadVegSoldiers)hit(e);
    for(const e of roadFlowers)hit(e);
    for(const e of fruitMiniBosses)hit(e);
+   for(const e of waterRaiders)hit(e);
  }
  for(const e of flyingVeg){
    if(e.dead)continue;
@@ -1837,7 +1863,7 @@ function doAttack(charged=false){
  if(wasDash)player.dashAttack=true;
  const w=player.weapon, wp=weapons[w];
  const jumpStrike=player.jumpT>0&&!charged;
- let range=wp.range*(charged?1.45:1);
+ let range=wp.range*(charged?1.45:1);if(w===1&&player.waterSpear)range+=28;
  let base=autoAim(faceAngle(player.face),Math.PI*.58,w>=3?440:range+90);
  if(w===1&&charged){
    // 入力方向（無入力なら向いている方向）を基準に、近い敵へ軽く吸い付く。
@@ -1948,13 +1974,18 @@ function doAttack(charged=false){
    const d=dist(player.x,player.y,a.x,a.y),aa=Math.atan2(a.y-player.y,a.x-player.x);
    if(d<range+38&&Math.abs(angleDiff(aa,base))<cone*.75)damageAmbient(a,w,1);
  }
- for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)dmg=swordDamage(dmg);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
- let commonD=jumpStrike?5:(wasDash?5:(w===2?4:3));if(w===0)commonD=swordDamage(commonD);
+ for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?(player.hammerPlus?7:4):3));if(w===0)dmg=swordDamage(dmg);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
+ let commonD=jumpStrike?5:(wasDash?5:(w===2?(player.hammerPlus?7:4):3));if(w===1&&player.waterSpear)commonD+=2;if(w===0)commonD=swordDamage(commonD);
  for(const e of iceEnemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<range+e.r&&Math.abs(angleDiff(aa,base))<cone){e.hp-=commonD;e.flash=.16;enemyHitReact(e,48);particle(e.x,e.y-20,`-${commonD}`,'#b31313',.35,15);if(e.hp<=0)e.dead=true}}
  hitVineContent(commonD,range,base,cone,w===3?'fire':'physical');
  hitBoss(commonD,range,base,cone);hitIslandBoss(commonD,range,base,cone);hitFireBoss(commonD,range,base,cone);hitIceBoss(commonD,range,base,cone);
  hitStage2(commonD,range,base,cone);hitStage3(commonD,range,base,cone,w,false);hitStage45(commonD,range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
+ if(w===1&&player.waterSpear&&!charged){
+   projectiles.push({x:player.x+Math.cos(base)*70,y:player.y+Math.sin(base)*70,vx:Math.cos(base)*330,vy:Math.sin(base)*330,r:9,life:.38,kind:'iceShard',damage:2,hit:false});
+   particle(player.x+Math.cos(base)*75,player.y+Math.sin(base)*75,'✦','#bfeeff',.2,12);
+ }
+
  if(w===0){
   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
@@ -2632,7 +2663,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    if(d<minD){player.x=fireBoss.x+dx/d*minD;player.y=fireBoss.y+dy/d*minD;}
  }
  // 大型ボスの中心には入り込めない。接触自体は攻撃ではない。
- for(const b of [boss,seedBoss,grassFinalBoss,rockBoss]){
+ for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,fruitSpearBoss,waterBoss]){
    if(!b.active||b.dead)continue;
    const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,minD=player.r+b.r*.72;
    if(d<minD){const push=minD-d;player.x+=dx/d*push;player.y+=dy/d*push}
@@ -2740,7 +2771,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
    if(pr.enemyShot){
      // 槍スキルの風車回転中は、槍そのものが弾を弾く。
-     if(pr.kind!=='enemyFire'&&player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
+     if((pr.kind!=='enemyFire'||player.waterSpear)&&player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
        pr.hit=true;particle(pr.x,pr.y,'キン！','#fff',.28,14);continue;
      }
      if(dist(pr.x,pr.y,player.x,player.y)<pr.r+player.r){
@@ -3671,27 +3702,57 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    say('蓄力の盾：防ぐほど蓄積！ 次の攻撃でエネルギーを全放出！');saveProgress();
  }
 
+
+ // パインハンマーの先：腰まで浸かる浅いプール。プレイヤーだけ大きく減速、敵は水中高速。
+ if(fruitSpearBossDefeated){
+   const inPool=player.x>waterGeo.pool.x&&player.x<waterGeo.pool.x+waterGeo.pool.w&&player.y>waterGeo.pool.y&&player.y<waterGeo.pool.y+waterGeo.pool.h;
+   if(inPool&&player.jumpT<=0){
+     // 通常移動で進んだ分を少し戻し、見た目にも重い水中歩行にする。
+     player.x=prevX+(player.x-prevX)*.48;player.y=prevY+(player.y-prevY)*.48;
+   }
+   for(const e of waterRaiders){
+     if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+     if(d<480&&d>70){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;}
+     if(d<82&&e.attackCd<=0){e.attackCd=1.0;if(player.jumpT<=0){if(shieldBlocks(e))particle(player.x,player.y-30,'ザバッ！','#dff8ff',.3,14);else if(player.inv<=0){const got=takeDamage(6);player.inv=.5;particle(player.x,player.y-32,`-${got}`,'#c11',.4,16);}}}
+   }
+   const b=waterBoss,dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;
+   if(!b.dead&&!b.active&&player.x>13180){b.active=true;say('渦の主・水龍将！');}
+   if(b.active&&!b.dead){
+     b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.windup=Math.max(0,b.windup-dt);b.thrustT=Math.max(0,b.thrustT-dt);
+     const a=Math.atan2(dy,dx);b.phase+=dt;
+     // お椀の中心を軸に旋回しつつプレイヤーへ三又槍。
+     if(d>165){b.x+=dx/d*58*dt;b.y+=dy/d*58*dt;}
+     if(d<300&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.35;b.windup=.38;b.didHit=false;particle(b.x,b.y-70,'ゴォ…！','#bfeeff',.3,15);}
+     if(b.windup>0&&b.windup<=.06&&!b.didHit){b.didHit=true;b.thrustT=.24;if(d<310&&player.jumpT<=0){if(shieldBlocks(b))particle(player.x,player.y-34,'ギィン！','#dff8ff',.32,17);else if(player.inv<=0){const got=takeDamage(11);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.45,17);}}}
+     if(b.hp<=0){b.dead=true;b.active=false;waterBossDefeated=true;waterSpearPickup.active=true;waterSpearPickup.x=b.x;waterSpearPickup.y=b.y;particle(b.x,b.y-60,'撃破！','#fff',.9,25);say('水龍将撃破！ 水龍の槍が現れた！');saveProgress();}
+   }
+   if(waterSpearPickup.active&&!waterSpearPickup.taken&&dist(player.x,player.y,waterSpearPickup.x,waterSpearPickup.y)<78){
+     waterSpearPickup.taken=true;player.waterSpear=true;unlockedWeapons[1]=true;player.weapon=1;weaponNameEl.textContent='水龍の槍';
+     particle(player.x,player.y-55,'水龍の槍 GET！','#bfeeff',.9,22);say('通常突きに氷のトゲ！ 回転中は魔法弾も弾く！');saveProgress();
+   }
+ }
  // カボチャ武将の先：細い一本道。外側の花は固定砲台、道上の兵士は待ち伏せ。
  if(vegBossDefeated&&!fruitSpearBoss.dead){
    const b=fruitSpearBoss,dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;
-   if(!b.active&&player.x>11520){b.active=true;say('一本道の主・パインランサー！');}
+   if(!b.active&&player.x>11520){b.active=true;say('一本道の主・パインクラッシャー！');}
    if(b.active){
      b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.windup=Math.max(0,b.windup-dt);b.thrustT=Math.max(0,b.thrustT-dt);b.side=dx<0?-1:1;
      if(d>145&&d<520){const ox=b.x,oy=b.y;b.x+=dx/d*38*dt;b.y+=dy/d*38*dt;if(!enemySupportedByGround(b,8)){b.x=ox;b.y=oy;}}
-     if(d<250&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.45;b.windup=.42;b.didHit=false;particle(b.x,b.y-75,'スッ…！','#fff',.3,15);}
+     if(d<175&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.45;b.windup=.42;b.didHit=false;particle(b.x,b.y-75,'スッ…！','#fff',.3,15);}
      if(b.windup>0&&b.windup<=.07&&!b.didHit){
-       b.didHit=true;b.thrustT=.25;
-       if(d<285&&player.jumpT<=0){
+       b.didHit=true;b.thrustT=.30;
+       if(d<190&&player.jumpT<=0){
          if(shieldBlocks(b))particle(player.x,player.y-35,'ギィン！','#ffd34d',.35,17);
          else if(player.inv<=0){const got=takeDamage(10);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.45,17);}
        }
      }
-     if(b.hp<=0){b.dead=true;b.active=false;fruitSpearBossDefeated=true;spearUpgradePickup.active=true;spearUpgradePickup.x=b.x;spearUpgradePickup.y=b.y;particle(b.x,b.y-60,'撃破！','#fff',.8,24);say('パインランサー撃破！ 新しい槍を落とした！');saveProgress();}
+     if(b.hp<=0){b.dead=true;b.active=false;fruitSpearBossDefeated=true;spearUpgradePickup.active=true;spearUpgradePickup.x=b.x;spearUpgradePickup.y=b.y;particle(b.x,b.y-60,'撃破！','#fff',.8,24);say('パインクラッシャー撃破！ パインハンマーを落とした！');saveProgress();}
    }
  }
  if(spearUpgradePickup.active&&!spearUpgradePickup.taken&&dist(player.x,player.y,spearUpgradePickup.x,spearUpgradePickup.y)<76){
-   spearUpgradePickup.taken=true;player.spearPlus=true;unlockedWeapons[1]=true;player.weapon=1;weaponNameEl.textContent='槍＋';
-   particle(player.x,player.y-55,'槍 強化！','#dff8ff',.9,22);say('フルーツランス入手！ 槍の威力とリーチが強化された！');saveProgress();
+   spearUpgradePickup.taken=true;player.hammerPlus=true;unlockedWeapons[2]=true;player.weapon=2;weaponNameEl.textContent='パインハンマー';
+   particle(player.x,player.y-55,'ハンマー 強化！','#ffd65a',.9,22);say('パインハンマー入手！ 重い一撃が大幅強化！');saveProgress();
  }
  if(vegBossDefeated){
    for(const f of roadFlowers){
@@ -4865,6 +4926,27 @@ function drawWorld(){
          circle(0,0,9,'#fff','#111',3);ctx.restore();
        }
 
+       if(fruitSpearBossDefeated){
+         // 窪んだ浅いプール。茶色い縁→青い水面で「腰までの水」を表現。
+         const p=waterGeo.pool;ctx.save();
+         ctx.fillStyle='#765638';ctx.strokeStyle='#111';ctx.lineWidth=8;ctx.beginPath();ctx.roundRect(p.x-35,p.y-35,p.w+70,p.h+70,85);ctx.fill();ctx.stroke();
+         ctx.fillStyle='#65bfe0';ctx.strokeStyle='#267aa1';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(p.x,p.y,p.w,p.h,65);ctx.fill();ctx.stroke();
+         ctx.globalAlpha=.28;ctx.strokeStyle='#e9fbff';ctx.lineWidth=5;for(let yy=p.y+70;yy<p.y+p.h;yy+=95){ctx.beginPath();ctx.moveTo(p.x+40,yy);ctx.quadraticCurveTo(p.x+p.w*.5,yy-28,p.x+p.w-40,yy);ctx.stroke();}ctx.restore();
+         // ボスのお椀型広場＋中心へ吸い込む視覚的な渦
+         const b=waterGeo.bowl;ctx.save();ctx.translate(b.x,b.y+b.ry/2);ctx.strokeStyle='#1d789f';ctx.lineWidth=10;
+         for(let k=0;k<4;k++){ctx.globalAlpha=.65-k*.12;ctx.beginPath();ctx.ellipse(0,0,b.rx-k*72,b.ry-k*48,0,.2+k*.55,Math.PI*1.75+k*.55);ctx.stroke();}ctx.restore();
+         for(const e of waterRaiders){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.55;
+           const col=e.type==='cucumber'?'#61ad62':(e.type==='melon'?'#8bc35a':'#a95b92');circle(0,0,e.r,col,'#111',5);circle(-9,-7,3,'#111','#111',1);circle(9,-7,3,'#111','#111',1);
+           const side=player.x<e.x?-1:1;ctx.scale(side,1);line(18,5,65,5,10,'#111');line(18,5,65,5,5,'#dce7ea');ctx.restore();}
+         if(!waterBoss.dead){const w=waterBoss;ctx.save();ctx.translate(w.x,w.y);if(w.flash>0)ctx.globalAlpha=.55;
+           circle(0,0,62,'#4d9fc3','#111',7);ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-38,-38);ctx.lineTo(-15,-72);ctx.lineTo(0,-43);ctx.lineTo(18,-75);ctx.lineTo(40,-36);ctx.closePath();ctx.fill();ctx.stroke();
+           circle(-18,-10,5,'#111','#111',1);circle(18,-10,5,'#111','#111',1);
+           const a=Math.atan2(player.y-w.y,player.x-w.x);ctx.rotate(a);const th=w.thrustT>0?52:0;line(20,10,135+th,10,12,'#111');line(20,10,135+th,10,6,'#7d9aa8');
+           ctx.fillStyle='#bfeeff';ctx.strokeStyle='#111';ctx.lineWidth=5;for(const yy of [-18,0,18]){ctx.beginPath();ctx.moveTo(130+th,10);ctx.lineTo(160+th,10+yy);ctx.lineTo(190+th,10+yy);ctx.lineTo(162+th,18+yy);ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();
+           ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('水龍将',w.x,w.y-105);ctx.fillRect(w.x-78,w.y+83,156,13);ctx.fillStyle='#fff';ctx.fillRect(w.x-73,w.y+87,146*Math.max(0,w.hp/w.maxHp),5);
+         }
+         if(waterSpearPickup.active&&!waterSpearPickup.taken){ctx.save();ctx.translate(waterSpearPickup.x,waterSpearPickup.y);ctx.rotate(-.25);line(-65,0,70,0,12,'#111');line(-62,0,66,0,6,'#78a7ba');ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;for(const yy of [-15,0,15]){ctx.beginPath();ctx.moveTo(62,0);ctx.lineTo(82,yy);ctx.lineTo(112,yy);ctx.lineTo(84,yy+8);ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();}
+       }
        if(vegBossDefeated){
          // 細い一本道：幅を抑え、敵と弾道が読みやすい構成。
          for(const r of fruitRoadGeo.path){
@@ -4936,15 +5018,19 @@ function drawWorld(){
            for(let i=-2;i<=2;i++){ctx.save();ctx.rotate(i*.28);ctx.fillStyle='#4da14d';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-8,-55);ctx.lineTo(0,-102);ctx.lineTo(10,-55);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
            circle(-15,-12,5,'#111','#111',1);circle(15,-12,5,'#111','#111',1);line(-17,15,17,15,5,'#111');
            const side=b.side||-1;ctx.save();ctx.scale(side,1);
-           const th=b.thrustT>0?48:0;line(25,8,145+th,8,12,'#111');line(25,8,145+th,8,6,'#8d9aa3');
-           ctx.fillStyle='#dce7ec';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(142+th,8);ctx.lineTo(166+th,-8);ctx.lineTo(190+th,8);ctx.lineTo(166+th,24);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
-           ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('パインランサー',0,-120);
+           const slam=b.thrustT>0?-1.05:.35;ctx.rotate(slam);line(25,8,98,8,18,'#111');line(25,8,98,8,9,'#6f4a2f');
+           // パインそのものを巨大なハンマーヘッドにする
+           ctx.save();ctx.translate(120,8);ctx.fillStyle='#e7b63f';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,0,31,42,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+           ctx.strokeStyle='#b7832d';ctx.lineWidth=3;for(let yy=-24;yy<=24;yy+=16)line(-24,yy,24,yy,3,'#b7832d');
+           ctx.fillStyle='#4da14d';ctx.beginPath();ctx.moveTo(-18,-35);ctx.lineTo(-5,-58);ctx.lineTo(2,-38);ctx.lineTo(16,-58);ctx.lineTo(19,-34);ctx.fill();ctx.stroke();ctx.restore();ctx.restore();
+           ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('パインクラッシャー',0,-120);
            ctx.fillRect(-76,78,152,13);ctx.fillStyle='#fff';ctx.fillRect(-71,82,142*Math.max(0,b.hp/b.maxHp),5);ctx.restore();
          }
          if(spearUpgradePickup.active&&!spearUpgradePickup.taken){
-           ctx.save();ctx.translate(spearUpgradePickup.x,spearUpgradePickup.y);ctx.rotate(-.35);
-           line(-58,0,62,0,12,'#111');line(-55,0,55,0,6,'#d7a93e');
-           ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(52,0);ctx.lineTo(72,-15);ctx.lineTo(102,0);ctx.lineTo(72,15);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+           ctx.save();ctx.translate(spearUpgradePickup.x,spearUpgradePickup.y);ctx.rotate(-.45);
+           line(-55,0,48,0,16,'#111');line(-52,0,45,0,8,'#6f4a2f');
+           ctx.save();ctx.translate(68,0);ctx.fillStyle='#e7b63f';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,25,34,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+           ctx.fillStyle='#4da14d';ctx.beginPath();ctx.moveTo(-14,-28);ctx.lineTo(-4,-47);ctx.lineTo(3,-31);ctx.lineTo(13,-48);ctx.lineTo(15,-27);ctx.fill();ctx.stroke();ctx.restore();ctx.restore();
          }
        }
      }
@@ -5152,7 +5238,7 @@ function drawWorld(){
      ctx.globalAlpha=Math.min(.88,fx.life/.16);
      ctx.fillStyle='rgba(194,239,255,.34)';ctx.strokeStyle='#4aaed7';ctx.lineWidth=6;
      ctx.beginPath();
-     for(let i=0;i<8;i++){const a=-Math.PI/2+i*Math.PI/4,rr=i%2===0?R:R*.78;const x=Math.cos(a)*rr,y=Math.sin(a)*rr;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+     for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3;const x=Math.cos(a)*R,y=Math.sin(a)*R;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
      ctx.closePath();ctx.fill();ctx.stroke();
      ctx.strokeStyle='#e9fbff';ctx.lineWidth=8;
      for(let i=0;i<6;i++){
