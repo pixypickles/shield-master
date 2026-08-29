@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 128: 最初の浮遊草原ステージ
+// Prototype 129: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -364,7 +364,7 @@ const cloudRaceTrackRects=(()=>{
 })();
 
 let cloudRaceWon=false;
-const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6};
+const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6,intro:false,introPage:0,introT:0,lastIntroPage:-1};
 
 
 const vineWalls=[
@@ -1828,7 +1828,10 @@ function resolveAirMagic(m){
 }
 
 
-function update(dt){
+function startCloudRaceIntro(){cloudRace.started=false;cloudRace.intro=true;cloudRace.introPage=0;cloudRace.introT=0;cloudRace.lastIntroPage=-1;cloudRace.time=0;cloudRace.cp=0;player.skillT=0;player.skillKind='';player.shield=false;player.charging=false}
+function cloudRaceIntroText(p){if(p===0)return ['雲ライダー','「ここまで来たか！ この雲上サーキットで勝負だ！」'];if(p===1)return ['コース説明','大きく歪んだ楕円コースを1周。光るゲートを順番に全部通ろう。'];if(p===2)return ['勝利条件','相手はかなり速い。普通に走るだけでは追いつけないぞ。'];return ['攻略のコツ','赤杖の炎輪／青杖のアイスサーフで加速を繋げ！']}
+function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,Math.floor(cloudRace.introT/2.25));cloudRace.introPage=p;if(p!==cloudRace.lastIntroPage){cloudRace.lastIntroPage=p;const t=cloudRaceIntroText(p);say(`${t[0]}：${t[1]}`)}if(cloudRace.introT>=9){cloudRace.intro=false;cloudRace.started=true;cloudRace.countdown=2;cloudRace.time=0;cloudRace.cp=0;particle(cloudRaceGeo.start.x,cloudRaceGeo.start.y-55,'READY!','#fff',.65,21);say('READY… 杖スキルを準備！')}return;}
+
  // 凍結ツタは実際のガードステップ（shieldStepT）で永久破壊。
  if((player.shieldStepT||0)>0){
   for(const v of vineWalls){
@@ -3296,12 +3299,9 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
  // 雲レース：スタート門で2秒カウント後、4ゲートを順番に1周。
  cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
- if(vineBossDefeated&&!cloudRaceWon){
+ if(vineBossDefeated){
    const st=cloudRaceGeo.start;
-   if(!cloudRace.started&&cloudRace.retryCd<=0&&dist(player.x,player.y,st.x,st.y)<st.r){
-     cloudRace.started=true;cloudRace.countdown=2.0;cloudRace.time=0;cloudRace.cp=0;
-     particle(st.x,st.y-55,'READY!','#fff',.65,21);say('雲ライダーと大外周1周！ 杖スキルを繋いで追いつけ！');
-   }
+   if(!cloudRace.started&&!cloudRace.intro&&cloudRace.retryCd<=0&&dist(player.x,player.y,st.x,st.y)<st.r){startCloudRaceIntro();}
    if(cloudRace.started){
      if(cloudRace.countdown>0){
        cloudRace.countdown=Math.max(0,cloudRace.countdown-dt);
@@ -3313,13 +3313,13 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
          cloudRace.cp++;
          particle(cp.x,cp.y-40,cloudRace.cp>=4?'FINISH!':`CHECK ${cloudRace.cp}`,'#fff',.45,17);
          if(cloudRace.cp>=cloudRaceGeo.checkpoints.length){
-           cloudRaceWon=true;cloudRace.started=false;
+           const firstWin=!cloudRaceWon;cloudRaceWon=true;cloudRace.started=false;cloudRace.retryCd=2.2;
            particle(player.x,player.y-60,'YOU WIN!','#fff',1.0,25);
-           say('レース勝利！ 次の島へ虹の橋がかかった！');
+           say(firstWin?'レース勝利！ 次の島へ虹の橋がかかった！':'再戦勝利！ スタート門で何度でも挑戦できる！');
            saveProgress();
          }
        }
-       if(!cloudRaceWon&&cloudRace.time>cloudRace.rivalTime){
+       if(cloudRace.time>cloudRace.rivalTime){
          cloudRace.started=false;cloudRace.retryCd=2.0;cloudRace.cp=0;
          particle(player.x,player.y-55,'LOSE…','#fff',.8,22);
          say('雲ライダーの勝ち！ スタート門で再挑戦');
@@ -4311,8 +4311,9 @@ function drawWorld(){
        ctx.beginPath();ctx.arc(g.x,g.y,g.r*.55,0,Math.PI*2);ctx.stroke();
      }
      ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.font='900 20px system-ui';
-     ctx.strokeText('CLOUD RACE',cloudRaceGeo.start.x-66,cloudRaceGeo.start.y-82);
-     ctx.fillText('CLOUD RACE',cloudRaceGeo.start.x-66,cloudRaceGeo.start.y-82);
+     const raceLabel=cloudRaceWon?'CLOUD RACE / 再戦':'CLOUD RACE';
+     ctx.strokeText(raceLabel,cloudRaceGeo.start.x-82,cloudRaceGeo.start.y-82);
+     ctx.fillText(raceLabel,cloudRaceGeo.start.x-82,cloudRaceGeo.start.y-82);
 
      // 対戦相手の雲ライダー。時間でコースを1周する。
      if(cloudRace.started){
@@ -5263,7 +5264,8 @@ function drawSpinSlash(){
 
 function drawAttackArc(a){const w=player.weapon,r=weapons[w].range;ctx.save();ctx.rotate(a);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=w===2?19:11;ctx.lineCap='round';ctx.beginPath();const span=w===1?.45:1.15;ctx.arc(0,0,r*.76,-span/2,span/2);ctx.stroke();ctx.restore()}
 
-let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+function drawCloudRaceIntroOverlay(){if(!cloudRace.intro)return;const t=cloudRaceIntroText(cloudRace.introPage);ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='rgba(8,20,31,.78)';ctx.fillRect(0,0,canvas.width,canvas.height);const bw=Math.min(canvas.width-36,520),bh=245,bx=(canvas.width-bw)/2,by=(canvas.height-bh)/2;ctx.fillStyle='rgba(255,255,255,.97)';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(bx,by,bw,bh,24);ctx.fill();ctx.stroke();ctx.textAlign='center';ctx.fillStyle='#17384b';ctx.font='900 27px system-ui';ctx.fillText(t[0],canvas.width/2,by+48);ctx.fillStyle='#111';ctx.font='800 18px system-ui';let lines=[],cur='';for(const ch of t[1]){const test=cur+ch;if(ctx.measureText(test).width>bw-54){lines.push(cur);cur=ch}else cur=test}if(cur)lines.push(cur);lines.slice(0,4).forEach((x,i)=>ctx.fillText(x,canvas.width/2,by+91+i*30));for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(canvas.width/2-36+i*24,by+216,6,0,Math.PI*2);ctx.fillStyle=i===cloudRace.introPage?'#17384b':'#b9c9d1';ctx.fill()}ctx.restore()}
+let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();drawCloudRaceIntroOverlay();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 
 // keyboard fallback
 addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='j')player.shield=true;if(k==='k')doAttack(false);if(k==='l')jump();if(k==='i')skill();if(k==='q')openEquipPanel()});
