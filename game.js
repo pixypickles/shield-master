@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 124: 最初の浮遊草原ステージ
+// Prototype 125: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -636,8 +636,10 @@ function damageAmbient(a,weapon,power=1){
 }
 function jumpLiftNow(){
  if(player.jumpT<=0)return 0;
- const p=1-player.jumpT/player.jumpDur;
- return Math.sin(p*Math.PI)*player.jumpHeight*shields[player.shieldType].jump;
+ const dur=Math.max(.001,Number.isFinite(player.jumpDur)?player.jumpDur:.62);
+ const p=Math.max(0,Math.min(1,1-player.jumpT/dur));
+ const raw=Math.sin(p*Math.PI)*(Number.isFinite(player.jumpHeight)?player.jumpHeight:105)*(shields[player.shieldType]?.jump||1);
+ return Number.isFinite(raw)?Math.max(0,raw):0;
 }
 
 const guardRails=[
@@ -4510,8 +4512,8 @@ function drawEnemy(e){
 }
 
 function drawPlayer(){
- const jumpNorm=player.jumpT>0?1-player.jumpT/player.jumpDur:0;
- const normalLift=player.jumpT>0?Math.sin(jumpNorm*Math.PI)*player.jumpHeight*shields[player.shieldType].jump:0;
+ const jumpNorm=player.jumpT>0?Math.max(0,Math.min(1,1-player.jumpT/Math.max(.001,player.jumpDur||.62))):0;
+ const normalLift=player.jumpT>0?Math.max(0,Math.sin(jumpNorm*Math.PI)*(player.jumpHeight||105)*(shields[player.shieldType]?.jump||1)):0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
  const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
  const moving=player.moveMag>.16&&player.jumpT<=0;
@@ -4538,7 +4540,12 @@ function drawPlayer(){
    ctx.restore();
  }
  // shadow stays on the ground
- ctx.save();ctx.translate(0,lift+bounce);ctx.globalAlpha=.20;ctx.fillStyle='#111';ctx.beginPath();ctx.ellipse(0,37,28*(1-lift/235),11*(1-lift/235),0,0,7);ctx.fill();ctx.restore();
+ // 高く跳びすぎると 1-lift/235 が負数になり、Canvas ellipse() が例外を投げて
+ // 描画ループ全体が停止していた。半径は必ず正の値へクランプする。
+ const shadowScale=Math.max(.10,1-lift/235);
+ ctx.save();ctx.translate(0,lift+bounce);ctx.globalAlpha=.20;ctx.fillStyle='#111';ctx.beginPath();
+ ctx.ellipse(0,37,28*shadowScale,11*shadowScale,0,0,Math.PI*2);
+ ctx.fill();ctx.restore();
  const f=player.face,a=faceAngle(f),rightX=Math.cos(a+Math.PI/2),rightY=Math.sin(a+Math.PI/2),frontX=Math.cos(a),frontY=Math.sin(a);
  // 2頭身寄り：頭は画面に対して常に直立。足だけ歩行で前後に動く。
  const legSwing=step*7;
