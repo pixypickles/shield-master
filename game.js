@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 153: 最初の浮遊草原ステージ
+// Prototype 155: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -110,8 +110,8 @@ const props={
  rocks:[],
  water:{x:260,y:590,w:300,h:105,frozen:0},
  // 浅瀬は歩ける。右方向へ流れる小川は少しだけ身体を運ぶ。
- shallowWater:{x:620,y:610,w:530,h:72,flowX:34,flowY:0,frozen:0},
- spring:{x:620,y:646,r:36,cloudX:620,cloudY:455},
+ shallowWater:{x:0,y:0,w:0,h:0,flowX:0,flowY:0,frozen:0},
+ spring:{x:0,y:0,r:0,cloudX:0,cloudY:0},
  // 少し高い場所の池と、そこから落ちる滝。池は浅めで入れる。
  upperPond:{x:1230,y:365,w:250,h:105,flowX:0,flowY:0,cloudX:1355,cloudY:165,frozen:0},
  waterfall:{x:1396,y:454,w:72,h:390,flowX:0,flowY:58,frozen:0},
@@ -120,7 +120,7 @@ const props={
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
   // それ以外は意味のない自然配置。斬っても斬らなくてもよい。
   {x:790,y:675,dead:false},{x:1040,y:515,dead:false},
-  {x:1280,y:390,dead:false},{x:1340,y:675,dead:false},{x:610,y:405,dead:false}
+  {x:1280,y:390,dead:false},{x:1340,y:675,dead:false},{x:720,y:390,dead:false}
  ]
 };
 
@@ -130,8 +130,8 @@ const startRockWall={x:125,y:525,w:76,h:360,hp:1,dead:false};
 // 大陸を横切る水流。速度差・曲がり・岩の湧き口を混ぜる。
 // flow は px/sec。frozen>0 の間は青杖で凍結して流れが完全停止する。
 const currentStreams=[
- {id:'s1cross',source:'cloud',cloudX:1195,cloudY:180,width:72,speed:62,frozen:0,
-  pts:[{x:1195,y:330},{x:1190,y:490},{x:1185,y:585},{x:1190,y:730},{x:1190,y:900}]},
+ {id:'s1cross',source:'cloud',cloudX:1040,cloudY:180,width:72,speed:62,frozen:0,
+  pts:[{x:1040,y:330},{x:1038,y:485},{x:1042,y:610},{x:1040,y:740},{x:1040,y:900}]},
  {id:'s2rock',source:'cloud',cloudX:2440,cloudY:280,width:68,speed:118,frozen:0,
   pts:[{x:2440,y:430},{x:2520,y:455},{x:2610,y:520},{x:2840,y:560},{x:3020,y:760}]},
  {id:'s3bend',source:'cloud',cloudX:3820,cloudY:190,width:78,speed:46,frozen:0,
@@ -148,7 +148,7 @@ const currentStreams=[
   pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-790,y:640},{x:-790,y:880}]},
  {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9300,y:155},{x:9200,y:235},{x:9200,y:390}]},
  // 生命の盾後の上段はショートカット兼ご褒美ルート。右→左へ高速で運ぶ。
- {id:'upperExpress',source:'cloud',cloudX:14020,cloudY:-70,width:72,speed:235,frozen:0,
+ {id:'upperExpress',source:'road',cloudX:14020,cloudY:-70,width:82,speed:235,frozen:0,visibleRoad:true,
   pts:[{x:14020,y:80},{x:13700,y:125},{x:12800,y:135},{x:11800,y:135},{x:10800,y:140},{x:9800,y:140},{x:8800,y:140},{x:7800,y:140},{x:6800,y:140},{x:5800,y:140},{x:4800,y:140},{x:3800,y:140},{x:2800,y:140},{x:1800,y:140},{x:850,y:145},{x:520,y:165}]},
 
 ];
@@ -782,8 +782,7 @@ const stage7Geo={
 const stage7Rocks=[
  {x:9880,y:405,r:34,dead:false},{x:9970,y:485,r:34,dead:false},
  {x:10040,y:640,r:34,dead:false},{x:10190,y:390,r:34,dead:false},
- {x:10350,y:675,r:34,dead:false},{x:10680,y:465,r:38,dead:false},
- {x:10780,y:610,r:38,dead:false}
+ {x:10350,y:675,r:34,dead:false},{x:10680,y:465,r:38,dead:false}
 ];
 
 let hammerPickup={x:10470,y:685,taken:false};
@@ -4617,11 +4616,11 @@ function drawStreamFalls(){
 }
 function drawSurfaceStreams(){
  for(const st of currentStreams){
-   if(!streamHasSurface(st))continue;
+   if(!streamHasSurface(st)&&!st.visibleRoad)continue;
    const active=st.frozen<=0;
    ctx.save();clipVisibleGround();ctx.globalAlpha=.84;ctx.lineJoin='round';ctx.lineCap='round';
-   ctx.strokeStyle=active?'#4ca6c8':'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
-   ctx.strokeStyle=active?'#9fe5f5':'#e9fbff';ctx.lineWidth=Math.max(14,st.width-7);traceStreamPath(st);ctx.stroke();
+   ctx.strokeStyle=active?(st.visibleRoad?'#359fc7':'#4ca6c8'):'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
+   ctx.strokeStyle=active?(st.visibleRoad?'#8ee5f6':'#9fe5f5'):'#e9fbff';ctx.lineWidth=Math.max(14,st.width-7);traceStreamPath(st);ctx.stroke();
    if(active){
      const tm=performance.now()/1000*st.speed*.72;
      for(let i=0;i<st.pts.length-1;i++){
@@ -4630,6 +4629,13 @@ function drawSurfaceStreams(){
          if(q<0)continue;
          const side=((Math.floor(q/58)+i)%3-1)*st.width*.18,x=a.x+nx*q+px*side,y=a.y+ny*q+py*side;
          line(x-nx*13,y-ny*13,x+nx*13,y+ny*13,4,'rgba(255,255,255,.88)');
+       }
+       if(st.visibleRoad&&len>90){
+         for(let q=35+((tm*.55)%115);q<len;q+=115){
+           const x=a.x+nx*q,y=a.y+ny*q,sz=13;
+           line(x-nx*sz-px*sz*.7,y-ny*sz-py*sz*.7,x,y,4,'rgba(255,255,255,.92)');
+           line(x-nx*sz+px*sz*.7,y-ny*sz+py*sz*.7,x,y,4,'rgba(255,255,255,.92)');
+         }
        }
      }
    }
@@ -4768,9 +4774,9 @@ function drawWorld(){
  // water
  const wa=props.water;ctx.fillStyle=wa.frozen>0?'#bfeeff':'#60bdea';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(wa.x,wa.y,wa.w,wa.h,28);ctx.fill();ctx.stroke();if(wa.frozen>0){ctx.strokeStyle='#fff';ctx.lineWidth=3;for(let i=0;i<5;i++)line(wa.x+30+i*55,wa.y+15,wa.x+70+i*45,wa.y+wa.h-15,3,'rgba(255,255,255,.8)')}
 
- // 水系A：低い雲の豪雨→浅い小川。
+ // 水系Aは廃止。スタート地点は縦の雲水流だけに整理。
  const sw=props.shallowWater,sp=props.spring,scx=sp.cloudX,scy=sp.cloudY;
- ctx.save();
+ if(sw.w>0&&sw.h>0){ctx.save();
  circle(scx-40,scy+18,31,'#eef5f8','#111',5);circle(scx,scy,42,'#f8fcfe','#111',5);circle(scx+43,scy+20,32,'#e7f1f5','#111',5);
  const rt=performance.now()*.018;
  for(let i=0;i<11;i++){const xx=scx-58+i*12,yy=scy+42+((rt*26+i*23)%145);line(xx,yy,xx,yy+23,5,'#45aef0')}
@@ -4787,6 +4793,7 @@ function drawWorld(){
  grad.addColorStop(0,'rgba(151,229,245,.88)');grad.addColorStop(.72,'rgba(151,229,245,.42)');grad.addColorStop(1,'rgba(151,229,245,0)');
  ctx.fillStyle=grad;ctx.beginPath();
  ctx.moveTo(sx,spillTop);ctx.lineTo(sx+58,spillTop);ctx.lineTo(sx+45,spillTop+230);ctx.lineTo(sx+14,spillTop+230);ctx.closePath();ctx.fill();
+ }
 
  // 水系B：低い雲の豪雨→高台の池→滝。
  const up=props.upperPond,wf=props.waterfall,ucx=up.cloudX,ucy=up.cloudY;
