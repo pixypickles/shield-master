@@ -24,9 +24,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 136: 最初の浮遊草原ステージ
+// Prototype 137: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -47,9 +47,10 @@ const shields=[
  {name:'生命の盾',heal:11,move:.96,jump:1,magic:false,reflect:false},
  {name:'ミラーシールド',heal:5,move:1,jump:1,magic:false,reflect:true},
  {name:'マジックシールド',heal:4,move:.92,jump:1,magic:true,reflect:false},
- {name:'雲の盾',heal:5,move:1.08,jump:1.42,magic:false,reflect:false}
+ {name:'雲の盾',heal:5,move:1.08,jump:1.42,magic:false,reflect:false},
+ {name:'蓄力の盾',heal:5,move:.98,jump:1,magic:false,reflect:false,chargeGuard:true}
 ];
-const unlockedShields=[true,false,false,false,false];
+const unlockedShields=[true,false,false,false,false,false];
 
 
 let areaMapOpen=false,area1Cleared=false;
@@ -146,9 +147,6 @@ const currentStreams=[
  // 生命の盾後の上段はショートカット兼ご褒美ルート。右→左へ高速で運ぶ。
  {id:'upperExpress',source:'cloud',cloudX:14020,cloudY:-70,width:72,speed:235,frozen:0,
   pts:[{x:14020,y:80},{x:13700,y:125},{x:12800,y:135},{x:11800,y:135},{x:10800,y:140},{x:9800,y:140},{x:8800,y:140},{x:7800,y:140},{x:6800,y:140},{x:5800,y:140},{x:4800,y:140},{x:3800,y:140},{x:2800,y:140},{x:1800,y:140},{x:850,y:145},{x:520,y:165}]},
- {id:'vegRushA',source:'cloud',cloudX:6650,cloudY:-3000,width:38,speed:340,frozen:0,pts:[{x:6650,y:-3000},{x:6650,y:-2820},{x:6700,y:-2630},{x:6810,y:-2460},{x:6910,y:-2140}]},
- {id:'vegRushB',source:'cloud',cloudX:7420,cloudY:-3070,width:34,speed:385,frozen:0,pts:[{x:7420,y:-3070},{x:7420,y:-2880},{x:7460,y:-2680},{x:7560,y:-2470},{x:7630,y:-2090}]},
- {id:'vegRushC',source:'cloud',cloudX:8150,cloudY:-2990,width:40,speed:360,frozen:0,pts:[{x:8150,y:-2990},{x:8150,y:-2810},{x:8090,y:-2630},{x:8170,y:-2430},{x:8240,y:-2110}]},
 
 ];
 const cloudJumpPads=[
@@ -391,6 +389,13 @@ const flyingVeg=[
  {type:'flyingPepper',x:8190,y:-2450,r:28,hp:8,maxHp:8,z:122,phase:4.1,dropCd:1.0,flash:0,dead:false}
 ];
 const fallingVegSeeds=[];
+const vegBoss={
+ x:8350,y:-2440,r:88,hp:58,maxHp:58,active:false,dead:false,
+ attackCd:1.1,flash:0,windup:0,swing:0,phase:0
+};
+let vegBossDefeated=false;
+const chargeShieldPickup={x:8350,y:-2440,active:false,taken:false};
+
 
 
 
@@ -933,13 +938,13 @@ function saveProgress(){
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,vegBossDefeated,
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
-   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,
+   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,
    seedBossDead:!!seedBoss.dead,grassFinalBossDead:!!grassFinalBoss.dead,
    fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,
-   hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,
+   hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,vegBossDead:!!vegBoss.dead,
    startRockWallDead:!!startRockWall.dead
   }));
  }catch(e){}
@@ -1005,6 +1010,9 @@ function loadProgress(){
  cloudRaceWon=!!d.cloudRaceWon;
  // 既にレース勝利済みのセーブなら、その前提となるツタボス撃破も必ず復元。
  if(cloudRaceWon){vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;}
+ vegBossDefeated=!!d.vegBossDefeated||!!d.vegBossDead;
+ if(vegBossDefeated){vegBoss.dead=true;vegBoss.active=false;}
+
 
  spearPickup.taken=!!d.spearTaken;
  hammerPickup.taken=!!d.hammerTaken;
@@ -1013,6 +1021,7 @@ function loadProgress(){
  blueStaffPickup.taken=!!d.blueStaffTaken || (!!d.iceBossDead && d.weapon===4);
  healShieldPickup.taken=!!d.healShieldTaken || d.shieldType===1;
  cloudShieldPickup.taken=!!d.cloudShieldTaken || d.shieldType===4;
+ chargeShieldPickup.taken=!!d.chargeShieldTaken || d.shieldType===5;
 
  // 装備アンロックも旧セーブから復元。
  if(spearPickup.taken||currentStage>=3)unlockedWeapons[1]=true;
@@ -1021,6 +1030,7 @@ function loadProgress(){
  if(blueStaffPickup.taken||d.iceBossDead)unlockedWeapons[4]=true;
  if(healShieldPickup.taken||islandBossDefeated)unlockedShields[1]=true;
  if(cloudShieldPickup.taken){unlockedShields[4]=true;cloudShieldDropped=true;}
+ if(chargeShieldPickup.taken||vegBossDefeated)unlockedShields[5]=true;
 
  if(d.startRockWallDead || fireBossDefeated || d.fireBossDead){startRockWall.dead=true;startRockWall.hp=0}
 
@@ -1029,6 +1039,7 @@ function loadProgress(){
  blueStaffPickup.active=iceBoss.dead&&!blueStaffPickup.taken;
  healShieldPickup.active=islandBoss.dead&&!healShieldPickup.taken;
  cloudShieldPickup.active=cloudShieldDropped&&!cloudShieldPickup.taken;
+ chargeShieldPickup.active=vegBossDefeated&&!chargeShieldPickup.taken;
 
  // ハンマー未取得の旧セーブでも、報酬は必ず道上へ戻す。
  if(hammerGuardian.dead&&!hammerPickup.taken){hammerPickup.x=10470;hammerPickup.y=685;}
@@ -1518,6 +1529,12 @@ function hitStage8Spinner(range,base){
 
 function hitVegArea(damage,range,base,cone,weapon){
  if(!cloudRaceWon)return;
+ if(vegBoss.active&&!vegBoss.dead){
+   const bd=dist(player.x,player.y,vegBoss.x,vegBoss.y),ba=Math.atan2(vegBoss.y-player.y,vegBoss.x-player.x);
+   if(bd<=range+vegBoss.r+20&&Math.abs(angleDiff(ba,base))<=cone/2+.2){
+     vegBoss.hp-=damage;vegBoss.flash=.2;particle(vegBoss.x,vegBoss.y-42,`-${damage}`,'#b31313',.4,16);
+   }
+ }
  const hit=(e)=>{
    if(!e||e.dead)return;
    const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(e.y-player.y,e.x-player.x);
@@ -1772,6 +1789,7 @@ function doAttack(charged=false){
    if(fd<370&&Math.abs(angleDiff(fa,base))<.95)base=fa;
  }
  player.aim=base;
+ releaseShieldEnergy(base);
 
  // ジャンプ中の通常攻撃は、地上攻撃とは別の「下方向攻撃」。
  if(jumpStrike){
@@ -1931,11 +1949,49 @@ function doAttack(charged=false){
    }
  }
 }
-function shieldBlocks(enemy){if(!player.shield||player.jumpT>0)return false;
- if(shields[player.shieldType].magic)return true;
- const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);
- const facing=faceAngle(player.face);
- return Math.abs(angleDiff(incoming,facing))<Math.PI*.52;}
+function gainShieldEnergy(){
+ if(player.shieldType!==5)return;
+ const before=player.shieldEnergy||0;
+ player.shieldEnergy=Math.min(player.shieldEnergyMax||5,before+1);
+ if(player.shieldEnergy>before){
+   particle(player.x,player.y-58,`ENERGY ${player.shieldEnergy}/${player.shieldEnergyMax}`,'#ffd34d',.45,14);
+   if(player.shieldEnergy===player.shieldEnergyMax)say('蓄力の盾：エネルギーMAX！ 次の一撃に全放出！');
+ }
+}
+function shieldBlocks(enemy){
+ if(!player.shield||player.jumpT>0)return false;
+ let blocked=false;
+ if(shields[player.shieldType].magic)blocked=true;
+ else{
+   const incoming=Math.atan2(enemy.y-player.y,enemy.x-player.x);
+   const facing=faceAngle(player.face);
+   blocked=Math.abs(angleDiff(incoming,facing))<Math.PI*.52;
+ }
+ if(blocked)gainShieldEnergy();
+ return blocked;
+}
+function releaseShieldEnergy(base){
+ if(player.shieldType!==5||!player.shieldEnergy)return 0;
+ const n=player.shieldEnergy;player.shieldEnergy=0;
+ const bonus=n*3,rad=85+n*13;
+ particle(player.x,player.y-48,`蓄力解放 +${bonus}`,'#ffd34d',.65,19);
+ // 次の攻撃に乗るエネルギー波。武器種を問わず、攻撃した瞬間に前方へ放つ。
+ const fx=Math.cos(base),fy=Math.sin(base);
+ const hit=(e)=>{
+   if(!e||e.dead)return;
+   const dx=e.x-player.x,dy=e.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+   if(along>-20&&along<rad+70&&side<55+(e.r||20)){
+     e.hp=(e.hp??1)-bonus;e.flash=.24;
+     particle(e.x,e.y-28,`-${bonus}`,'#ffd34d',.5,17);
+     if(e.hp<=0)e.dead=true;
+   }
+ };
+ for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg])for(const e of list)hit(e);
+ for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss]){
+   if(b&&(!('active' in b)||b.active)&&!b.dead)hit(b);
+ }
+ return bonus;
+}
 
 
 function resolveAirMagic(m){
@@ -1958,7 +2014,7 @@ function resolveAirMagic(m){
      else hit(e);
    }
  }
- for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss]){
+ for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss]){
    if(b&&(!('active' in b)||b.active)&&!b.dead)hit(b);
  }
  if(m.kind==='fire'){
@@ -2678,6 +2734,10 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        }
        if(vh)break;
      }
+   }
+   if(pr.hit)continue;
+   if(vegBoss.active&&!vegBoss.dead&&dist(pr.x,pr.y,vegBoss.x,vegBoss.y)<pr.r+vegBoss.r){
+     vegBoss.hp-=pr.damage;vegBoss.flash=.16;pr.hit=true;particle(vegBoss.x,vegBoss.y-45,`-${pr.damage}`,'#b31313',.4,16);
    }
    if(pr.hit)continue;
    if(seedBoss.active&&!seedBoss.dead&&dist(pr.x,pr.y,seedBoss.x,seedBoss.y)<pr.r+seedBoss.r){
@@ -3525,6 +3585,40 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
    }
    for(let i=fallingVegSeeds.length-1;i>=0;i--)if(fallingVegSeeds[i].dead)fallingVegSeeds.splice(i,1);
+ }
+
+ // 野菜軍団の最奥：巨大カボチャ武将。
+ if(cloudRaceWon&&!vegBoss.dead){
+   if(!vegBoss.active&&player.x>7900&&player.y<-2050){vegBoss.active=true;say('野菜軍団の大将・カボチャ武将！');}
+   if(vegBoss.active){
+     vegBoss.flash=Math.max(0,vegBoss.flash-dt);
+     vegBoss.attackCd-=dt;vegBoss.windup=Math.max(0,vegBoss.windup-dt);vegBoss.swing=Math.max(0,vegBoss.swing-dt);
+     const dx=player.x-vegBoss.x,dy=player.y-vegBoss.y,d=Math.hypot(dx,dy)||1;
+     if(d>125&&d<600&&vegBoss.windup<=0){vegBoss.x+=dx/d*42*dt;vegBoss.y+=dy/d*42*dt;}
+     if(d<180&&vegBoss.attackCd<=0&&vegBoss.windup<=0){
+       vegBoss.attackCd=1.55;vegBoss.windup=.48;vegBoss.phase++;
+       particle(vegBoss.x,vegBoss.y-80,'ブォン…！','#ffbf4a',.38,16);
+     }
+     if(vegBoss.windup>0&&vegBoss.windup<=.06&&!vegBoss.didSwing){
+       vegBoss.didSwing=true;vegBoss.swing=.28;
+       if(d<205&&player.jumpT<=0){
+         if(shieldBlocks(vegBoss))particle(player.x,player.y-35,'ガァン！','#ffd34d',.35,18);
+         else if(player.inv<=0){const got=takeDamage(9);player.inv=.6;particle(player.x,player.y-35,`-${got}`,'#c11',.45,17);}
+       }
+     }
+     if(vegBoss.windup<=0)vegBoss.didSwing=false;
+     if(vegBoss.hp<=0){
+       vegBoss.dead=true;vegBoss.active=false;vegBossDefeated=true;
+       chargeShieldPickup.active=true;chargeShieldPickup.x=vegBoss.x;chargeShieldPickup.y=vegBoss.y;
+       particle(vegBoss.x,vegBoss.y-60,'撃破！','#fff',.9,25);
+       say('カボチャ武将を倒した！ 金色の盾が残った！');saveProgress();
+     }
+   }
+ }
+ if(chargeShieldPickup.active&&!chargeShieldPickup.taken&&dist(player.x,player.y,chargeShieldPickup.x,chargeShieldPickup.y)<72){
+   chargeShieldPickup.taken=true;unlockedShields[5]=true;player.shieldType=5;player.shieldEnergy=0;
+   particle(player.x,player.y-55,'蓄力の盾 GET！','#ffd34d',.9,22);
+   say('蓄力の盾：防ぐほど蓄積！ 次の攻撃でエネルギーを全放出！');saveProgress();
  }
  cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
  if(vineBossDefeated){
@@ -4629,6 +4723,27 @@ function drawWorld(){
          if(q.dead)continue;ctx.save();ctx.translate(q.x,q.y-q.z);ctx.fillStyle='#718f39';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,9,14,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
          ctx.save();ctx.globalAlpha=.22;circle(q.x,q.y,20,'#111','transparent',0);ctx.restore();
        }
+
+       if(!vegBoss.dead){
+         ctx.save();ctx.translate(vegBoss.x,vegBoss.y);if(vegBoss.flash>0)ctx.globalAlpha=.55;
+         // 巨大カボチャ＋大包丁
+         circle(0,0,72,'#e8892f','#111',7);
+         ctx.strokeStyle='#b95b24';ctx.lineWidth=5;
+         for(const xx of [-38,-16,16,38]){ctx.beginPath();ctx.moveTo(xx,-57);ctx.quadraticCurveTo(xx*1.2,0,xx,57);ctx.stroke();}
+         line(0,-66,8,-90,14,'#388c45');
+         ctx.save();ctx.rotate(vegBoss.swing>0?-1.05:.28);
+         line(52,-5,115,-5,18,'#111');line(52,-5,115,-5,10,'#6f4a2f');
+         ctx.fillStyle='#dbe2e5';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(108,-34);ctx.lineTo(160,-25);ctx.lineTo(165,18);ctx.lineTo(108,20);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+         ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('カボチャ武将',0,-104);
+         ctx.fillStyle='#501b12';ctx.fillRect(-70,83,140,12);ctx.fillStyle='#fff';ctx.fillRect(-66,87,132*Math.max(0,vegBoss.hp/vegBoss.maxHp),4);
+         ctx.restore();
+       }
+       if(chargeShieldPickup.active&&!chargeShieldPickup.taken){
+         ctx.save();ctx.translate(chargeShieldPickup.x,chargeShieldPickup.y);
+         ctx.fillStyle='#ffd34d';ctx.strokeStyle='#111';ctx.lineWidth=6;
+         ctx.beginPath();ctx.moveTo(0,-38);ctx.lineTo(35,-22);ctx.lineTo(28,22);ctx.quadraticCurveTo(0,48,-28,22);ctx.lineTo(-35,-22);ctx.closePath();ctx.fill();ctx.stroke();
+         circle(0,0,9,'#fff','#111',3);ctx.restore();
+       }
      }
    }
    // 大きな幹ツタ＋再生壁
@@ -4863,6 +4978,11 @@ function drawWorld(){
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
  drawPlayer();
+ if(player.shieldType===5&&(player.shieldEnergy||0)>0){
+   ctx.save();ctx.translate(player.x,player.y-jumpLiftNow()-72);
+   for(let i=0;i<player.shieldEnergyMax;i++)circle((i-2)*13,0,5,i<player.shieldEnergy?'#ffd34d':'rgba(255,255,255,.45)','#111',2);
+   ctx.restore();
+ }
  // 攻撃エフェクトはキャラと同じワールド座標系で描画。
  drawSwordSkillEffect();
  drawChargeEffects();
