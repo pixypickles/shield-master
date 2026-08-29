@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 130: 最初の浮遊草原ステージ
+// Prototype 131: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -330,13 +330,11 @@ const cloudRaceGeo={
 
  start:{x:2920,y:-2320,r:96},
  checkpoints:[
-  {x:3360,y:-2830,r:92,label:'1'},
-  {x:4310,y:-2970,r:92,label:'2'},
-  {x:5220,y:-2570,r:92,label:'3'},
-  {x:5070,y:-1990,r:92,label:'4'},
-  {x:4200,y:-1770,r:92,label:'5'},
-  {x:3300,y:-1880,r:92,label:'6'},
-  {x:2920,y:-2320,r:92,label:'GOAL'}
+  // コース約1/3地点・約2/3地点・ゴールだけ。
+  // cp1/cp2 は「点」ではなく、コース横幅を丸ごと横切る太いゲートとして判定する。
+  {x:4310,y:-2970,r:165,label:'1',gateA:-0.10,gateLen:230},
+  {x:4200,y:-1770,r:165,label:'2',gateA:Math.PI,gateLen:230},
+  {x:2920,y:-2320,r:110,label:'GOAL'}
  ],
  nextIsland:{x:5520,y:-2520,w:460,h:390},
  rainbow:{x1:5215,y1:-2325,x2:5560,y2:-2325,w:150}
@@ -1866,7 +1864,7 @@ function resolveAirMagic(m){
 
 
 function startCloudRaceIntro(){cloudRace.started=false;cloudRace.intro=true;cloudRace.introPage=0;cloudRace.introT=0;cloudRace.lastIntroPage=-1;cloudRace.time=0;cloudRace.cp=0;player.skillT=0;player.skillKind='';player.shield=false;player.charging=false}
-function cloudRaceIntroText(p){if(p===0)return ['雲ライダー','「ここまで来たか！ この雲上サーキットで勝負だ！」'];if(p===1)return ['コース説明','大きく歪んだ楕円コースを1周。光るゲートを順番に全部通ろう。'];if(p===2)return ['勝利条件','相手はかなり速い。普通に走るだけでは追いつけないぞ。'];return ['攻略のコツ','赤杖の炎輪／青杖のアイスサーフで加速を繋げ！']}
+function cloudRaceIntroText(p){if(p===0)return ['雲ライダー','「ここまで来たか！ この雲上サーキットで勝負だ！」'];if(p===1)return ['コース説明','大きく歪んだ楕円コースを1周。1/3地点と2/3地点の太いチェックラインを順番に通ろう。'];if(p===2)return ['勝利条件','相手はかなり速い。普通に走るだけでは追いつけないぞ。'];return ['攻略のコツ','赤杖の炎輪／青杖のアイスサーフで加速を繋げ！']}
 function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,Math.floor(cloudRace.introT/2.25));cloudRace.introPage=p;if(p!==cloudRace.lastIntroPage){cloudRace.lastIntroPage=p;const t=cloudRaceIntroText(p);say(`${t[0]}：${t[1]}`)}if(cloudRace.introT>=9){cloudRace.intro=false;cloudRace.started=true;cloudRace.countdown=2;cloudRace.time=0;cloudRace.cp=0;particle(cloudRaceGeo.start.x,cloudRaceGeo.start.y-55,'READY!','#fff',.65,21);say('READY… 杖スキルを準備！')}return;}
 
  // 凍結ツタは実際のガードステップ（shieldStepT）で永久破壊。
@@ -3334,7 +3332,18 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！');
    }
  }
- // 雲レース：スタート門で2秒カウント後、4ゲートを順番に1周。
+ function cloudRaceGateHit(g){
+ if(g.label==='GOAL')return dist(player.x,player.y,g.x,g.y)<g.r;
+ const a=g.gateA||0, nx=Math.cos(a),ny=Math.sin(a), tx=-ny,ty=nx;
+ const dx=player.x-g.x,dy=player.y-g.y;
+ const across=Math.abs(dx*nx+dy*ny);
+ const along=Math.abs(dx*tx+dy*ty);
+ // コースの横幅全体を覆う、幅広い帯状チェック。
+ return across<54 && along<(g.gateLen||230);
+}
+
+// 雲レース：スタート門で2秒カウント後、1/3・2/3の2ゲートを通って1周。
+
  cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
  if(vineBossDefeated){
    const st=cloudRaceGeo.start;
@@ -3351,7 +3360,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }else{
        cloudRace.time+=dt;
        const cp=cloudRaceGeo.checkpoints[cloudRace.cp];
-       if(cp&&dist(player.x,player.y,cp.x,cp.y)<cp.r){
+       if(cp&&cloudRaceGateHit(cp)){
          cloudRace.cp++;
          particle(cp.x,cp.y-40,cloudRace.cp>=4?'FINISH!':`CHECK ${cloudRace.cp}`,'#fff',.45,17);
          if(cloudRace.cp>=cloudRaceGeo.checkpoints.length){
@@ -4347,11 +4356,21 @@ function drawWorld(){
      ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#dff7fb';ctx.beginPath();
      ctx.ellipse(cloudRaceGeo.cx,cloudRaceGeo.cy,cloudRaceGeo.innerRx,cloudRaceGeo.innerRy,0,0,Math.PI*2);ctx.fill();ctx.restore();
 
-     // スタート門とチェックゲート。
+     // 1/3・2/3チェックはコース横幅を丸ごと横切る太いゲート。
      for(let i=0;i<cloudRaceGeo.checkpoints.length;i++){
-       const g=cloudRaceGeo.checkpoints[i];
-       ctx.strokeStyle=i===cloudRace.cp&&cloudRace.started?'#ffe45b':'#fff';ctx.lineWidth=8;
-       ctx.beginPath();ctx.arc(g.x,g.y,g.r*.55,0,Math.PI*2);ctx.stroke();
+       const g=cloudRaceGeo.checkpoints[i],active=i===cloudRace.cp&&cloudRace.started;
+       ctx.save();ctx.strokeStyle=active?'#ffe45b':'#fff';
+       if(g.label==='GOAL'){
+         ctx.lineWidth=11;ctx.beginPath();ctx.arc(g.x,g.y,74,0,Math.PI*2);ctx.stroke();
+       }else{
+         const a=g.gateA||0,tx=-Math.sin(a),ty=Math.cos(a),L=g.gateLen||230;
+         // 黒縁＋白/黄色の太い帯で、どこを通っても拾えることを明示。
+         line(g.x-tx*L,g.y-ty*L,g.x+tx*L,g.y+ty*L,34,'#111');
+         line(g.x-tx*L,g.y-ty*L,g.x+tx*L,g.y+ty*L,23,active?'#ffe45b':'#fff');
+         ctx.fillStyle=active?'#ffe45b':'#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.font='900 22px system-ui';
+         ctx.strokeText(`CHECK ${g.label}`,g.x-48,g.y-30);ctx.fillText(`CHECK ${g.label}`,g.x-48,g.y-30);
+       }
+       ctx.restore();
      }
      ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.font='900 20px system-ui';
      // 開始位置を見失わない大きなチェッカー円＋START矢印。クリア後も常時表示。
@@ -4368,7 +4387,12 @@ function drawWorld(){
      // 対戦相手の雲ライダー。時間でコースを1周する。
      if(cloudRace.started){
        const rr=Math.max(0,Math.min(1,cloudRace.countdown>0?0:cloudRace.time/cloudRace.rivalTime));
-       const pts=[cloudRaceGeo.start,...cloudRaceGeo.checkpoints.slice(0,-1),cloudRaceGeo.start];
+       const pts=[
+         cloudRaceGeo.start,
+         {x:3300,y:-2760},{x:4050,y:-2925},{x:4870,y:-2720},
+         {x:5210,y:-2325},{x:4870,y:-1910},{x:4050,y:-1810},{x:3300,y:-1960},
+         cloudRaceGeo.start
+       ];
        const segCount=pts.length-1;
        const pos=rr*segCount,seg=Math.min(segCount-1,Math.floor(pos)),lt=pos-seg,a=pts[seg],b=pts[seg+1];
        const rx=a.x+(b.x-a.x)*lt,ry=a.y+(b.y-a.y)*lt;
