@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 155: 最初の浮遊草原ステージ
+// Prototype 156: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -782,7 +782,7 @@ const stage7Geo={
 const stage7Rocks=[
  {x:9880,y:405,r:34,dead:false},{x:9970,y:485,r:34,dead:false},
  {x:10040,y:640,r:34,dead:false},{x:10190,y:390,r:34,dead:false},
- {x:10350,y:675,r:34,dead:false},{x:10680,y:465,r:38,dead:false}
+ {x:10680,y:465,r:38,dead:false}
 ];
 
 let hammerPickup={x:10470,y:685,taken:false};
@@ -793,8 +793,8 @@ const hammerGuardian={
 const hammerGuardianRocks=[];
 
 const rockBoss={
- x:11420,y:545,r:82,hp:44,maxHp:44,active:false,dead:false,
- attackCd:1.15,spawnCd:2.8,flash:0,phase:0
+ x:11420,y:545,r:82,hp:58,maxHp:58,active:false,dead:false,
+ attackCd:1.05,spawnCd:2.6,flash:0,phase:0
 };
 
 const rollingRocks=[];
@@ -3734,6 +3734,20 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    rockBoss.flash=Math.max(0,rockBoss.flash-dt);
    rockBoss.attackCd-=dt;
    rockBoss.spawnCd-=dt;
+
+   // 岩喰いグルミもその場固定ではなく、ボス広場を歩いて追ってくる。
+   const rdx=player.x-rockBoss.x,rdy=player.y-rockBoss.y,rd=Math.hypot(rdx,rdy)||1;
+   if(rd>150){
+     const rs=48;
+     rockBoss.x+=rdx/rd*rs*dt;
+     rockBoss.y+=rdy/rd*rs*dt;
+     // ボス広場の中だけで移動。道の外へ落ちない。
+     rockBoss.x=clamp(rockBoss.x,11100,11655);
+     rockBoss.y=clamp(rockBoss.y,405,685);
+   }else if(rd<112){
+     rockBoss.x-=rdx/rd*24*dt;
+     rockBoss.y-=rdy/rd*24*dt;
+   }
 
    // 岩をプレイヤー方向へ転がす
    if(rockBoss.attackCd<=0){
