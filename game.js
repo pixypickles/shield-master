@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={minX:-1500,minY:-3900,w:17850,h:1100};
+const world={minX:-1500,minY:-3900,w:20550,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 145: 最初の浮遊草原ステージ
+// Prototype 146: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -48,9 +48,10 @@ const shields=[
  {name:'ミラーシールド',heal:5,move:1,jump:1,magic:false,reflect:true},
  {name:'マジックシールド',heal:4,move:.92,jump:1,magic:true,reflect:false},
  {name:'雲の盾',heal:5,move:1.08,jump:1.42,magic:false,reflect:false},
- {name:'蓄力の盾',heal:5,move:.98,jump:1,magic:false,reflect:false,chargeGuard:true}
+ {name:'蓄力の盾',heal:5,move:.98,jump:1,magic:false,reflect:false,chargeGuard:true},
+ {name:'水晶の盾',heal:5,move:1,jump:1,magic:false,reflect:true,crystalMagic:true}
 ];
-const unlockedShields=[true,false,false,false,false,false];
+const unlockedShields=[true,false,false,false,false,false,false];
 
 
 let areaMapOpen=false,area1Cleared=false;
@@ -156,6 +157,17 @@ const cloudJumpPads=[
 
 
 
+
+function meltCrystalIceAt(x,y,rad=78){
+ for(const c of crystalIceBlocks){
+  if(c.dead||dist(x,y,c.x,c.y)>rad+c.r)continue;
+  c.dead=true;particle(c.x,c.y,'ジュワァ！','#dffaff',.5,16);
+  if(c.spawn&&Math.random()<.72){
+   crystalThrowers.push({x:c.x,y:c.y,r:31,hp:9,maxHp:9,attackCd:.35,flash:0,dead:false});
+   particle(c.x,c.y-35,'ガシャッ！','#9feaff',.4,15);
+  }
+ }
+}
 function freezeVinesArc(range,base,cone=Math.PI*2){
  for(const v of vineWalls){
    if(v.dead||v.perma)continue;
@@ -510,6 +522,30 @@ const lavaBoss={
 };
 let lavaBossDefeated=false;
 const flameSwordPickup={x:16340,y:-2460,active:false,taken:false};
+const crystalIceGeo={path:[
+ {x:16820,y:-2750,w:700,h:560},{x:17440,y:-2800,w:720,h:620},
+ {x:18080,y:-2740,w:720,h:560},{x:18720,y:-2800,w:760,h:620},
+ {x:19390,y:-2760,w:900,h:580}
+]};
+const crystalIceBlocks=[
+ {x:17060,y:-2520,r:48,hp:1,dead:false,spawn:false},{x:17330,y:-2350,r:52,hp:1,dead:false,spawn:true},
+ {x:17620,y:-2600,r:46,hp:1,dead:false,spawn:false},{x:17920,y:-2390,r:54,hp:1,dead:false,spawn:true},
+ {x:18220,y:-2580,r:50,hp:1,dead:false,spawn:false},{x:18510,y:-2350,r:48,hp:1,dead:false,spawn:true},
+ {x:18820,y:-2590,r:55,hp:1,dead:false,spawn:false},{x:19120,y:-2380,r:50,hp:1,dead:false,spawn:true},
+ {x:19400,y:-2580,r:54,hp:1,dead:false,spawn:false}
+];
+const crystalPlants=[
+ {x:17180,y:-2410,r:35,hp:12,maxHp:12,attackCd:.5,flash:0,dead:false},
+ {x:17740,y:-2500,r:37,hp:14,maxHp:14,attackCd:.8,flash:0,dead:false},
+ {x:18380,y:-2430,r:38,hp:15,maxHp:15,attackCd:.6,flash:0,dead:false},
+ {x:19000,y:-2510,r:40,hp:16,maxHp:16,attackCd:.9,flash:0,dead:false}
+];
+const crystalThrowers=[];
+const crystalBoss={name:'水晶樹王',x:19820,y:-2470,r:92,hp:78,maxHp:78,active:false,dead:false,attackCd:1.0,flash:0,whip:0,rootCd:1.5};
+let crystalBossDefeated=false;
+const crystalShieldPickup={x:19820,y:-2470,active:false,taken:false};
+const crystalRoots=[];
+
 
 
 
@@ -927,6 +963,7 @@ function visibleGroundRects(){
        if(vegBossDefeated)grounds.push(...fruitRoadGeo.path);
        if(fruitSpearBossDefeated){grounds.push(waterGeo.pool,{x:13020,y:-2750,w:820,h:610});}
        if(waterBossDefeated)grounds.push(...lavaGeo.path);
+       if(lavaBossDefeated)grounds.push(...crystalIceGeo.path);
      }
    }
  }
@@ -1060,17 +1097,17 @@ function saveProgress(){
    saveSchema:SAVE_SCHEMA,
    saveVersion:116,
    x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,
-   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,flameSword:!!player.flameSword,
+   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,flameSword:!!player.flameSword,crystalShield:!!player.crystalShield,
    unlockedWeapons:[...unlockedWeapons],unlockedShields:[...unlockedShields],
    stageBossDefeated:!!stage.bossDefeated,stageBridgeOpen:!!stage.bridgeOpen,
    stage2Started,stage2BossDefeated,stage2BridgeOpen,
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
-   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,
+   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,crystalShieldTaken:!!crystalShieldPickup.taken,
    seedBossDead:!!seedBoss.dead,grassFinalBossDead:!!grassFinalBoss.dead,
    fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,
    hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,vegBossDead:!!vegBoss.dead,
@@ -1089,7 +1126,8 @@ function loadProgress(){
   spearPlus:!!d.spearPlus,
   hammerPlus:!!d.hammerPlus||!!d.spearPlus,
   waterSpear:!!d.waterSpear,
-  flameSword:!!d.flameSword
+  flameSword:!!d.flameSword,
+  crystalShield:!!d.crystalShield
  });
  if(Number.isFinite(d.inv))player.inv=d.inv;
  if(Number.isInteger(d.currentStage))currentStage=d.currentStage;
@@ -1162,6 +1200,11 @@ function loadProgress(){
  if(waterBossDefeated){waterBoss.dead=true;waterBoss.active=false;}
  lavaBossDefeated=!!d.lavaBossDefeated;
  if(lavaBossDefeated){lavaBoss.dead=true;lavaBoss.active=false;}
+ crystalBossDefeated=!!d.crystalBossDefeated;
+ if(crystalBossDefeated){crystalBoss.dead=true;crystalBoss.active=false;}
+ crystalShieldPickup.taken=!!d.crystalShieldTaken||!!d.crystalShield;
+ crystalShieldPickup.active=crystalBossDefeated&&!crystalShieldPickup.taken;
+ if(crystalShieldPickup.taken){player.crystalShield=true;unlockedShields[6]=true;}
  flameSwordPickup.taken=!!d.flameSwordTaken||!!d.flameSword;
  flameSwordPickup.active=lavaBossDefeated&&!flameSwordPickup.taken;
  if(flameSwordPickup.taken){player.flameSword=true;unlockedWeapons[0]=true;}
@@ -1517,16 +1560,17 @@ function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of e
 
 function fireMagic(w,charged,base){
  // 杖は入力方向を優先しつつ、その方向にいる敵・的へ軽く吸い付く。
- const magicSnap=skillAutoAim(base,charged?390:520,charged?.48:.62);
+ const crystal=player.shieldType===6;
+ const magicSnap=skillAutoAim(base,charged?(crystal?520:390):520,charged?.48:.62);
  if(magicSnap.target)base=magicSnap.angle;
  // 杖チャージは「弾を大量に出す」のではなく、武器ごとの固有範囲技。
  if(charged){
    const kind=w===3?'fireCone':'blizzardCone';
    player.staffChargeFx={kind,base,t:.52,max:.52};
 
-   const maxRange=w===3?260:275;
-   const half=w===3?.52:.58;
-   const damage=w===3?7:6;
+   const maxRange=(w===3?260:275)*(crystal?1.48:1);
+   const half=(w===3?.52:.58)*(crystal?1.38:1);
+   const damage=(w===3?7:6)+(crystal?4:0);
 
    // 扇形の中にいる敵へ一度だけダメージ。
    const hitOne=(e)=>{
@@ -1566,7 +1610,7 @@ function fireMagic(w,charged,base){
        if(o.dead)continue;
        const dx=o.x-player.x,dy=o.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
        if(d<maxRange+o.r&&Math.abs(angleDiff(a,base))<half){
-         o.dead=true;particle(o.x,o.y,'ジュワァ！','#bfeeff',.5,17);
+         o.dead=true;particle(o.x,o.y,'ジュワァ！','#bfeeff',.5,17);meltCrystalIceAt(o.x,o.y,95);
        }
      }
      // 赤杖：草を広く燃やす。
@@ -1575,6 +1619,7 @@ function fireMagic(w,charged,base){
        const dx=g.x-player.x,dy=g.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
        if(d<maxRange&&Math.abs(angleDiff(a,base))<half){g.dead=true;particle(g.x,g.y,'ボワッ','#e43',.35,14)}
      }
+     for(let d=45;d<=maxRange;d+=55)meltCrystalIceAt(player.x+Math.cos(base)*d,player.y+Math.sin(base)*d,72);
      particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'ゴォォッ！','#e43',.4,18);
      hitVineContent(7,maxRange,base,half*2,'fire');
    }else{
@@ -1594,7 +1639,8 @@ function fireMagic(w,charged,base){
  if(player.face==='right'){hx=player.x+20;hy=player.y+13;}
  else if(player.face==='left'){hx=player.x-18;hy=player.y+12;}
  const tip=56,sx=hx+Math.cos(base)*tip,sy=hy+Math.sin(base)*tip;
- projectiles.push({x:sx,y:sy,vx:Math.cos(base)*speed,vy:Math.sin(base)*speed,r:radius,life:1.18,kind:w===3?'fire':'ice',damage,charged:false,hit:false,magicPhase:Math.random()*Math.PI*2});
+ const spread=crystal?[-.18,0,.18]:[0];
+ for(const off of spread)projectiles.push({x:sx,y:sy,vx:Math.cos(base+off)*speed,vy:Math.sin(base+off)*speed,r:crystal?13:radius,life:1.18,kind:w===3?'fire':'ice',damage:crystal?4:damage,charged:false,hit:false,magicPhase:Math.random()*Math.PI*2});
  particle(sx,sy,w===3?'ボッ！':'キン！',w===3?'#e43':'#268bc1',.3,15);
 }
 
@@ -1716,7 +1762,8 @@ function hitStage8Spinner(range,base){
 
 function hitVegArea(damage,range,base,cone,weapon){
  if(!cloudRaceWon)return;
-  if(lavaBoss.active&&!lavaBoss.dead){
+  if(crystalBoss.active&&!crystalBoss.dead){const cd=dist(player.x,player.y,crystalBoss.x,crystalBoss.y),ca=Math.atan2(crystalBoss.y-player.y,crystalBoss.x-player.x);if(cd<=range+crystalBoss.r+20&&Math.abs(angleDiff(ca,base))<=cone/2+.2){crystalBoss.hp-=damage;crystalBoss.flash=.2;}}
+ if(lavaBoss.active&&!lavaBoss.dead){
    const ld=dist(player.x,player.y,lavaBoss.x,lavaBoss.y),la=Math.atan2(lavaBoss.y-player.y,lavaBoss.x-player.x);
    if(ld<=range+lavaBoss.r+20&&Math.abs(angleDiff(la,base))<=cone/2+.2){lavaBoss.hp-=damage;lavaBoss.flash=.2;particle(lavaBoss.x,lavaBoss.y-45,`-${damage}`,'#ff7440',.4,16);}
  }
@@ -1750,6 +1797,7 @@ if(fruitSpearBoss.active&&!fruitSpearBoss.dead){
    for(const e of fruitMiniBosses)hit(e);
    for(const e of waterRaiders)hit(e);
    for(const e of lavaThrowers)hit(e);
+   for(const e of crystalPlants)hit(e);for(const e of crystalThrowers)hit(e);
  }
  for(const e of flyingVeg){
    if(e.dead)continue;
@@ -2019,7 +2067,7 @@ function doAttack(charged=false){
      // 杖：ジャンプ中に斜め下へ「実際に見える弾」を撃つ。
      const landX=player.x+Math.cos(base)*125,landY=player.y+Math.sin(base)*125;
      player.airMagic={
-       kind:w===3?'fire':'ice',
+       kind:w===3?'fire':'ice', crystalTriple:player.shieldType===6,
        sx:player.x,sy:player.y,
        x:landX,y:landY,
        t:0,dur:.28,done:false,
@@ -2260,7 +2308,8 @@ function resolveAirMagic(m){
  m.done=true;
  particle(m.x,m.y,m.kind==='fire'?'ボォン！':'キィン！',m.kind==='fire'?'#e43':'#268bc1',.55,20);
  airMagicImpacts.push({x:m.x,y:m.y,kind:m.kind,life:m.kind==='ice'?.92:.52,max:m.kind==='ice'?.92:.52,flake:m.kind==='ice'});
- const rad=86,dmg=5;
+ const rad=m.crystalTriple?105:86,dmg=m.crystalTriple?8:5;
+ if(m.crystalTriple){const a=Math.atan2(m.y-player.y,m.x-player.x);for(const off of [-.28,.28]){const xx=m.x+Math.cos(a+Math.PI/2)*off*260,yy=m.y+Math.sin(a+Math.PI/2)*off*260;airMagicImpacts.push({x:xx,y:yy,kind:m.kind,life:.62,max:.62,flake:m.kind==='ice'});}}
  const hit=(e)=>{
    if(!e||e.dead)return;
    if(dist(m.x,m.y,e.x,e.y)<rad+(e.r||20)){
@@ -2577,7 +2626,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      for(const e of enemies){
        if(e.dead||player.skillHit.has(e))continue;
        if(dist(player.x,player.y,e.x,e.y)<70){
-         e.hp-=3;e.flash=.15;player.skillHit.add(e);particle(e.x,e.y-20,'炎！','#e43',.4,15);
+         e.hp-=player.shieldType===6?6:3;e.flash=.15;player.skillHit.add(e);particle(e.x,e.y-20,'炎！','#e43',.4,15);
          if(e.hp<=0)e.dead=true;
        }
      }
@@ -2603,7 +2652,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      for(const e of enemies){
        if(e.dead||player.skillHit.has(e))continue;
        if(dist(player.x,player.y,e.x,e.y)<72){
-         e.hp-=3;e.flash=.15;e.stagger=Math.max(e.stagger||0,.55);player.skillHit.add(e);
+         e.hp-=player.shieldType===6?6:3;e.flash=.15;e.stagger=Math.max(e.stagger||0,.55);player.skillHit.add(e);
          particle(e.x,e.y-20,'ガツン！','#268bc1',.4,15);
          if(e.hp<=0)e.dead=true;
        }
@@ -2944,6 +2993,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
  for(const pr of projectiles){
    if(pr.hit)continue;
    pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
+   if(!pr.enemyShot&&(pr.kind==='fire'||pr.kind==='fireWheel'||pr.kind==='flameCrescent'))meltCrystalIceAt(pr.x,pr.y,pr.r+38);
    if(pr.life<=0||pr.x<world.minX||pr.y<world.minY||pr.x>world.w||pr.y>world.h){pr.hit=true;continue}
 
    // 敵が撃った種・花粉弾は、プレイヤー専用の当たり判定。
@@ -2957,6 +3007,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        if(pr.kind!=='enemyFire'&&player.jumpT>0){
          particle(player.x,player.y-45,'スカッ','#333',.3,13);
        }else if(shieldBlocks({x:pr.x,y:pr.y})){
+         if(player.shieldType===6){pr.enemyShot=false;pr.vx*=-1.25;pr.vy*=-1.25;pr.damage=Math.max(pr.damage||3,7);pr.life=1.5;particle(pr.x,pr.y,'反射！','#bdf6ff',.35,16);continue;}
          particle(pr.x,pr.y,pr.kind==='enemyFire'?'ボォン！':(pr.kind==='seed'?'カン！':'ポフン！'),'#111',.35,14);
        }else if(player.inv<=0){
          const got=takeDamage(pr.damage);
@@ -3918,6 +3969,27 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
 
+
+ // 炎神の剣の先：水晶氷原。
+ if(lavaBossDefeated){
+  for(const e of crystalPlants){
+   if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;const d=dist(player.x,player.y,e.x,e.y);
+   if(d<330){const a=Math.atan2(player.y-e.y,player.x-e.x);if(d>85){e.x+=Math.cos(a)*34*dt;e.y+=Math.sin(a)*34*dt;}if(d<105&&e.attackCd<=0){e.attackCd=1.05;if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){const got=takeDamage(6);player.inv=.5;particle(player.x,player.y-30,`葉っぱ -${got}`,'#75dfff',.4,15)}}}
+  }
+  for(const e of crystalThrowers){
+   if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;if(dist(player.x,player.y,e.x,e.y)<500&&e.attackCd<=0){e.attackCd=1.45;const a=Math.atan2(player.y-e.y,player.x-e.x);projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*220,vy:Math.sin(a)*220,r:14,life:2.6,kind:'iceRock',damage:7,enemyShot:true,hit:false});}
+  }
+  for(const r of crystalRoots){r.life-=dt;if(r.life<.28&&!r.hit&&dist(player.x,player.y,r.x,r.y)<52&&player.jumpT<=0){r.hit=true;if(!shieldBlocks(r)&&player.inv<=0){const got=takeDamage(9);player.inv=.55;particle(player.x,player.y-30,`-${got}`,'#75dfff',.4,16)}}}
+  for(let i=crystalRoots.length-1;i>=0;i--)if(crystalRoots[i].life<=0)crystalRoots.splice(i,1);
+  const b=crystalBoss,d=dist(player.x,player.y,b.x,b.y);
+  if(!b.dead&&!b.active&&player.x>19400){b.active=true;say('水晶樹王！ ツタと根が地面を覆う！');}
+  if(b.active&&!b.dead){b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.rootCd-=dt;b.whip=Math.max(0,b.whip-dt);
+   if(d<310&&b.attackCd<=0){b.attackCd=1.3;b.whip=.35;if(d<185&&player.jumpT<=0&&!shieldBlocks(b)&&player.inv<=0){const got=takeDamage(10);player.inv=.6;particle(player.x,player.y-35,`ムチ -${got}`,'#6bd9ff',.4,16)}}
+   if(b.rootCd<=0){b.rootCd=1.65;crystalRoots.push({x:player.x,y:player.y,r:42,life:.72,hit:false});particle(player.x,player.y+20,'！','#111',.32,18);}
+   if(b.hp<=0){b.dead=true;b.active=false;crystalBossDefeated=true;crystalShieldPickup.active=true;crystalShieldPickup.x=b.x;crystalShieldPickup.y=b.y;say('水晶の盾が現れた！');saveProgress();}
+  }
+  if(crystalShieldPickup.active&&!crystalShieldPickup.taken&&dist(player.x,player.y,crystalShieldPickup.x,crystalShieldPickup.y)<80){crystalShieldPickup.taken=true;crystalShieldPickup.active=false;player.crystalShield=true;unlockedShields[6]=true;player.shieldType=6;say('水晶の盾 GET！ 杖が共鳴して強化された！');saveProgress();}
+ }
  // 水龍の先：溶岩地帯。
  if(waterBossDefeated){
    for(const l of lavaFlows)l.frozen=Math.max(0,(l.frozen||0)-dt);
@@ -5157,6 +5229,15 @@ function drawWorld(){
          circle(0,0,9,'#fff','#111',3);ctx.restore();
        }
 
+       if(lavaBossDefeated){
+        for(const r of crystalIceGeo.path){ctx.fillStyle='#d9f7ff';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,45);ctx.fill();ctx.stroke();}
+        for(const c of crystalIceBlocks){if(c.dead)continue;ctx.save();ctx.translate(c.x,c.y);ctx.fillStyle='#a8edff';ctx.strokeStyle='#178db4';ctx.lineWidth=5;ctx.beginPath();for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3,rr=i%2?c.r*.72:c.r;const x=Math.cos(a)*rr,y=Math.sin(a)*rr;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+        for(const e of crystalPlants){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);circle(0,0,e.r,'#87e8ff','#111',5);for(let i=0;i<5;i++){ctx.save();ctx.rotate(i*Math.PI*2/5);ctx.fillStyle='#bff7ff';ctx.strokeStyle='#1687aa';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(18,-54);ctx.lineTo(32,-16);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}ctx.restore();}
+        for(const e of crystalThrowers){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);circle(0,0,e.r,'#6fc9e8','#111',5);ctx.fillStyle='#dffaff';ctx.beginPath();ctx.moveTo(-18,-15);ctx.lineTo(0,-45);ctx.lineTo(18,-15);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+        for(const r of crystalRoots){ctx.save();ctx.translate(r.x,r.y);ctx.globalAlpha=.75;ctx.strokeStyle='#54cbe9';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,38,0,Math.PI*2);ctx.stroke();if(r.life<.32){ctx.fillStyle='#bff8ff';ctx.beginPath();ctx.moveTo(-15,25);ctx.lineTo(0,-65);ctx.lineTo(15,25);ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();}
+        if(!crystalBoss.dead){const b=crystalBoss;ctx.save();ctx.translate(b.x,b.y);if(b.flash>0)ctx.globalAlpha=.55;ctx.fillStyle='#75dcf5';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(0,-85);ctx.lineTo(58,-25);ctx.lineTo(42,60);ctx.lineTo(0,82);ctx.lineTo(-45,55);ctx.lineTo(-58,-28);ctx.closePath();ctx.fill();ctx.stroke();for(const q of [-1,1]){ctx.save();ctx.scale(q,1);ctx.strokeStyle='#48b8d5';ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(25,10);ctx.quadraticCurveTo(105,-20,125,58);ctx.stroke();ctx.restore();}ctx.restore();ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('水晶樹王',b.x,b.y-112);}
+        if(crystalShieldPickup.active&&!crystalShieldPickup.taken){ctx.save();ctx.translate(crystalShieldPickup.x,crystalShieldPickup.y);ctx.fillStyle='#bff7ff';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(0,-48);ctx.lineTo(39,-24);ctx.lineTo(32,30);ctx.lineTo(0,50);ctx.lineTo(-32,30);ctx.lineTo(-39,-24);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+       }
        if(waterBossDefeated){
          for(const r of lavaGeo.path){
            ctx.fillStyle='#5a4035';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,42);ctx.fill();ctx.stroke();
