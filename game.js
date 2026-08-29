@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 146: 最初の浮遊草原ステージ
+// Prototype 147: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -2195,12 +2195,13 @@ function doAttack(charged=false){
  }
 
  if(w===0&&player.flameSword&&!charged){
-   const dmg=3;
+   const dmg=5;
    projectiles.push({
-     x:player.x+Math.cos(base)*58,y:player.y+Math.sin(base)*58,
-     vx:Math.cos(base)*310,vy:Math.sin(base)*310,r:15,life:.46,
-     kind:'flameCrescent',damage:dmg,hit:false
+     x:player.x+Math.cos(base)*64,y:player.y+Math.sin(base)*64,
+     vx:Math.cos(base)*370,vy:Math.sin(base)*370,r:24,life:.58,
+     kind:'flameCrescent',damage:dmg,hit:false,flameGod:true
    });
+   particle(player.x+Math.cos(base)*62,player.y+Math.sin(base)*62,'ゴウッ！','#ff7a2d',.22,13);
  }
  if(w===0){
   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
@@ -2524,9 +2525,9 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      }else{mx=0;my=0;speed=0}
      if(t<.60&&local>.055&&local<.12&&!player.skillHit.has('s'+phase)){
        player.skillHit.add('s'+phase);
-       particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,'ザシュ！','#fff',.25,15);
+       particle(player.x+Math.cos(sa)*55,player.y+Math.sin(sa)*55,player.flameSword?(phase===2?'炎斬・参！':'炎斬！'):'ザシュ！',player.flameSword?'#ff9a38':'#fff',.28,15);
        const sd=swordDamage(3);
-       hitVineContent(sd,112,sa,1.25,'physical');hitBoss(sd,112,sa,1.25);hitIslandBoss(sd,112,sa,1.25);hitFireBoss(sd,112,sa,1.25);hitIceBoss(sd,112,sa,1.25);hitStage2(sd,112,sa,1.25);hitStage3(sd,112,sa,1.25,0,false);hitStage45(sd,112,sa,1.25,0);
+       hitVineContent(sd,112,sa,1.25,player.flameSword?'fire':'physical');hitBoss(sd,112,sa,1.25);hitIslandBoss(sd,112,sa,1.25);hitFireBoss(sd,112,sa,1.25);hitIceBoss(sd,112,sa,1.25);hitStage2(sd,112,sa,1.25);hitStage3(sd,112,sa,1.25,0,false);hitStage45(sd,112,sa,1.25,0);
        for(const e of enemies){
          if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);
          if(d<112+e.r&&Math.abs(angleDiff(aa,sa))<.7){e.hp-=sd;e.flash=.15;enemyHitReact(e,55);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}
@@ -2536,6 +2537,17 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
          if(tr.dead)continue;
          const d=dist(player.x,player.y,tr.x,tr.y),aa=Math.atan2(tr.y-player.y,tr.x-player.x);
          if(d<150&&Math.abs(angleDiff(aa,sa))<.8){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}
+       }
+       if(player.flameSword&&phase===2){
+         // 三段斬りの最後：踏み込んだ先から赤杖ジャンプ攻撃系の火柱。
+         const px=player.x+Math.cos(sa)*78,py=player.y+Math.sin(sa)*78;
+         airMagicImpacts.push({x:px,y:py,kind:'fire',life:.58,max:.58});
+         particle(px,py-18,'炎柱！','#ff642a',.55,19);
+         const fr=112,fd=swordDamage(5);
+         const burn=(e)=>{if(!e||e.dead||dist(px,py,e.x,e.y)>fr+(e.r||20))return;e.hp=(e.hp??1)-fd;e.flash=.2;if(e.hp<=0)e.dead=true;};
+         for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,vegArmy,roadVegSoldiers,fruitMiniBosses,waterRaiders,lavaThrowers,crystalPlants,crystalThrowers])for(const e of list)burn(e);
+         for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss])if(!('active' in b)||b.active)burn(b);
+         meltCrystalIceAt(px,py,135);
        }
      }
 
@@ -2999,6 +3011,17 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    // 敵が撃った種・花粉弾は、プレイヤー専用の当たり判定。
    // 自分自身や他の敵には当たらず、プレイヤー弾処理にも流さない。
    if(pr.enemyShot){
+     // 炎神の剣は通常攻撃・三段斬りスキル・チャージのすべてで弾を焼き弾く。
+     const flameSwordDeflect=player.weapon===0&&player.flameSword&&(
+       player.attacking>0 ||
+       (player.skillKind==='sword'&&player.skillT>0) ||
+       player.flameCharge>0
+     );
+     if(flameSwordDeflect&&dist(pr.x,pr.y,player.x,player.y)<pr.r+(player.flameCharge>0?255:105)){
+       pr.hit=true;
+       particle(pr.x,pr.y,'バシュッ！','#ff9b31',.32,15);
+       continue;
+     }
      // 槍スキルの風車回転中は、槍そのものが弾を弾く。
      if((pr.kind!=='enemyFire'||player.waterSpear)&&player.skillKind==='spear'&&player.skillT>0&&player.spearSkillHeld&&dist(pr.x,pr.y,player.x,player.y)<pr.r+82){
        pr.hit=true;particle(pr.x,pr.y,'キン！','#fff',.28,14);continue;
@@ -5707,10 +5730,21 @@ function drawProjectile(pr){
  }
  if(pr.kind==='flameCrescent'){
    ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));
-   ctx.globalCompositeOperation='screen';ctx.globalAlpha=.30;ctx.strokeStyle='#ff4d22';ctx.lineWidth=20;
-   ctx.beginPath();ctx.arc(-2,0,27,-.85,.85);ctx.stroke();
-   ctx.globalAlpha=.92;ctx.strokeStyle='#ff8b31';ctx.lineWidth=10;ctx.beginPath();ctx.arc(-2,0,25,-.9,.9);ctx.stroke();
-   ctx.strokeStyle='#ffd15a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(-2,0,22,-.9,.9);ctx.stroke();ctx.restore();return;
+   ctx.globalCompositeOperation='screen';
+   // 太い赤橙の三日月＋後方へ流れる炎の尾。通常攻撃でも必殺技感を出す。
+   ctx.globalAlpha=.20;ctx.strokeStyle='#ff351d';ctx.lineWidth=34;
+   ctx.beginPath();ctx.arc(-4,0,40,-.98,.98);ctx.stroke();
+   ctx.globalAlpha=.88;ctx.strokeStyle='#ff6a22';ctx.lineWidth=20;
+   ctx.beginPath();ctx.arc(-3,0,37,-1.02,1.02);ctx.stroke();
+   ctx.globalAlpha=.98;ctx.strokeStyle='#ffb238';ctx.lineWidth=9;
+   ctx.beginPath();ctx.arc(-2,0,34,-1.02,1.02);ctx.stroke();
+   ctx.globalAlpha=.92;ctx.strokeStyle='#fff0a8';ctx.lineWidth=3;
+   ctx.beginPath();ctx.arc(-1,0,31,-.96,.96);ctx.stroke();
+   for(let i=0;i<4;i++){
+     const y=(i-1.5)*9;ctx.globalAlpha=.20+i*.08;ctx.strokeStyle=i%2?'#ff9b31':'#ff4b23';ctx.lineWidth=7-i;
+     ctx.beginPath();ctx.moveTo(-68-i*10,y*1.2);ctx.quadraticCurveTo(-38,y*.45,-15,y*.18);ctx.stroke();
+   }
+   ctx.restore();return;
  }
 
  if(pr.kind==='thrownIce'){
@@ -6226,6 +6260,12 @@ function drawSwordSkillEffect(){
    ctx.stroke();
  }
 
+ if(player.flameSword){
+   const fp=Math.min(1,player.skillElapsed/.62);
+   ctx.globalAlpha=.48;ctx.strokeStyle='#ff6a2a';ctx.lineWidth=12;
+   ctx.beginPath();ctx.arc(0,0,72+fp*18,bladeA-.75,bladeA+.75);ctx.stroke();
+   ctx.strokeStyle='#ffcf4b';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,67+fp*15,bladeA-.68,bladeA+.68);ctx.stroke();
+ }
  // 曲がった瞬間だけ短い斬撃の弧を添える。
  if(player.skillElapsed<.24){
    const p=(player.skillElapsed-.14)/.10;
