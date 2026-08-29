@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 134: 最初の浮遊草原ステージ
+// Prototype 135: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -830,6 +830,13 @@ function pointSupportedByGround(x,y,pad=24){
 
 
 
+
+function groundEnemyCanChase(e,maxDist=520){
+ if(!e||e.dead)return false;
+ if(dist(player.x,player.y,e.x,e.y)>maxDist)return false;
+ // 同じ足場の上にいる時だけ地上敵は追跡する。別島のプレイヤーを追って空へ出ない。
+ return pointOnSameVisibleGround({x:e.x,y:e.y},{x:player.x,y:player.y},-8);
+}
 function enemySupportedByGround(e,pad=10){
  if(!e||!Number.isFinite(e.x)||!Number.isFinite(e.y))return false;
  const p=Math.max(pad,(e.r||18)*.35);
@@ -843,10 +850,16 @@ function enemySupportedByGround(e,pad=10){
 }
 function keepGroundEnemyOnGround(e,dt){
  if(!e||e.dead||e.enemyFalling)return;
- // 敵はプレイヤーのように空中ジャンプしない。足場を外れたらその場から落下。
- if(!enemySupportedByGround(e,8)){
-   e.enemyFalling=true;e.enemyFallT=0;e.enemyFallX=e.x;e.enemyFallY=e.y;
+ if(enemySupportedByGround(e,8)){
+   e.enemyNoGroundT=0;
+   e.lastGroundX=e.x;e.lastGroundY=e.y;
+   return;
  }
+ // 1フレームの押し出しや地形境界の誤差では即消さない。
+ e.enemyNoGroundT=(e.enemyNoGroundT||0)+dt;
+ if(e.enemyNoGroundT<.18)return;
+ // 実際に一定時間足場を失った時だけ落下。
+ e.enemyFalling=true;e.enemyFallT=0;e.enemyFallX=e.x;e.enemyFallY=e.y;e.enemyNoGroundT=0;
 }
 function updateGroundEnemyFall(e,dt){
  if(!e||!e.enemyFalling)return false;
@@ -2693,10 +2706,16 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
 
    const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
 
+   // プレイヤーが別エリアにいる時は、その場で待機。遠距離追跡で島から消えない。
+   if(d>560){e.attackWind=0;e.windHit=false;continue;}
+
    // 攻撃中でなければ近づく。ただ触れただけではダメージなし。
-   if(d>64&&e.hitReact<=0&&e.attackWind<=0){
+   if(d>64&&e.hitReact<=0&&e.attackWind<=0&&groundEnemyCanChase(e,480)){
+     const ox=e.x,oy=e.y;
      e.x+=dx/d*e.speed*dt*(e.stagger>0?.22:1);
      e.y+=dy/d*e.speed*dt*(e.stagger>0?.22:1);
+     // AI移動だけで崖へ踏み出しそうなら、その1フレームの移動を取り消す。
+     if(!enemySupportedByGround(e,4)){e.x=ox;e.y=oy;}
    }
 
    // 近距離で一度構えてから葉っぱを振る。
@@ -2851,7 +2870,10 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
      const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
      e.attackWind=Math.max(0,(e.attackWind||0)-dt);e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);
-     if(d>66&&e.hitReact<=0&&e.attackWind<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+     if(d>66&&e.hitReact<=0&&e.attackWind<=0&&groundEnemyCanChase(e,500)){
+       const ox=e.x,oy=e.y;e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;
+       if(!enemySupportedByGround(e,4)){e.x=ox;e.y=oy;}
+     }
      if(d<=78&&e.attackCd<=0&&e.attackWind<=0){
        e.attackCd=1.05;e.attackWind=.30;particle(e.x,e.y-28,'…！','#555',.22,12);
      }
