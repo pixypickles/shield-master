@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 132: 最初の浮遊草原ステージ
+// Prototype 133: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -146,9 +146,9 @@ const currentStreams=[
  // 生命の盾後の上段はショートカット兼ご褒美ルート。右→左へ高速で運ぶ。
  {id:'upperExpress',source:'cloud',cloudX:14020,cloudY:-70,width:72,speed:235,frozen:0,
   pts:[{x:14020,y:80},{x:13700,y:125},{x:12800,y:135},{x:11800,y:135},{x:10800,y:140},{x:9800,y:140},{x:8800,y:140},{x:7800,y:140},{x:6800,y:140},{x:5800,y:140},{x:4800,y:140},{x:3800,y:140},{x:2800,y:140},{x:1800,y:140},{x:850,y:145},{x:520,y:165}]},
- {id:'vegRushA',source:'cloud',cloudX:6650,cloudY:-3000,width:38,speed:340,frozen:0,pts:[{x:6650,y:-2820},{x:6700,y:-2630},{x:6810,y:-2460},{x:6910,y:-2140}]},
- {id:'vegRushB',source:'cloud',cloudX:7420,cloudY:-3070,width:34,speed:385,frozen:0,pts:[{x:7420,y:-2880},{x:7460,y:-2680},{x:7560,y:-2470},{x:7630,y:-2090}]},
- {id:'vegRushC',source:'cloud',cloudX:8150,cloudY:-2990,width:40,speed:360,frozen:0,pts:[{x:8150,y:-2810},{x:8090,y:-2630},{x:8170,y:-2430},{x:8240,y:-2110}]},
+ {id:'vegRushA',source:'cloud',cloudX:6650,cloudY:-3000,width:38,speed:340,frozen:0,pts:[{x:6650,y:-3000},{x:6650,y:-2820},{x:6700,y:-2630},{x:6810,y:-2460},{x:6910,y:-2140}]},
+ {id:'vegRushB',source:'cloud',cloudX:7420,cloudY:-3070,width:34,speed:385,frozen:0,pts:[{x:7420,y:-3070},{x:7420,y:-2880},{x:7460,y:-2680},{x:7560,y:-2470},{x:7630,y:-2090}]},
+ {id:'vegRushC',source:'cloud',cloudX:8150,cloudY:-2990,width:40,speed:360,frozen:0,pts:[{x:8150,y:-2990},{x:8150,y:-2810},{x:8090,y:-2630},{x:8170,y:-2430},{x:8240,y:-2110}]},
 
 ];
 const cloudJumpPads=[
