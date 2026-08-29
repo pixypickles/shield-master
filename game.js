@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 152: 最初の浮遊草原ステージ
+// Prototype 153: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -97,7 +97,7 @@ function spawnEnemy(x,y,type='grass'){
  const hp=flower?2:1;
  enemies.push({x,y,r:flower?24:22,hp,maxHp:hp,speed:flower?58:74,type,hit:0,attackCd:Math.random()*.8+.3,flash:0,stagger:0,dead:false});
 }
-[[520,520],[760,470],[980,610],[1190,500],[1290,625]].forEach((p,i)=>spawnEnemy(...p,i===1||i===3?'flower':'grass'));
+[[660,430],[790,485],[1010,610],[1210,505],[1320,625]].forEach((p,i)=>spawnEnemy(...p,i===1||i===3?'flower':'grass'));
 
 
 const boss={
@@ -120,7 +120,7 @@ const props={
   {x:850,y:485,dead:false,gate:true},{x:850,y:550,dead:false,gate:true},{x:850,y:615,dead:false,gate:true},
   // それ以外は意味のない自然配置。斬っても斬らなくてもよい。
   {x:790,y:675,dead:false},{x:1040,y:515,dead:false},
-  {x:1280,y:390,dead:false},{x:1340,y:675,dead:false},{x:455,y:470,dead:false}
+  {x:1280,y:390,dead:false},{x:1340,y:675,dead:false},{x:610,y:405,dead:false}
  ]
 };
 
@@ -130,8 +130,8 @@ const startRockWall={x:125,y:525,w:76,h:360,hp:1,dead:false};
 // 大陸を横切る水流。速度差・曲がり・岩の湧き口を混ぜる。
 // flow は px/sec。frozen>0 の間は青杖で凍結して流れが完全停止する。
 const currentStreams=[
- {id:'s1cross',source:'cloud',cloudX:1010,cloudY:180,width:72,speed:62,frozen:0,
-  pts:[{x:1010,y:330},{x:1015,y:500},{x:1065,y:610},{x:1060,y:730},{x:1060,y:900}]},
+ {id:'s1cross',source:'cloud',cloudX:1195,cloudY:180,width:72,speed:62,frozen:0,
+  pts:[{x:1195,y:330},{x:1190,y:490},{x:1185,y:585},{x:1190,y:730},{x:1190,y:900}]},
  {id:'s2rock',source:'cloud',cloudX:2440,cloudY:280,width:68,speed:118,frozen:0,
   pts:[{x:2440,y:430},{x:2520,y:455},{x:2610,y:520},{x:2840,y:560},{x:3020,y:760}]},
  {id:'s3bend',source:'cloud',cloudX:3820,cloudY:190,width:78,speed:46,frozen:0,
@@ -1465,6 +1465,8 @@ function renderEquipPanel(){
    });
  }else{
    shields.forEach((sh,i)=>{
+     // ミラー/マジックは旧内部データのみ。最終盾は光の盾なので装備一覧には空き枠を残さない。
+     if(i===2||i===3)return;
      const b=document.createElement('button');
      b.className='equipItem'+(!unlockedShields[i]?' locked':'')+(player.shieldType===i?' selected':'');
      b.textContent=unlockedShields[i]?sh.name:'？？？';
@@ -4618,8 +4620,8 @@ function drawSurfaceStreams(){
    if(!streamHasSurface(st))continue;
    const active=st.frozen<=0;
    ctx.save();clipVisibleGround();ctx.globalAlpha=.84;ctx.lineJoin='round';ctx.lineCap='round';
-   ctx.strokeStyle=active?'#159fe9':'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
-   ctx.strokeStyle=active?'#72d0f6':'#e9fbff';ctx.lineWidth=Math.max(14,st.width-7);traceStreamPath(st);ctx.stroke();
+   ctx.strokeStyle=active?'#4ca6c8':'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
+   ctx.strokeStyle=active?'#9fe5f5':'#e9fbff';ctx.lineWidth=Math.max(14,st.width-7);traceStreamPath(st);ctx.stroke();
    if(active){
      const tm=performance.now()/1000*st.speed*.72;
      for(let i=0;i<st.pts.length-1;i++){
