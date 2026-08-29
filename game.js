@@ -24,9 +24,9 @@ const weapons=[
  {name:'赤杖',range:150,color:'#ff675d'},
  {name:'青杖',range:150,color:'#70c8ff'}
 ];
-const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
+const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 144: 最初の浮遊草原ステージ
+// Prototype 145: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -2030,6 +2030,23 @@ function doAttack(charged=false){
    return;
  }
 
+ // 炎神の剣チャージ：3回転しながら炎輪が大きく外へ広がる。
+ if(w===0&&charged&&player.flameSword){
+   player.attackMax=.78;player.attacking=.78;player.attackCooldown=.94;
+   player.flameCharge=.78;player.flameChargeMax=.78;player.flameChargeA=base;
+   particle(player.x,player.y-50,'炎神・三回転！','#ff8a35',.58,18);
+   const rad=235,dmg=swordDamage(7);
+   for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,vegArmy,roadVegSoldiers,fruitMiniBosses,waterRaiders,lavaThrowers]){
+     for(const e of list){if(!e||e.dead||dist(player.x,player.y,e.x,e.y)>rad+(e.r||20))continue;e.hp-=dmg;e.flash=.22;particle(e.x,e.y-24,`-${dmg}`,'#ff6a2a',.4,16);if(e.hp<=0)e.dead=true;}
+   }
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss]){
+     if(!b||b.dead||(('active' in b)&&!b.active)||dist(player.x,player.y,b.x,b.y)>rad+(b.r||50))continue;b.hp-=dmg;b.flash=.22;
+   }
+   for(const g of props.grass)if(!g.dead&&dist(player.x,player.y,g.x,g.y)<rad){g.dead=true;particle(g.x,g.y,'ボワッ','#e43',.3,13)}
+   hitVineContent(dmg,rad,base,Math.PI*2,'fire');
+   return;
+ }
+
  // 剣チャージ：360度回転斬り（既存）
  if(w===0 && charged){
    player.spin=1;player.spinT=0;player.attackMax=.56;player.attacking=.56;player.attackCooldown=.72;
@@ -2043,22 +2060,36 @@ function doAttack(charged=false){
 
  // 槍チャージ：スパイラル貫通突き。長射程・敵を貫通・岩も破壊。
  if(w===1 && charged){
-   player.attackMax=.48;player.attacking=.48;player.attackCooldown=.72;
-   player.spiral=.48;player.spiralA=base;
-   particle(player.x,player.y-48,'スパイラル！','#fff',.45,15);
-   const reach=285, width=34;
+   const blizzard=!!player.waterSpear;
+   const spiralDur=blizzard?.68:.48;
+   player.attackMax=spiralDur;player.attacking=spiralDur;player.attackCooldown=blizzard?.88:.72;
+   player.spiral=spiralDur;player.spiralMax=spiralDur;player.spiralA=base;
+   particle(player.x,player.y-48,blizzard?'ブリザードスパイラル！':'スパイラル！',blizzard?'#bfefff':'#fff',.55,blizzard?18:15);
+   const reach=blizzard?620:285, width=blizzard?54:34;
    const fx=Math.cos(base),fy=Math.sin(base);
    for(const e of enemies){
      if(e.dead)continue;
      const dx=e.x-player.x,dy=e.y-player.y;
      const along=dx*fx+dy*fy, side=Math.abs(dx*fy-dy*fx);
      if(along>0&&along<reach&&side<width+e.r*.45){
-       e.hp-=4;enemyHitReact(e,34);particle(e.x,e.y-22,'-4','#b31313',.45,16);
+       const sd=blizzard?7:4;e.hp-=sd;enemyHitReact(e,blizzard?48:34);particle(e.x,e.y-22,`-${sd}`,blizzard?'#71d9ff':'#b31313',.45,16);
        if(e.hp<=0){e.dead=true;particle(e.x,e.y,'貫通！','#111',.55,18)}
      }
    }
-   hitBoss(4,285,base,.55);hitIslandBoss(4,285,base,.55);hitFireBoss(4,285,base,.55);hitStage2(4,285,base,.55);hitStage3(4,285,base,.55,w,true);hitStage45(8,285,base,.55,w);hitStage8Spinner(285,base);
-   if(player.waterSpear)freezeVinesArc(300,base,.62);
+   const sd=blizzard?7:4,cone=blizzard?.72:.55;
+   hitBoss(sd,reach,base,cone);hitIslandBoss(sd,reach,base,cone);hitFireBoss(sd,reach,base,cone);hitIceBoss(sd,reach,base,cone);hitStage2(sd,reach,base,cone);hitStage3(sd,reach,base,cone,w,true);hitStage45(blizzard?10:8,reach,base,cone,w);hitStage8Spinner(reach,base);
+   if(player.waterSpear){
+     freezeVinesArc(reach+25,base,cone+.08);
+     for(let d=70;d<=reach;d+=65){const ix=player.x+fx*d,iy=player.y+fy*d;freezeLegacyWaterAt(ix,iy,75);freezeStreamsAt(ix,iy,75);freezeLavaAt(ix,iy,85);}
+   }
+   if(blizzard){
+     const hitLine=(e)=>{
+       if(!e||e.dead)return;const dx=e.x-player.x,dy=e.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
+       if(along>0&&along<reach&&side<width+(e.r||20)*.5){e.hp=(e.hp??1)-7;e.flash=.2;particle(e.x,e.y-24,'氷貫通！','#bfefff',.38,15);if(e.hp<=0)e.dead=true;}
+     };
+     for(const list of [vegArmy,vegFireFlowers,roadVegSoldiers,roadFlowers,fruitMiniBosses,waterRaiders,lavaThrowers])for(const e of list)hitLine(e);
+     for(const b of [vegBoss,fruitSpearBoss,waterBoss,lavaBoss])if(!('active' in b)||b.active)hitLine(b);
+   }
    // 槍でも岩は削れるが、5回必要。ハンマーなら1発。
    for(const r of stage7Rocks){
      if(r.dead)continue;
@@ -2279,6 +2310,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
 
  // P16 チャージ攻撃の時間処理
  if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
+ if(player.flameCharge>0)player.flameCharge=Math.max(0,player.flameCharge-dt);
  if(player.staffChargeFx){player.staffChargeFx.t-=dt;if(player.staffChargeFx.t<=0)player.staffChargeFx=null;}
  if(player.hammerSmash>0){
    player.hammerSmash-=dt;player.hammerSmashT+=dt;
@@ -6190,8 +6222,10 @@ function drawChargeEffects(){
 
  if(player.spiral>0){
    ctx.save();ctx.translate(px,py);ctx.rotate(player.spiralA);
-   const life=player.spiral/.48;
+   const life=player.spiral/(player.spiralMax||.48);
    const tm=performance.now()*.018;
+   const blizzard=!!player.waterSpear;
+   const visReach=blizzard?620:280;
 
    // 槍そのものの周囲を巻く螺旋。
    for(let i=0;i<4;i++){
@@ -6199,8 +6233,8 @@ function drawChargeEffects(){
      ctx.strokeStyle=i%2?'rgba(255,255,255,.95)':'rgba(125,220,255,.95)';
      ctx.lineWidth=i%2?5:7;
      ctx.beginPath();
-     for(let x=18;x<280;x+=7){
-       const spread=8+x*.075;
+     for(let x=18;x<visReach;x+=7){
+       const spread=8+x*(blizzard?.055:.075);
        const y=Math.sin(x*.115+tm+i*Math.PI/2)*spread;
        if(x===18)ctx.moveTo(x,y);else ctx.lineTo(x,y);
      }
@@ -6210,7 +6244,7 @@ function drawChargeEffects(){
    // 空気が引っ張られて前へ流れている長い残像。
    ctx.lineCap='round';
    for(let i=0;i<8;i++){
-     const phase=(tm*22+i*29)%245;
+     const phase=(tm*22+i*29)%(visReach-35);
      const x=30+phase;
      const side=(i%2?1:-1)*(15+(i%4)*7);
      const len=38+(i%3)*18;
@@ -6227,11 +6261,43 @@ function drawChargeEffects(){
    ctx.globalAlpha=.42*life;
    ctx.strokeStyle='rgba(210,247,255,.95)';
    ctx.lineWidth=5;
-   for(let j=0;j<3;j++){
-     const x=125+j*58;
+   for(let j=0;j<(blizzard?7:3);j++){
+     const x=125+j*(blizzard?72:58);
      ctx.beginPath();
      ctx.ellipse(x,0,10+j*5,24+j*8,0,0,Math.PI*2);
      ctx.stroke();
+   }
+   if(blizzard){
+     // 水龍の槍だけ、画面端まで伸びる螺旋の中に氷のキラキラを散らす。
+     for(let i=0;i<18;i++){
+       const x=45+((tm*31+i*73)%(visReach-55));
+       const y=Math.sin(tm*.8+i*2.1)*(18+(i%5)*9);
+       const r=3+(i%3)*2;
+       ctx.globalAlpha=(.35+.45*((i%4)/3))*life;ctx.strokeStyle=i%2?'#ffffff':'#8fe8ff';ctx.lineWidth=2;
+       ctx.beginPath();ctx.moveTo(x-r,y);ctx.lineTo(x+r,y);ctx.moveTo(x,y-r);ctx.lineTo(x,y+r);ctx.stroke();
+       if(i%3===0){ctx.beginPath();ctx.moveTo(x-r*.7,y-r*.7);ctx.lineTo(x+r*.7,y+r*.7);ctx.moveTo(x+r*.7,y-r*.7);ctx.lineTo(x-r*.7,y+r*.7);ctx.stroke();}
+     }
+   }
+   ctx.restore();
+ }
+
+ if(player.flameCharge>0){
+   const max=player.flameChargeMax||.78;
+   const p=1-player.flameCharge/max;
+   const spin=p*Math.PI*6; // 3回転
+   const radius=48+p*205;
+   ctx.save();ctx.translate(px,py);ctx.rotate(spin);
+   // 中心の剣回転残像
+   ctx.globalAlpha=.78*(1-p*.35);ctx.strokeStyle='#ff8b35';ctx.lineWidth=13;ctx.beginPath();ctx.arc(0,0,58,0,Math.PI*1.7);ctx.stroke();
+   ctx.strokeStyle='#ffd04c';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,47,.2,Math.PI*1.8);ctx.stroke();
+   // 炎の渦輪が3回転しながら大きく拡大
+   for(let k=0;k<3;k++){
+     const rr=Math.max(32,radius-k*30);ctx.globalAlpha=(.62-k*.12)*(1-p*.18);ctx.strokeStyle=k===1?'#ffb13d':'#ff572c';ctx.lineWidth=14-k*3;
+     ctx.beginPath();ctx.arc(0,0,rr,k*.7+spin*.35,k*.7+spin*.35+Math.PI*1.62);ctx.stroke();
+   }
+   for(let i=0;i<12;i++){
+     const a=spin+i*Math.PI/6,rr=75+p*180*(.55+(i%3)*.18);ctx.globalAlpha=.55;ctx.fillStyle=i%2?'#ffcf4a':'#ff5a2e';
+     ctx.beginPath();ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);ctx.lineTo(Math.cos(a+.08)*(rr-24),Math.sin(a+.08)*(rr-24));ctx.lineTo(Math.cos(a-.08)*(rr-18),Math.sin(a-.08)*(rr-18));ctx.closePath();ctx.fill();
    }
    ctx.restore();
  }
