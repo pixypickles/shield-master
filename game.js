@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 141: 最初の浮遊草原ステージ
+// Prototype 142: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -364,6 +364,7 @@ const cloudRaceTrackRects=(()=>{
 })();
 
 let cloudRaceWon=false;
+let cloudRaceUnlocked=false;
 const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6,intro:false,introPage:0,introT:0,lastIntroPage:-1,startHold:0};
 const vegGeo={path:[
  {x:6200,y:-2520,w:500,h:400},{x:6600,y:-2750,w:720,h:650},
@@ -850,7 +851,7 @@ function visibleGroundRects(){
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
-   if(vineBossDefeated||cloudRaceWon){
+   if(vineBossDefeated||cloudRaceWon||cloudRaceUnlocked){
      grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge,cloudRaceGeo.entryIsland,...cloudRaceTrackRects);
      if(cloudRaceWon){
        grounds.push(cloudRaceGeo.nextIsland,...vegGeo.path,{
@@ -1001,7 +1002,7 @@ function saveProgress(){
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
    healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,
@@ -1074,9 +1075,21 @@ function loadProgress(){
  fireBossDefeated=!!d.fireBossDefeated || !!d.fireBossDead;
  vineBossDefeated=!!d.vineBossDefeated || !!d.vineBossDead;
  cloudRaceWon=!!d.cloudRaceWon;
- // 既にレース勝利済みのセーブなら、その前提となるツタボス撃破も必ず復元。
- if(cloudRaceWon){vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;}
+ cloudRaceUnlocked=!!d.cloudRaceUnlocked || vineBossDefeated || cloudRaceWon;
  vegBossDefeated=!!d.vegBossDefeated||!!d.vegBossDead;
+
+ // 後続エリアまで進んでいるなら、レース通過済みを確定扱いにして前提を復元。
+ const progressedPastRace=
+   vegBossDefeated || !!d.fruitSpearBossDefeated || !!d.waterBossDefeated ||
+   !!d.chargeShieldTaken || !!d.spearUpgradeTaken || !!d.waterSpearTaken ||
+   !!d.hammerPlus || !!d.waterSpear ||
+   (Number.isFinite(d.x)&&Number.isFinite(d.y)&&d.x>6150&&d.y<-1850);
+ if(progressedPastRace){
+   cloudRaceUnlocked=true;cloudRaceWon=true;vineBossDefeated=true;
+ }
+ if(cloudRaceWon||cloudRaceUnlocked){
+   vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;
+ }
  if(vegBossDefeated){vegBoss.dead=true;vegBoss.active=false;}
  fruitSpearBossDefeated=!!d.fruitSpearBossDefeated;
  waterBossDefeated=!!d.waterBossDefeated;
@@ -1146,6 +1159,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(ok){
      // 壊れた/旧式座標だけで「最初から」に見えるのを防ぐ。
      if(!Number.isFinite(player.x)||!Number.isFinite(player.y)){player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;}
+     if((player.x>6150&&player.y<-1850)||vegBossDefeated||fruitSpearBossDefeated||waterBossDefeated){
+       cloudRaceUnlocked=true;cloudRaceWon=true;vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;
+     }
+     saveProgress();
      m.classList.add('hidden');
      say('セーブデータから続きます');
    }else{
@@ -3641,8 +3658,8 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
    }
    if(vineBoss.hp<=0){
-     vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;
-     particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！');
+     vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;cloudRaceUnlocked=true;
+      particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！ レース場への道が開いた！');saveProgress();
    }
  }
  function cloudRaceGateHit(g){
@@ -3824,7 +3841,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    }
  }
  cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
- if(vineBossDefeated){
+ if(vineBossDefeated||cloudRaceUnlocked){
    const st=cloudRaceGeo.start;
    if(!cloudRace.started&&!cloudRace.intro&&cloudRace.retryCd<=0){
      if(dist(player.x,player.y,st.x,st.y)<st.r){
@@ -3843,7 +3860,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
          cloudRace.cp++;
          particle(cp.x,cp.y-40,cloudRace.cp>=cloudRaceGeo.checkpoints.length?'FINISH!':`CHECK ${cloudRace.cp}`,'#fff',.45,17);
          if(cloudRace.cp>=cloudRaceGeo.checkpoints.length){
-           const firstWin=!cloudRaceWon;cloudRaceWon=true;cloudRace.started=false;cloudRace.retryCd=2.2;
+           const firstWin=!cloudRaceWon;cloudRaceUnlocked=true;cloudRaceWon=true;cloudRace.started=false;cloudRace.retryCd=2.2;
            particle(player.x,player.y-60,'YOU WIN!','#fff',1.0,25);
            say(firstWin?'レース勝利！ 虹の橋の先に武器を持った野菜軍団がいる！':'再戦勝利！ スタート門で何度でも挑戦できる！');
            saveProgress();
@@ -4809,7 +4826,7 @@ function drawWorld(){
    }
 
 
-   if(vineBossDefeated||cloudRaceWon){
+   if(vineBossDefeated||cloudRaceWon||cloudRaceUnlocked){
      // 雲ジャンプの出口と、巨大な歪んだ楕円ドーナツ型レース場。
      // レース勝利済みなら、旧セーブのボスフラグが欠けていても必ず表示する。
      const ei=cloudRaceGeo.entryIsland;
