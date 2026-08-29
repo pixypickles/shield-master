@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 127: 最初の浮遊草原ステージ
+// Prototype 128: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -321,20 +321,50 @@ const vineSkyGeo={
 // 雲ジャンプ地帯の先：一周レース場。
 // スタート門に入ると雲ライダーと1周勝負。勝てば次島へ虹の橋。
 const cloudRaceGeo={
- entryIsland:{x:3040,y:-1760,w:310,h:185},
- track:{x:3200,y:-2180,w:1120,h:520},
- start:{x:3345,y:-1905,r:70},
+ entryIsland:{x:3020,y:-1785,w:330,h:200},
+
+ // 大きく歪んだ楕円ドーナツ。中心の芝は走れず、外周だけがコース。
+ cx:4050,cy:-2350,
+ outerRx:1280,outerRy:610,
+ innerRx:1040,innerRy:390,
+
+ start:{x:2920,y:-2320,r:78},
  checkpoints:[
-  {x:3650,y:-2080,r:82,label:'1'},
-  {x:4170,y:-1900,r:82,label:'2'},
-  {x:3700,y:-1715,r:82,label:'3'},
-  {x:3345,y:-1905,r:82,label:'GOAL'}
+  {x:3360,y:-2830,r:92,label:'1'},
+  {x:4310,y:-2970,r:92,label:'2'},
+  {x:5220,y:-2570,r:92,label:'3'},
+  {x:5070,y:-1990,r:92,label:'4'},
+  {x:4200,y:-1770,r:92,label:'5'},
+  {x:3300,y:-1880,r:92,label:'6'},
+  {x:2920,y:-2320,r:92,label:'GOAL'}
  ],
- nextIsland:{x:4540,y:-2100,w:430,h:360},
- rainbow:{x1:4300,y1:-1900,x2:4580,y2:-1900,w:150}
+ nextIsland:{x:5520,y:-2320,w:460,h:390},
+ rainbow:{x1:5260,y1:-2320,x2:5550,y2:-2320,w:150}
 };
+
+// 物理的な足場も「巨大な楕円ドーナツ」に近づける。
+// 14本の細い矩形を周囲へ並べ、中央には地面判定を置かない。
+const cloudRaceTrackRects=(()=>{
+ const arr=[],pts=[];
+ const n=16;
+ for(let i=0;i<n;i++){
+   const a=i/n*Math.PI*2;
+   const wobble=1+0.08*Math.sin(a*3+0.7)+0.045*Math.sin(a*5);
+   pts.push({
+     x:cloudRaceGeo.cx+Math.cos(a)*cloudRaceGeo.outerRx*wobble*.91,
+     y:cloudRaceGeo.cy+Math.sin(a)*cloudRaceGeo.outerRy*(1+0.07*Math.cos(a*2-.4))*.88
+   });
+ }
+ for(let i=0;i<n;i++){
+   const a=pts[i],b=pts[(i+1)%n];
+   const minX=Math.min(a.x,b.x)-78,minY=Math.min(a.y,b.y)-78;
+   arr.push({x:minX,y:minY,w:Math.abs(b.x-a.x)+156,h:Math.abs(b.y-a.y)+156});
+ }
+ return arr;
+})();
+
 let cloudRaceWon=false;
-const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.2};
+const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.6};
 
 
 const vineWalls=[
@@ -735,7 +765,7 @@ function visibleGroundRects(){
  if(fireBossDefeated){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
    if(vineBossDefeated){
-     grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge,cloudRaceGeo.entryIsland,cloudRaceGeo.track);
+     grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge,cloudRaceGeo.entryIsland,...cloudRaceTrackRects);
      if(cloudRaceWon){
        grounds.push(cloudRaceGeo.nextIsland,{
          x:Math.min(cloudRaceGeo.rainbow.x1,cloudRaceGeo.rainbow.x2)-30,
@@ -3270,19 +3300,19 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    const st=cloudRaceGeo.start;
    if(!cloudRace.started&&cloudRace.retryCd<=0&&dist(player.x,player.y,st.x,st.y)<st.r){
      cloudRace.started=true;cloudRace.countdown=2.0;cloudRace.time=0;cloudRace.cp=0;
-     particle(st.x,st.y-55,'READY!','#fff',.65,21);say('雲ライダーと1周勝負！');
+     particle(st.x,st.y-55,'READY!','#fff',.65,21);say('雲ライダーと大外周1周！ 杖スキルを繋いで追いつけ！');
    }
    if(cloudRace.started){
      if(cloudRace.countdown>0){
        cloudRace.countdown=Math.max(0,cloudRace.countdown-dt);
-       if(cloudRace.countdown<=0){particle(st.x,st.y-55,'GO!','#fff',.6,24);say('GO！ ゲートを順番に通れ！');}
+       if(cloudRace.countdown<=0){particle(st.x,st.y-55,'GO!','#fff',.6,24);say('GO！ 普通に走るだけでは勝てない！ 杖スキルで加速！');}
      }else{
        cloudRace.time+=dt;
        const cp=cloudRaceGeo.checkpoints[cloudRace.cp];
        if(cp&&dist(player.x,player.y,cp.x,cp.y)<cp.r){
          cloudRace.cp++;
          particle(cp.x,cp.y-40,cloudRace.cp>=4?'FINISH!':`CHECK ${cloudRace.cp}`,'#fff',.45,17);
-         if(cloudRace.cp>=4){
+         if(cloudRace.cp>=cloudRaceGeo.checkpoints.length){
            cloudRaceWon=true;cloudRace.started=false;
            particle(player.x,player.y-60,'YOU WIN!','#fff',1.0,25);
            say('レース勝利！ 次の島へ虹の橋がかかった！');
@@ -4247,15 +4277,32 @@ function drawWorld(){
 
 
    if(vineBossDefeated){
-     // 雲ジャンプの出口とレース場。
-     const ei=cloudRaceGeo.entryIsland,tr=cloudRaceGeo.track;
+     // 雲ジャンプの出口と、巨大な歪んだ楕円ドーナツ型レース場。
+     const ei=cloudRaceGeo.entryIsland;
      ctx.fillStyle='#65b85d';ctx.strokeStyle='#111';ctx.lineWidth=7;
      ctx.beginPath();ctx.roundRect(ei.x,ei.y,ei.w,ei.h,42);ctx.fill();ctx.stroke();
-     ctx.fillStyle='#70bd65';ctx.beginPath();ctx.roundRect(tr.x,tr.y,tr.w,tr.h,55);ctx.fill();ctx.stroke();
 
-     // レースコースの白線。中央は芝のまま、周回ルートだけ太い点線。
-     ctx.save();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=13;ctx.setLineDash([34,24]);
-     ctx.beginPath();ctx.roundRect(tr.x+85,tr.y+75,tr.w-170,tr.h-150,125);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+     // 外周を太い黒→緑で重ね描きし、細めのドーナツコースに見せる。
+     const racePts=[];
+     for(let i=0;i<=96;i++){
+       const a=i/96*Math.PI*2;
+       const wobble=1+0.08*Math.sin(a*3+0.7)+0.045*Math.sin(a*5);
+       racePts.push({
+         x:cloudRaceGeo.cx+Math.cos(a)*cloudRaceGeo.outerRx*wobble*.91,
+         y:cloudRaceGeo.cy+Math.sin(a)*cloudRaceGeo.outerRy*(1+0.07*Math.cos(a*2-.4))*.88
+       });
+     }
+     ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+     ctx.strokeStyle='#111';ctx.lineWidth=190;ctx.beginPath();ctx.moveTo(racePts[0].x,racePts[0].y);
+     for(let i=1;i<racePts.length;i++)ctx.lineTo(racePts[i].x,racePts[i].y);ctx.stroke();
+     ctx.strokeStyle='#70bd65';ctx.lineWidth=166;ctx.stroke();
+     // コース中央の白い点線。
+     ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=11;ctx.setLineDash([30,24]);ctx.stroke();
+     ctx.setLineDash([]);ctx.restore();
+
+     // 内側は空中。中央に雲海を少し見せて「ショートカット不可」を分かりやすく。
+     ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#dff7fb';ctx.beginPath();
+     ctx.ellipse(cloudRaceGeo.cx,cloudRaceGeo.cy,cloudRaceGeo.innerRx,cloudRaceGeo.innerRy,0,0,Math.PI*2);ctx.fill();ctx.restore();
 
      // スタート門とチェックゲート。
      for(let i=0;i<cloudRaceGeo.checkpoints.length;i++){
@@ -4270,10 +4317,9 @@ function drawWorld(){
      // 対戦相手の雲ライダー。時間でコースを1周する。
      if(cloudRace.started){
        const rr=Math.max(0,Math.min(1,cloudRace.countdown>0?0:cloudRace.time/cloudRace.rivalTime));
-       const pts=[
-         {x:3345,y:-1905},{x:3650,y:-2080},{x:4170,y:-1900},{x:3700,y:-1715},{x:3345,y:-1905}
-       ];
-       const seg=Math.min(3,Math.floor(rr*4)),lt=rr*4-seg,a=pts[seg],b=pts[seg+1];
+       const pts=[cloudRaceGeo.start,...cloudRaceGeo.checkpoints.slice(0,-1),cloudRaceGeo.start];
+       const segCount=pts.length-1;
+       const pos=rr*segCount,seg=Math.min(segCount-1,Math.floor(pos)),lt=pos-seg,a=pts[seg],b=pts[seg+1];
        const rx=a.x+(b.x-a.x)*lt,ry=a.y+(b.y-a.y)*lt;
        circle(rx-16,ry+8,24,'#f8fdff','#111',4);circle(rx+12,ry,28,'#f8fdff','#111',4);
        circle(rx,ry-20,14,'#ef8d55','#111',4);
