@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 140: 最初の浮遊草原ステージ
+// Prototype 141: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -987,9 +987,11 @@ function enforceAllGroundEnemies(dt){
  }
 }
 const SAVE_KEY='shieldHeroSave_v112';
+const SAVE_SCHEMA=141;
 function saveProgress(){
  try{
   localStorage.setItem(SAVE_KEY,JSON.stringify({
+   saveSchema:SAVE_SCHEMA,
    saveVersion:116,
    x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,
    currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,
@@ -1017,7 +1019,10 @@ function loadProgress(){
  Object.assign(player,{
   x:d.x??player.x,y:d.y??player.y,hp:d.hp??player.hp,
   weapon:d.weapon??player.weapon,shieldType:d.shieldType??player.shieldType,
-  swordPlus:!!d.swordPlus
+  swordPlus:!!d.swordPlus,
+  spearPlus:!!d.spearPlus,
+  hammerPlus:!!d.hammerPlus||!!d.spearPlus,
+  waterSpear:!!d.waterSpear
  });
  if(Number.isFinite(d.inv))player.inv=d.inv;
  if(Number.isInteger(d.currentStage))currentStage=d.currentStage;
@@ -1092,7 +1097,11 @@ function loadProgress(){
  hammerPickup.taken=!!d.hammerTaken;
  upperSwordPickup.taken=!!d.upperSwordTaken;
  redStaffPickup.taken=!!d.redStaffTaken || (!!d.fireBossDead && (d.weapon===3||d.weapon===4));
- blueStaffPickup.taken=!!d.blueStaffTaken || (!!d.iceBossDead && d.weapon===4);
+ blueStaffPickup.taken=!!d.blueStaffTaken || (Array.isArray(d.unlockedWeapons)&&!!d.unlockedWeapons[4]);
+ // 氷王を倒したのに青杖をまだ取得していないセーブは、必ずボス跡地へ青杖を復元する。
+ if((d.iceBossDead||iceBoss.dead)&&!blueStaffPickup.taken){
+   blueStaffPickup.x=iceBoss.x;blueStaffPickup.y=iceBoss.y;blueStaffPickup.active=true;
+ }
  healShieldPickup.taken=!!d.healShieldTaken || d.shieldType===1;
  cloudShieldPickup.taken=!!d.cloudShieldTaken || d.shieldType===4;
  chargeShieldPickup.taken=!!d.chargeShieldTaken || d.shieldType===5;
@@ -1118,16 +1127,31 @@ function loadProgress(){
  // ハンマー未取得の旧セーブでも、報酬は必ず道上へ戻す。
  if(hammerGuardian.dead&&!hammerPickup.taken){hammerPickup.x=10470;hammerPickup.y=685;}
 
- weaponNameEl.textContent=player.weapon===0&&player.swordPlus?'翠鋼の剣':weapons[player.weapon].name;
+ weaponNameEl.textContent=
+   player.weapon===0&&player.swordPlus?'翠鋼の剣':
+   player.weapon===2&&player.hammerPlus?'パインハンマー':
+   player.weapon===1&&player.waterSpear?'水龍の槍':
+   weapons[player.weapon].name;
  return true;
 }
-setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},2500);
+setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},1500);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveProgress()});
 window.addEventListener('pagehide',saveProgress);
 window.addEventListener('DOMContentLoaded',()=>{
  const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');
  let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}
  c.disabled=!has;
- c.onclick=()=>{loadProgress();m.classList.add('hidden')};
+ c.onclick=()=>{
+   const ok=loadProgress();
+   if(ok){
+     // 壊れた/旧式座標だけで「最初から」に見えるのを防ぐ。
+     if(!Number.isFinite(player.x)||!Number.isFinite(player.y)){player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;}
+     m.classList.add('hidden');
+     say('セーブデータから続きます');
+   }else{
+     say('セーブデータを読み込めませんでした');
+   }
+ };
  n.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}m.classList.add('hidden')};
 });
 
@@ -3875,12 +3899,14 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    if(iceBoss.hp<=0){
      iceBoss.dead=true;iceBoss.active=false;blueStaffPickup.active=true;
      blueStaffPickup.x=iceBoss.x;blueStaffPickup.y=iceBoss.y;
+     saveProgress();
      particle(iceBoss.x,iceBoss.y,'氷王 撃破！','#fff',.85,24);
      say('氷のボスがいた場所に青杖が残った！');
    }
  }
  if(blueStaffPickup.active&&!blueStaffPickup.taken&&dist(player.x,player.y,blueStaffPickup.x,blueStaffPickup.y)<62){
-   blueStaffPickup.taken=true;unlockedWeapons[4]=true;player.weapon=4;weaponNameEl.textContent=weapons[4].name;
+   blueStaffPickup.taken=true;blueStaffPickup.active=false;unlockedWeapons[4]=true;player.weapon=4;weaponNameEl.textContent=weapons[4].name;
+   saveProgress();
    particle(blueStaffPickup.x,blueStaffPickup.y-30,'青杖 GET！','#dff8ff',.8,22);
    say('青杖を手に入れた！ 水流を凍らせられる！');
  }
