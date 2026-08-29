@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 142: 最初の浮遊草原ステージ
+// Prototype 143: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -161,6 +161,18 @@ function freezeLegacyWaterAt(x,y,rad=60){
    const cx=clamp(x,wa.x,wa.x+wa.w),cy=clamp(y,wa.y,wa.y+wa.h);
    if(Math.hypot(x-cx,y-cy)<=rad){
      wa.frozen=Math.max(wa.frozen||0,5.5);hit=true;
+   }
+ }
+ // P143: 水龍エリアも青杖で凍結できる。凍っている間は通常速度で歩ける。
+ if(typeof waterGeo!=='undefined'){
+   const p=waterGeo.pool,b=waterGeo.bowl;
+   const cx=clamp(x,p.x,p.x+p.w),cy=clamp(y,p.y,p.y+p.h);
+   const rectHit=Math.hypot(x-cx,y-cy)<=rad;
+   const ex=(x-b.x)/(b.rx+rad),ey=(y-b.y)/(b.ry+rad);
+   const bowlHit=ex*ex+ey*ey<=1;
+   if(rectHit||bowlHit){
+     waterGeo.frozen=Math.max(waterGeo.frozen||0,6.0);
+     hit=true;
    }
  }
  return hit;
@@ -436,7 +448,8 @@ let fruitSpearBossDefeated=false;
 const spearUpgradePickup={x:11910,y:-2460,active:false,taken:false}; // パインハンマー用（旧変数名をセーブ互換で維持）
 const waterGeo={
  pool:{x:12120,y:-2750,w:1500,h:610},
- bowl:{x:13420,y:-2745,rx:430,ry:300}
+ bowl:{x:13420,y:-2445,rx:390,ry:255},
+ frozen:0
 };
 const waterRaiders=[
  {type:'cucumber',x:12360,y:-2520,r:28,hp:12,maxHp:12,speed:115,attackCd:.5,flash:0,dead:false},
@@ -2023,8 +2036,12 @@ function doAttack(charged=false){
  hitStage2(commonD,range,base,cone);hitStage3(commonD,range,base,cone,w,false);hitStage45(commonD,range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
  if(w===1&&player.waterSpear&&!charged){
-   projectiles.push({x:player.x+Math.cos(base)*70,y:player.y+Math.sin(base)*70,vx:Math.cos(base)*330,vy:Math.sin(base)*330,r:9,life:.38,kind:'iceShard',damage:2,hit:false});
-   particle(player.x+Math.cos(base)*75,player.y+Math.sin(base)*75,'✦','#bfeeff',.2,12);
+   // 飛ぶ槍先ではなく、突きの延長に青い菱形の氷光が走る。
+   projectiles.push({
+     x:player.x+Math.cos(base)*76,y:player.y+Math.sin(base)*76,
+     vx:Math.cos(base)*365,vy:Math.sin(base)*365,
+     r:11,life:.30,kind:'iceShard',damage:2,hit:false,waterTrail:true
+   });
  }
 
  if(w===0){
@@ -3746,9 +3763,14 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  // パインハンマーの先：腰まで浸かる浅いプール。プレイヤーだけ大きく減速、敵は水中高速。
  if(fruitSpearBossDefeated){
-   const inPool=player.x>waterGeo.pool.x&&player.x<waterGeo.pool.x+waterGeo.pool.w&&player.y>waterGeo.pool.y&&player.y<waterGeo.pool.y+waterGeo.pool.h;
-   if(inPool&&player.jumpT<=0){
-     // 通常移動で進んだ分を少し戻し、見た目にも重い水中歩行にする。
+   waterGeo.frozen=Math.max(0,(waterGeo.frozen||0)-dt);
+   const p=waterGeo.pool,bowl=waterGeo.bowl;
+   const inRect=player.x>p.x&&player.x<p.x+p.w&&player.y>p.y&&player.y<p.y+p.h;
+   const bx=(player.x-bowl.x)/bowl.rx,by=(player.y-bowl.y)/bowl.ry;
+   const inBowl=bx*bx+by*by<1;
+   const inPool=inRect||inBowl;
+   if(inPool&&waterGeo.frozen<=0&&player.jumpT<=0){
+     // 液体の時だけ腰まで浸かるため減速。凍結中は普通の地面と同じ速度。
      player.x=prevX+(player.x-prevX)*.48;player.y=prevY+(player.y-prevY)*.48;
    }
    for(const e of waterRaiders){
@@ -4970,27 +4992,62 @@ function drawWorld(){
        }
 
        if(fruitSpearBossDefeated){
-         // 窪んだ浅いプール。茶色い縁→青い水面で「腰までの水」を表現。
+         // 窪んだ浅いプール。縁の内側だけに水を収める。
          const p=waterGeo.pool;ctx.save();
          ctx.fillStyle='#765638';ctx.strokeStyle='#111';ctx.lineWidth=8;ctx.beginPath();ctx.roundRect(p.x-35,p.y-35,p.w+70,p.h+70,85);ctx.fill();ctx.stroke();
-         ctx.fillStyle='#65bfe0';ctx.strokeStyle='#267aa1';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(p.x,p.y,p.w,p.h,65);ctx.fill();ctx.stroke();
-         ctx.globalAlpha=.28;ctx.strokeStyle='#e9fbff';ctx.lineWidth=5;for(let yy=p.y+70;yy<p.y+p.h;yy+=95){ctx.beginPath();ctx.moveTo(p.x+40,yy);ctx.quadraticCurveTo(p.x+p.w*.5,yy-28,p.x+p.w-40,yy);ctx.stroke();}ctx.restore();
-         // ボスのお椀型広場＋中心へ吸い込む視覚的な渦
-         const b=waterGeo.bowl;ctx.save();ctx.translate(b.x,b.y+b.ry/2);ctx.strokeStyle='#1d789f';ctx.lineWidth=10;
-         for(let k=0;k<4;k++){ctx.globalAlpha=.65-k*.12;ctx.beginPath();ctx.ellipse(0,0,b.rx-k*72,b.ry-k*48,0,.2+k*.55,Math.PI*1.75+k*.55);ctx.stroke();}ctx.restore();
+         ctx.fillStyle=waterGeo.frozen>0?'#bfefff':'#65bfe0';ctx.strokeStyle='#267aa1';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(p.x,p.y,p.w,p.h,65);ctx.fill();ctx.stroke();
+         if(waterGeo.frozen>0){
+           ctx.globalAlpha=.48;ctx.strokeStyle='#f3fdff';ctx.lineWidth=4;
+           for(let xx=p.x+120;xx<p.x+p.w-80;xx+=190){ctx.beginPath();ctx.moveTo(xx,p.y+35);ctx.lineTo(xx+70,p.y+125);ctx.lineTo(xx+22,p.y+205);ctx.stroke();}
+         }else{
+           ctx.globalAlpha=.28;ctx.strokeStyle='#e9fbff';ctx.lineWidth=5;for(let yy=p.y+70;yy<p.y+p.h;yy+=95){ctx.beginPath();ctx.moveTo(p.x+40,yy);ctx.quadraticCurveTo(p.x+p.w*.5,yy-28,p.x+p.w-40,yy);ctx.stroke();}
+         }
+         ctx.restore();
+
+         // ボス広場はお椀型。渦は必ず楕円の内側へクリップし、外へはみ出さない。
+         const b=waterGeo.bowl;ctx.save();ctx.translate(b.x,b.y);
+         ctx.fillStyle='#765638';ctx.strokeStyle='#111';ctx.lineWidth=9;ctx.beginPath();ctx.ellipse(0,0,b.rx+34,b.ry+34,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+         ctx.fillStyle=waterGeo.frozen>0?'#bfefff':'#59bddf';ctx.strokeStyle='#267aa1';ctx.lineWidth=7;ctx.beginPath();ctx.ellipse(0,0,b.rx,b.ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+         ctx.save();ctx.beginPath();ctx.ellipse(0,0,b.rx-8,b.ry-8,0,0,Math.PI*2);ctx.clip();
+         if(waterGeo.frozen>0){
+           ctx.globalAlpha=.65;ctx.strokeStyle='#f3fdff';ctx.lineWidth=5;
+           for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*b.rx*.78,Math.sin(a)*b.ry*.78);ctx.stroke();}
+         }else{
+           ctx.strokeStyle='#148db6';ctx.lineWidth=9;
+           for(let k=0;k<4;k++){
+             ctx.globalAlpha=.58-k*.10;
+             ctx.beginPath();
+             ctx.ellipse(0,0,b.rx-48-k*66,b.ry-38-k*42,0,.15+k*.58,Math.PI*1.58+k*.58);
+             ctx.stroke();
+           }
+           ctx.globalAlpha=.72;circle(0,0,24,'#2b9fc7','transparent',0);
+         }
+         ctx.restore();ctx.restore();
+
          for(const e of waterRaiders){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.55;
            const col=e.type==='cucumber'?'#61ad62':(e.type==='melon'?'#8bc35a':'#a95b92');circle(0,0,e.r,col,'#111',5);circle(-9,-7,3,'#111','#111',1);circle(9,-7,3,'#111','#111',1);
            const side=player.x<e.x?-1:1;ctx.scale(side,1);line(18,5,65,5,10,'#111');line(18,5,65,5,5,'#dce7ea');ctx.restore();}
+
          if(!waterBoss.dead){const w=waterBoss;ctx.save();ctx.translate(w.x,w.y);if(w.flash>0)ctx.globalAlpha=.55;
            circle(0,0,62,'#4d9fc3','#111',7);ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-38,-38);ctx.lineTo(-15,-72);ctx.lineTo(0,-43);ctx.lineTo(18,-75);ctx.lineTo(40,-36);ctx.closePath();ctx.fill();ctx.stroke();
            circle(-18,-10,5,'#111','#111',1);circle(18,-10,5,'#111','#111',1);
-           const a=Math.atan2(player.y-w.y,player.x-w.x);ctx.rotate(a);const th=w.thrustT>0?52:0;line(20,10,135+th,10,12,'#111');line(20,10,135+th,10,6,'#7d9aa8');
-           ctx.fillStyle='#bfeeff';ctx.strokeStyle='#111';ctx.lineWidth=5;for(const yy of [-18,0,18]){ctx.beginPath();ctx.moveTo(130+th,10);ctx.lineTo(160+th,10+yy);ctx.lineTo(190+th,10+yy);ctx.lineTo(162+th,18+yy);ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();
+           // 三又ではなく一本の青い槍。
+           const a=Math.atan2(player.y-w.y,player.x-w.x);ctx.rotate(a);const th=w.thrustT>0?52:0;
+           line(20,10,142+th,10,12,'#111');line(20,10,142+th,10,6,'#367fa8');line(28,8,136+th,8,2,'#9fe8ff');
+           ctx.fillStyle='#72d8ff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(136+th,10);ctx.lineTo(153+th,-2);ctx.lineTo(184+th,10);ctx.lineTo(153+th,22);ctx.closePath();ctx.fill();ctx.stroke();
+           ctx.strokeStyle='#e9fbff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(150+th,5);ctx.lineTo(177+th,10);ctx.stroke();ctx.restore();
            ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('水龍将',w.x,w.y-105);ctx.fillRect(w.x-78,w.y+83,156,13);ctx.fillStyle='#fff';ctx.fillRect(w.x-73,w.y+87,146*Math.max(0,w.hp/w.maxHp),5);
          }
-         if(waterSpearPickup.active&&!waterSpearPickup.taken){ctx.save();ctx.translate(waterSpearPickup.x,waterSpearPickup.y);ctx.rotate(-.25);line(-65,0,70,0,12,'#111');line(-62,0,66,0,6,'#78a7ba');ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;for(const yy of [-15,0,15]){ctx.beginPath();ctx.moveTo(62,0);ctx.lineTo(82,yy);ctx.lineTo(112,yy);ctx.lineTo(84,yy+8);ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();}
+
+         if(waterSpearPickup.active&&!waterSpearPickup.taken){
+           ctx.save();ctx.translate(waterSpearPickup.x,waterSpearPickup.y);ctx.rotate(-.25);
+           line(-65,0,72,0,12,'#111');line(-62,0,68,0,6,'#367fa8');line(-55,-2,64,-2,2,'#9fe8ff');
+           ctx.fillStyle='#72d8ff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(64,0);ctx.lineTo(80,-12);ctx.lineTo(112,0);ctx.lineTo(80,12);ctx.closePath();ctx.fill();ctx.stroke();
+           ctx.strokeStyle='#e9fbff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(78,-5);ctx.lineTo(105,0);ctx.stroke();ctx.restore();
+         }
        }
-       if(vegBossDefeated){
+              if(vegBossDefeated){
          // 細い一本道：幅を抑え、敵と弾道が読みやすい構成。
          for(const r of fruitRoadGeo.path){
            ctx.fillStyle='#765638';ctx.strokeStyle='#111';ctx.lineWidth=7;
@@ -5371,7 +5428,19 @@ function drawProjectile(pr){
 
  if(pr.kind==='iceShard'){
    ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));
-   ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-7,-9);ctx.lineTo(-2,0);ctx.lineTo(-7,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();return;
+   if(pr.waterTrail){
+     // 水龍の槍：物体ではなく青い氷光の残像。
+     ctx.globalCompositeOperation='screen';
+     ctx.globalAlpha=.18;ctx.fillStyle='#49cfff';
+     ctx.beginPath();ctx.moveTo(26,0);ctx.lineTo(0,-18);ctx.lineTo(-38,0);ctx.lineTo(0,18);ctx.closePath();ctx.fill();
+     ctx.globalAlpha=.72;ctx.fillStyle='#bfefff';
+     ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(1,-9);ctx.lineTo(-18,0);ctx.lineTo(1,9);ctx.closePath();ctx.fill();
+     ctx.globalAlpha=.48;ctx.strokeStyle='#e8fbff';ctx.lineWidth=5;ctx.lineCap='round';
+     ctx.beginPath();ctx.moveTo(-52,0);ctx.lineTo(-5,0);ctx.stroke();
+   }else{
+     ctx.fillStyle='#dff8ff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-7,-9);ctx.lineTo(-2,0);ctx.lineTo(-7,9);ctx.closePath();ctx.fill();ctx.stroke();
+   }
+   ctx.restore();return;
  }
 
  if(pr.kind==='fireWheel'){
@@ -5689,10 +5758,10 @@ function drawActiveWeapon(wx,wy,wa,thrust){
    const half=68;
    // 回転中も通常時と同じ金属柄。白い棒にはしない。
    line(-half,0,half,0,11,'#111');
-   line(-half+4,0,half-12,0,5,'#8d9aa3');
-   line(-half+8,-1,half-16,-1,2,'#dbe4e9');
+   line(-half+4,0,half-12,0,5,player.waterSpear?'#367fa8':'#8d9aa3');
+   line(-half+8,-1,half-16,-1,2,player.waterSpear?'#9fe8ff':'#dbe4e9');
    // 穂先は細長い菱形。反対側は小さな金属製の石突。
-   ctx.fillStyle='#aebbc4';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.fillStyle=player.waterSpear?'#72d8ff':'#aebbc4';ctx.strokeStyle='#111';ctx.lineWidth=4;
    ctx.beginPath();ctx.moveTo(half-5,0);ctx.lineTo(half+5,-10);ctx.lineTo(half+24,0);ctx.lineTo(half+5,10);ctx.closePath();ctx.fill();ctx.stroke();
    ctx.strokeStyle='#edf4f7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(half+2,-4);ctx.lineTo(half+18,0);ctx.lineTo(half+2,3);ctx.stroke();
    ctx.fillStyle='#7f8d96';ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-half-9,0);ctx.lineTo(-half+1,-6);ctx.lineTo(-half+1,6);ctx.closePath();ctx.fill();ctx.stroke();
@@ -5743,11 +5812,12 @@ function drawShieldBack(hx,hy,a,raised){
 }
 function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,player.swordPlus?'#c8f2d2':'#eef5fa');if(player.swordPlus)line(10,-2,41,-2,2,'#64c58b');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,player.swordPlus?'#6fbd78':'#d8a93d')}
  else if(w===1){
-   // 槍は金属柄。穂先は単純な三角ではなく、細長い菱形の槍身。
-   line(-3,0,62,0,10,'#111');line(-3,0,62,0,5,'#8d9aa3');line(1,-1,58,-1,2,'#dbe4e9');
-   ctx.fillStyle='#aebbc4';ctx.strokeStyle='#111';ctx.lineWidth=5;
+   // 水龍の槍を取った後は、柄も穂先も青い氷金属へ変化。
+   const water=!!player.waterSpear;
+   line(-3,0,62,0,10,'#111');line(-3,0,62,0,5,water?'#367fa8':'#8d9aa3');line(1,-1,58,-1,2,water?'#9fe8ff':'#dbe4e9');
+   ctx.fillStyle=water?'#72d8ff':'#aebbc4';ctx.strokeStyle='#111';ctx.lineWidth=5;
    ctx.beginPath();ctx.moveTo(58,0);ctx.lineTo(68,-9);ctx.lineTo(88,0);ctx.lineTo(68,9);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.strokeStyle='#edf4f7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(65,-4);ctx.lineTo(82,0);ctx.lineTo(65,2);ctx.stroke();
+   ctx.strokeStyle=water?'#e9fbff':'#edf4f7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(65,-4);ctx.lineTo(82,0);ctx.lineTo(65,2);ctx.stroke();
  }
  else if(w===2){line(0,0,38,0,11,'#111');line(0,0,38,0,5,'#8b5c3b');roundRect(29,-17,34,34,7,'#9ea6ad','#111',6)}
  else {line(-2,0,45,0,10,'#111');line(-2,0,45,0,5,'#6d3e2a');circle(50,0,11,w===3?'#ff5a4f':'#69c9ff','#111',5);circle(50,0,4,'#fff','#111',2)}ctx.restore()}
