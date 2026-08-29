@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 135: 最初の浮遊草原ステージ
+// Prototype 136: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -791,7 +791,7 @@ function visibleGroundRects(){
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
-   if(vineBossDefeated){
+   if(vineBossDefeated||cloudRaceWon){
      grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge,cloudRaceGeo.entryIsland,...cloudRaceTrackRects);
      if(cloudRaceWon){
        grounds.push(cloudRaceGeo.nextIsland,...vegGeo.path,{
@@ -837,6 +837,23 @@ function groundEnemyCanChase(e,maxDist=520){
  // 同じ足場の上にいる時だけ地上敵は追跡する。別島のプレイヤーを追って空へ出ない。
  return pointOnSameVisibleGround({x:e.x,y:e.y},{x:player.x,y:player.y},-8);
 }
+
+function snapEnemyToNearestGround(e,maxSnap=110){
+ if(!e||!Number.isFinite(e.x)||!Number.isFinite(e.y))return false;
+ let best=null,bestD=1e9;
+ for(const r of visibleGroundRects()){
+   const x=clamp(e.x,r.x+10,r.x+r.w-10),y=clamp(e.y,r.y+10,r.y+r.h-10);
+   const d=Math.hypot(e.x-x,e.y-y);
+   if(d<bestD){bestD=d;best={x,y};}
+ }
+ if(best&&bestD<=maxSnap){
+   e.x=best.x;e.y=best.y;
+   e.lastGroundX=e.x;e.lastGroundY=e.y;
+   e.enemyNoGroundT=0;
+   return true;
+ }
+ return false;
+}
 function enemySupportedByGround(e,pad=10){
  if(!e||!Number.isFinite(e.x)||!Number.isFinite(e.y))return false;
  const p=Math.max(pad,(e.r||18)*.35);
@@ -850,15 +867,32 @@ function enemySupportedByGround(e,pad=10){
 }
 function keepGroundEnemyOnGround(e,dt){
  if(!e||e.dead||e.enemyFalling)return;
+
+ // 初回だけスポーン位置を検証。地形の縁や描画の下側に出ていたら、
+ // 近くの実際の地面へ補正してからAIを開始する。
+ if(!e.groundSpawnChecked){
+   e.groundSpawnChecked=true;
+   if(!enemySupportedByGround(e,8)){
+     if(snapEnemyToNearestGround(e,130))return;
+     // 近くに地面自体が無い場合は「落下した敵」とせず待機。
+     // 遠方ステージの地形がまだ未解放なだけで敵が消えるのを防ぐ。
+     e.waitForGround=true;return;
+   }
+ }
+ if(e.waitForGround){
+   if(enemySupportedByGround(e,8)||snapEnemyToNearestGround(e,130)){
+     e.waitForGround=false;e.enemyNoGroundT=0;
+   }
+   return;
+ }
  if(enemySupportedByGround(e,8)){
    e.enemyNoGroundT=0;
    e.lastGroundX=e.x;e.lastGroundY=e.y;
    return;
  }
- // 1フレームの押し出しや地形境界の誤差では即消さない。
+ // 地面上で一度正常に存在した敵だけ、足場を外れたら落下させる。
  e.enemyNoGroundT=(e.enemyNoGroundT||0)+dt;
  if(e.enemyNoGroundT<.18)return;
- // 実際に一定時間足場を失った時だけ落下。
  e.enemyFalling=true;e.enemyFallT=0;e.enemyFallX=e.x;e.enemyFallY=e.y;e.enemyNoGroundT=0;
 }
 function updateGroundEnemyFall(e,dt){
@@ -969,6 +1003,8 @@ function loadProgress(){
  fireBossDefeated=!!d.fireBossDefeated || !!d.fireBossDead;
  vineBossDefeated=!!d.vineBossDefeated || !!d.vineBossDead;
  cloudRaceWon=!!d.cloudRaceWon;
+ // 既にレース勝利済みのセーブなら、その前提となるツタボス撃破も必ず復元。
+ if(cloudRaceWon){vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;}
 
  spearPickup.taken=!!d.spearTaken;
  hammerPickup.taken=!!d.hammerTaken;
@@ -2697,7 +2733,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
  for(const e of enemies){
-   if(e.dead)continue;
+   if(e.dead||e.waitForGround||e.enemyFalling)continue;
    e.attackCd-=dt;
    e.flash=Math.max(0,e.flash-dt);
    e.hitReact=Math.max(0,(e.hitReact||0)-dt);
@@ -2862,7 +2898,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  if(stage3Started){
    for(const e of stage3Enemies){
-     if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);
+     if(e.dead||e.waitForGround||e.enemyFalling)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);e.hitReact=Math.max(0,(e.hitReact||0)-dt);
      if(e.type==='spinnerflower'){
        e.petalA=(e.petalA||0)+dt*5.2;
        // 防御ギミックなので移動・通常近接攻撃はしない。
@@ -2905,7 +2941,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
 
  if(stage4Started&&!stage4Cleared){
    for(const e of stage4Enemies){
-    if(e.dead)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);
+    if(e.dead||e.waitForGround||e.enemyFalling)continue;e.attackCd-=dt;e.flash=Math.max(0,e.flash-dt);
     const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
     e.attackWind=Math.max(0,(e.attackWind||0)-dt);e.attackAnim=Math.max(0,(e.attackAnim||0)-dt);
     if(d>66&&e.attackWind<=0){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
@@ -2979,7 +3015,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
  if(stage6Started){
    for(const e of stage6Enemies){
-     if(e.dead)continue;
+     if(e.dead||e.waitForGround||e.enemyFalling)continue;
      e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
      const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
 
@@ -4474,8 +4510,9 @@ function drawWorld(){
    }
 
 
-   if(vineBossDefeated){
+   if(vineBossDefeated||cloudRaceWon){
      // 雲ジャンプの出口と、巨大な歪んだ楕円ドーナツ型レース場。
+     // レース勝利済みなら、旧セーブのボスフラグが欠けていても必ず表示する。
      const ei=cloudRaceGeo.entryIsland;
      ctx.fillStyle='#65b85d';ctx.strokeStyle='#111';ctx.lineWidth=7;
      ctx.beginPath();ctx.roundRect(ei.x,ei.y,ei.w,ei.h,42);ctx.fill();ctx.stroke();
