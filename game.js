@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null};
 
-// Prototype 125: 最初の浮遊草原ステージ
+// Prototype 127: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -291,8 +291,12 @@ const vineSkyGeo={
   {x:2370,y:-1230,w:240,h:155},{x:2780,y:-1480,w:270,h:170}
  ],
  clouds:[
-  {x:930,y:-1280,r:62},{x:1360,y:-1300,r:62},{x:1790,y:-1330,r:64},
-  {x:2220,y:-1360,r:64},{x:2650,y:-1380,r:66}
+  {x:790,y:-1215,r:56},{x:930,y:-1280,r:62},
+  {x:1190,y:-1240,r:54},{x:1360,y:-1300,r:62},
+  {x:1615,y:-1260,r:55},{x:1790,y:-1330,r:64},
+  {x:2050,y:-1285,r:55},{x:2220,y:-1360,r:64},
+  {x:2460,y:-1310,r:56},{x:2650,y:-1380,r:66},
+  {x:2920,y:-1535,r:58},{x:3110,y:-1645,r:60}
  ],
  // 杖スキルの高速移動で踏み込むと、下から突き上げる特殊ジャンプ台。
  launchPads:[
@@ -313,6 +317,25 @@ const vineSkyGeo={
  ],
  postBossBridge:{x:3170,y:-1010,w:170,h:245}
 };
+
+// 雲ジャンプ地帯の先：一周レース場。
+// スタート門に入ると雲ライダーと1周勝負。勝てば次島へ虹の橋。
+const cloudRaceGeo={
+ entryIsland:{x:3040,y:-1760,w:310,h:185},
+ track:{x:3200,y:-2180,w:1120,h:520},
+ start:{x:3345,y:-1905,r:70},
+ checkpoints:[
+  {x:3650,y:-2080,r:82,label:'1'},
+  {x:4170,y:-1900,r:82,label:'2'},
+  {x:3700,y:-1715,r:82,label:'3'},
+  {x:3345,y:-1905,r:82,label:'GOAL'}
+ ],
+ nextIsland:{x:4540,y:-2100,w:430,h:360},
+ rainbow:{x1:4300,y1:-1900,x2:4580,y2:-1900,w:150}
+};
+let cloudRaceWon=false;
+const cloudRace={started:false,countdown:0,time:0,cp:0,retryCd:0,rivalTime:13.2};
+
 
 const vineWalls=[
  {x:620,y:-690,r:48,hp:3,maxHp:3,dead:false,regenT:0,burned:false,iceStage:0,iceT:0,perma:false},
@@ -348,7 +371,8 @@ let cloudShieldDropped=false;
 const cloudShieldPickup={x:2070,y:-650,active:false,taken:false};
 
 const vineBoss={
- x:3370,y:-730,r:105,hp:62,maxHp:62,active:false,dead:false,attackCd:1.25,flash:0,whipT:0,sweepDir:0
+ x:3370,y:-730,r:105,hp:62,maxHp:62,active:false,dead:false,
+ attackCd:1.25,flash:0,whipT:0,windupT:0,sweepDir:0
 };
 let vineBossDefeated=false;
 
@@ -639,7 +663,8 @@ function jumpLiftNow(){
  const dur=Math.max(.001,Number.isFinite(player.jumpDur)?player.jumpDur:.62);
  const p=Math.max(0,Math.min(1,1-player.jumpT/dur));
  const raw=Math.sin(p*Math.PI)*(Number.isFinite(player.jumpHeight)?player.jumpHeight:105)*(shields[player.shieldType]?.jump||1);
- return Number.isFinite(raw)?Math.max(0,raw):0;
+ // 高高度の描画系を安定させる上限。雲盾の滞空時間は維持しつつ、見た目高度だけ暴走させない。
+ return Number.isFinite(raw)?Math.max(0,Math.min(220,raw)):0;
 }
 
 const guardRails=[
@@ -709,7 +734,17 @@ function visibleGroundRects(){
  if(startRockWall.dead)grounds.push(...leftZoneGeo.path);
  if(fireBossDefeated){
    grounds.push(postFireGeo.junction,...postFireGeo.right,...postFireGeo.iceRight,...postFireGeo.ice,...vineAreaGeo.path,vineAreaGeo.arena,...vineAreaGeo.safePads,...vineSkyGeo.islands);
-   if(vineBossDefeated)grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge);
+   if(vineBossDefeated){
+     grounds.push(...vineSkyGeo.postBossIslands,vineSkyGeo.postBossBridge,cloudRaceGeo.entryIsland,cloudRaceGeo.track);
+     if(cloudRaceWon){
+       grounds.push(cloudRaceGeo.nextIsland,{
+         x:Math.min(cloudRaceGeo.rainbow.x1,cloudRaceGeo.rainbow.x2)-30,
+         y:cloudRaceGeo.rainbow.y1-cloudRaceGeo.rainbow.w/2,
+         w:Math.abs(cloudRaceGeo.rainbow.x2-cloudRaceGeo.rainbow.x1)+60,
+         h:cloudRaceGeo.rainbow.w
+       });
+     }
+   }
  }
  if(islandBossDefeated){
    grounds.push({
@@ -750,7 +785,7 @@ function saveProgress(){
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
    healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,
@@ -819,6 +854,7 @@ function loadProgress(){
  // 旧セーブでは「倒したフラグ」を保存していなかったため、dead から復元する。
  fireBossDefeated=!!d.fireBossDefeated || !!d.fireBossDead;
  vineBossDefeated=!!d.vineBossDefeated || !!d.vineBossDead;
+ cloudRaceWon=!!d.cloudRaceWon;
 
  spearPickup.taken=!!d.spearTaken;
  hammerPickup.taken=!!d.hammerTaken;
@@ -1760,6 +1796,7 @@ function resolveAirMagic(m){
    freezeStreamsAt(m.x,m.y,100);
  }
 }
+
 
 function update(dt){
  // 凍結ツタは実際のガードステップ（shieldStepT）で永久破壊。
@@ -3105,8 +3142,8 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
   for(const c of [...vineSkyGeo.clouds,...(vineBossDefeated?vineSkyGeo.postBossClouds:[])]){
    const footY=player.y-lift;
    if(dist(player.x,footY,c.x,c.y)<c.r+player.r*.8+16){
-    player.jumpDur=player.shieldType===4?1.12:.88;
-    player.jumpHeight=player.shieldType===4?190:158;
+    player.jumpDur=player.shieldType===4?1.18:.88;
+    player.jumpHeight=player.shieldType===4?145:158;
     player.jumpT=player.jumpDur;
     player.vineCloudCd=.55;
     player.fallGrace=Math.max(player.fallGrace||0,.75);
@@ -3180,27 +3217,84 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    if(player.x>vineBoss.x-72)player.x=Math.min(player.x,vineBoss.x-72);
 
    const dx=player.x-vineBoss.x,dy=player.y-vineBoss.y,d=Math.hypot(dx,dy);
-   if(vineBoss.attackCd<=0&&d<520){
-     vineBoss.attackCd=2.0;
-     vineBoss.whipT=.62;
-     vineBoss.sweepDir=dy>=0?1:-1;
 
-     // 前方左側を大きく横薙ぎ。ジャンプ中だけ安全。
-     const inFront=dx<0 && Math.abs(dy)<210 && d<455;
-     if(inFront&&player.jumpT<=0){
-       if(player.shield){
-         player.vineBound=Math.max(player.vineBound||0,2.6);
-         particle(player.x,player.y-42,'盾ごと絡まれた！','#256b38',.85,17);
-       }else if(player.inv<=0){
-         const got=takeDamage(10);player.inv=.75;
-         particle(player.x,player.y-40,`-${got}`,'#c11',.45,16);
-         player.x-=26;
+   // 大薙ぎ前に0.72秒の明確な溜め。ここを見てジャンプできる。
+   if(vineBoss.attackCd<=0&&d<520&&vineBoss.windupT<=0&&vineBoss.whipT<=0){
+     vineBoss.attackCd=2.35;
+     vineBoss.windupT=.72;
+     vineBoss.sweepDir=dy>=0?1:-1;
+     particle(vineBoss.x-85,vineBoss.y-115,'グググ…！','#fff',.55,19);
+   }
+
+   if(vineBoss.windupT>0){
+     const before=vineBoss.windupT;
+     vineBoss.windupT=Math.max(0,vineBoss.windupT-dt);
+     if(before>0&&vineBoss.windupT<=0){
+       vineBoss.whipT=.62;
+       particle(vineBoss.x-80,vineBoss.y-100,'ブンッ！','#fff',.32,18);
+
+       // 予備動作のあとに初めて当たり判定。ジャンプ中は安全。
+       const hdx=player.x-vineBoss.x,hdy=player.y-vineBoss.y,hd=Math.hypot(hdx,hdy);
+       const inFront=hdx<0&&Math.abs(hdy)<215&&hd<465;
+       if(inFront&&player.jumpT<=0){
+         if(player.shield){
+           // 盾で受け止めても、巨大ツタの勢いでプレイヤーごと場外へ弾き飛ばされる。
+           // 盾は失わない。少し外側へ飛ばしてから通常の崖落下処理へつなぐ。
+           player.shield=false;shieldBtn.classList.remove('active');
+           player.vineBound=0;
+           player.jumpT=0;
+           player.launchTravel=null;
+           const awayY=(hdy>=0?1:-1);
+           player.x=vineBoss.x-445;
+           player.y=vineBoss.y+awayY*360;
+           player.fallGrace=0;
+           player.falling=false;
+           particle(player.x,player.y-45,'ドガッ！','#fff',.55,20);
+           say('盾ごと場外へ弾き飛ばされた！');
+         }else if(player.inv<=0){
+           const got=takeDamage(10);player.inv=.75;
+           particle(player.x,player.y-40,`-${got}`,'#c11',.45,16);
+           player.x-=26;
+         }
        }
      }
    }
    if(vineBoss.hp<=0){
      vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;
      particle(vineBoss.x,vineBoss.y,'撃破！','#fff',.8,24);say('ツタの主を倒した！');
+   }
+ }
+ // 雲レース：スタート門で2秒カウント後、4ゲートを順番に1周。
+ cloudRace.retryCd=Math.max(0,cloudRace.retryCd-dt);
+ if(vineBossDefeated&&!cloudRaceWon){
+   const st=cloudRaceGeo.start;
+   if(!cloudRace.started&&cloudRace.retryCd<=0&&dist(player.x,player.y,st.x,st.y)<st.r){
+     cloudRace.started=true;cloudRace.countdown=2.0;cloudRace.time=0;cloudRace.cp=0;
+     particle(st.x,st.y-55,'READY!','#fff',.65,21);say('雲ライダーと1周勝負！');
+   }
+   if(cloudRace.started){
+     if(cloudRace.countdown>0){
+       cloudRace.countdown=Math.max(0,cloudRace.countdown-dt);
+       if(cloudRace.countdown<=0){particle(st.x,st.y-55,'GO!','#fff',.6,24);say('GO！ ゲートを順番に通れ！');}
+     }else{
+       cloudRace.time+=dt;
+       const cp=cloudRaceGeo.checkpoints[cloudRace.cp];
+       if(cp&&dist(player.x,player.y,cp.x,cp.y)<cp.r){
+         cloudRace.cp++;
+         particle(cp.x,cp.y-40,cloudRace.cp>=4?'FINISH!':`CHECK ${cloudRace.cp}`,'#fff',.45,17);
+         if(cloudRace.cp>=4){
+           cloudRaceWon=true;cloudRace.started=false;
+           particle(player.x,player.y-60,'YOU WIN!','#fff',1.0,25);
+           say('レース勝利！ 次の島へ虹の橋がかかった！');
+           saveProgress();
+         }
+       }
+       if(!cloudRaceWon&&cloudRace.time>cloudRace.rivalTime){
+         cloudRace.started=false;cloudRace.retryCd=2.0;cloudRace.cp=0;
+         particle(player.x,player.y-55,'LOSE…','#fff',.8,22);
+         say('雲ライダーの勝ち！ スタート門で再挑戦');
+       }
+     }
    }
  }
  player.vineBound=Math.max(0,(player.vineBound||0)-dt);
@@ -4150,6 +4244,52 @@ function drawWorld(){
    for(const c of vineSkyGeo.clouds){
     circle(c.x-28,c.y+5,c.r*.48,'#f8fdff','#111',5);circle(c.x,c.y-10,c.r*.58,'#f8fdff','#111',5);circle(c.x+30,c.y+7,c.r*.45,'#f8fdff','#111',5);
    }
+
+
+   if(vineBossDefeated){
+     // 雲ジャンプの出口とレース場。
+     const ei=cloudRaceGeo.entryIsland,tr=cloudRaceGeo.track;
+     ctx.fillStyle='#65b85d';ctx.strokeStyle='#111';ctx.lineWidth=7;
+     ctx.beginPath();ctx.roundRect(ei.x,ei.y,ei.w,ei.h,42);ctx.fill();ctx.stroke();
+     ctx.fillStyle='#70bd65';ctx.beginPath();ctx.roundRect(tr.x,tr.y,tr.w,tr.h,55);ctx.fill();ctx.stroke();
+
+     // レースコースの白線。中央は芝のまま、周回ルートだけ太い点線。
+     ctx.save();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=13;ctx.setLineDash([34,24]);
+     ctx.beginPath();ctx.roundRect(tr.x+85,tr.y+75,tr.w-170,tr.h-150,125);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+
+     // スタート門とチェックゲート。
+     for(let i=0;i<cloudRaceGeo.checkpoints.length;i++){
+       const g=cloudRaceGeo.checkpoints[i];
+       ctx.strokeStyle=i===cloudRace.cp&&cloudRace.started?'#ffe45b':'#fff';ctx.lineWidth=8;
+       ctx.beginPath();ctx.arc(g.x,g.y,g.r*.55,0,Math.PI*2);ctx.stroke();
+     }
+     ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.font='900 20px system-ui';
+     ctx.strokeText('CLOUD RACE',cloudRaceGeo.start.x-66,cloudRaceGeo.start.y-82);
+     ctx.fillText('CLOUD RACE',cloudRaceGeo.start.x-66,cloudRaceGeo.start.y-82);
+
+     // 対戦相手の雲ライダー。時間でコースを1周する。
+     if(cloudRace.started){
+       const rr=Math.max(0,Math.min(1,cloudRace.countdown>0?0:cloudRace.time/cloudRace.rivalTime));
+       const pts=[
+         {x:3345,y:-1905},{x:3650,y:-2080},{x:4170,y:-1900},{x:3700,y:-1715},{x:3345,y:-1905}
+       ];
+       const seg=Math.min(3,Math.floor(rr*4)),lt=rr*4-seg,a=pts[seg],b=pts[seg+1];
+       const rx=a.x+(b.x-a.x)*lt,ry=a.y+(b.y-a.y)*lt;
+       circle(rx-16,ry+8,24,'#f8fdff','#111',4);circle(rx+12,ry,28,'#f8fdff','#111',4);
+       circle(rx,ry-20,14,'#ef8d55','#111',4);
+     }
+
+     if(cloudRaceWon){
+       const ni=cloudRaceGeo.nextIsland,rb=cloudRaceGeo.rainbow;
+       ctx.fillStyle='#68bc61';ctx.strokeStyle='#111';ctx.lineWidth=7;
+       ctx.beginPath();ctx.roundRect(ni.x,ni.y,ni.w,ni.h,55);ctx.fill();ctx.stroke();
+       const cols=['#ef5350','#ff9f43','#f5dc4d','#69c56a','#55aee8','#8e67d5'];
+       for(let i=0;i<6;i++){
+         const yy=rb.y1+(i-2.5)*22;
+         line(rb.x1,yy,rb.x2,yy,25,cols[i]);
+       }
+     }
+   }
    // 大きな幹ツタ＋再生壁
    for(const v of vineWalls){
      if(v.dead||v.perma)continue;ctx.save();ctx.translate(v.x,v.y);ctx.lineCap='round';
@@ -4214,6 +4354,21 @@ function drawWorld(){
      circle(-5,-28,58,'#5bbb50','#111',8);
      circle(-20,-37,6,'#111','transparent',0);circle(10,-37,6,'#111','transparent',0);
      line(-23,-5,14,-5,6,'#111');
+
+     // 大薙ぎの予備動作：ツタを大きく後ろへ引き、前方に危険扇を点滅。
+     if(vineBoss.windupT>0){
+       const w=vineBoss.windupT/.72,pulse=.45+.35*Math.sin(performance.now()*.03);
+       ctx.save();ctx.translate(-38,-28);
+       ctx.strokeStyle='#102f19';ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(70,-105,145,-80);ctx.stroke();
+       ctx.strokeStyle='#49b957';ctx.lineWidth=14;ctx.stroke();
+       ctx.restore();
+       ctx.save();ctx.globalAlpha=pulse;
+       ctx.strokeStyle='#f6e65d';ctx.lineWidth=8;ctx.setLineDash([18,13]);
+       ctx.beginPath();ctx.arc(-30,0,360,Math.PI*.70,Math.PI*1.30);ctx.stroke();
+       ctx.setLineDash([]);ctx.restore();
+       ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.font='900 36px system-ui';
+       ctx.strokeText('!',-102,-118);ctx.fillText('!',-102,-118);
+     }
 
      // 攻撃中は前方へ一本の巨大ツタを横薙ぎ。
      if(vineBoss.whipT>0){
@@ -4513,7 +4668,7 @@ function drawEnemy(e){
 
 function drawPlayer(){
  const jumpNorm=player.jumpT>0?Math.max(0,Math.min(1,1-player.jumpT/Math.max(.001,player.jumpDur||.62))):0;
- const normalLift=player.jumpT>0?Math.max(0,Math.sin(jumpNorm*Math.PI)*(player.jumpHeight||105)*(shields[player.shieldType]?.jump||1)):0;
+ const normalLift=player.jumpT>0?Math.min(220,Math.max(0,Math.sin(jumpNorm*Math.PI)*(player.jumpHeight||105)*(shields[player.shieldType]?.jump||1))):0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
  const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
  const moving=player.moveMag>.16&&player.jumpT<=0;
