@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={minX:-1500,minY:-3900,w:15050,h:1100};
+const world={minX:-1500,minY:-3900,w:17850,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 143: 最初の浮遊草原ステージ
+// Prototype 144: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -155,6 +155,28 @@ const cloudJumpPads=[
 ];
 
 
+
+function freezeVinesArc(range,base,cone=Math.PI*2){
+ for(const v of vineWalls){
+   if(v.dead||v.perma)continue;
+   const d=dist(player.x,player.y,v.x,v.y),a=Math.atan2(v.y-player.y,v.x-player.x);
+   if(d<=range+v.r&&Math.abs(angleDiff(a,base))<=cone/2+.12){
+     if(v.iceStage===0){v.iceStage=1;v.hp=v.maxHp;particle(v.x,v.y-18,'キュッ…','#bdeeff',.45,15);}
+     else if(v.iceStage===1){v.iceStage=2;v.iceT=5;particle(v.x,v.y+22,'カチコチ！','#e8fbff',.6,18);}
+     else {v.iceT=Math.max(v.iceT||0,5);}
+   }
+ }
+}
+function freezeLavaAt(x,y,rad=70){
+ let hit=false;
+ for(const l of lavaFlows){
+   const cx=clamp(x,l.x,l.x+l.w),cy=clamp(y,l.y,l.y+l.h);
+   if(Math.hypot(x-cx,y-cy)<=rad){
+     l.frozen=Math.max(l.frozen||0,6.5);hit=true;
+   }
+ }
+ return hit;
+}
 function freezeLegacyWaterAt(x,y,rad=60){
  let hit=false;
  for(const wa of [props.water,props.shallowWater,props.upperPond,props.waterfall]){
@@ -460,6 +482,35 @@ const waterRaiders=[
 const waterBoss={type:'waterDragon',name:'水龍将',x:13420,y:-2445,r:78,hp:62,maxHp:62,active:false,dead:false,attackCd:1.0,flash:0,windup:0,thrustT:0,phase:0};
 let waterBossDefeated=false;
 const waterSpearPickup={x:13420,y:-2445,active:false,taken:false};
+const lavaGeo={
+ path:[
+  {x:13820,y:-2720,w:620,h:520},
+  {x:14360,y:-2700,w:620,h:500},
+  {x:14900,y:-2730,w:620,h:520},
+  {x:15450,y:-2690,w:650,h:500},
+  {x:16020,y:-2740,w:780,h:560}
+ ],
+ arena:{x:16320,y:-2470,rx:390,ry:285}
+};
+const lavaFlows=[
+ {x:14170,y:-2675,w:135,h:455,frozen:0},
+ {x:14720,y:-2650,w:150,h:420,frozen:0},
+ {x:15280,y:-2680,w:145,h:455,frozen:0},
+ {x:15830,y:-2640,w:155,h:420,frozen:0}
+];
+const lavaThrowers=[
+ {x:14050,y:-2440,r:34,hp:8,maxHp:8,attackCd:.7,flash:0,dead:false},
+ {x:14590,y:-2505,r:34,hp:8,maxHp:8,attackCd:1.0,flash:0,dead:false},
+ {x:15145,y:-2415,r:36,hp:10,maxHp:10,attackCd:.8,flash:0,dead:false},
+ {x:15700,y:-2510,r:36,hp:10,maxHp:10,attackCd:1.1,flash:0,dead:false}
+];
+const lavaBoss={
+ type:'chili',name:'炎唐辛子',x:16340,y:-2460,r:82,hp:68,maxHp:68,
+ active:false,dead:false,attackCd:1.0,flash:0,windup:0,swingT:0,side:-1
+};
+let lavaBossDefeated=false;
+const flameSwordPickup={x:16340,y:-2460,active:false,taken:false};
+
 
 
 
@@ -875,6 +926,7 @@ function visibleGroundRects(){
        });
        if(vegBossDefeated)grounds.push(...fruitRoadGeo.path);
        if(fruitSpearBossDefeated){grounds.push(waterGeo.pool,{x:13020,y:-2750,w:820,h:610});}
+       if(waterBossDefeated)grounds.push(...lavaGeo.path);
      }
    }
  }
@@ -1008,17 +1060,17 @@ function saveProgress(){
    saveSchema:SAVE_SCHEMA,
    saveVersion:116,
    x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,
-   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,
+   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,flameSword:!!player.flameSword,
    unlockedWeapons:[...unlockedWeapons],unlockedShields:[...unlockedShields],
    stageBossDefeated:!!stage.bossDefeated,stageBridgeOpen:!!stage.bridgeOpen,
    stage2Started,stage2BossDefeated,stage2BridgeOpen,
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
-   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,
+   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,
    seedBossDead:!!seedBoss.dead,grassFinalBossDead:!!grassFinalBoss.dead,
    fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,
    hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,vegBossDead:!!vegBoss.dead,
@@ -1036,7 +1088,8 @@ function loadProgress(){
   swordPlus:!!d.swordPlus,
   spearPlus:!!d.spearPlus,
   hammerPlus:!!d.hammerPlus||!!d.spearPlus,
-  waterSpear:!!d.waterSpear
+  waterSpear:!!d.waterSpear,
+  flameSword:!!d.flameSword
  });
  if(Number.isFinite(d.inv))player.inv=d.inv;
  if(Number.isInteger(d.currentStage))currentStage=d.currentStage;
@@ -1095,7 +1148,7 @@ function loadProgress(){
  const progressedPastRace=
    vegBossDefeated || !!d.fruitSpearBossDefeated || !!d.waterBossDefeated ||
    !!d.chargeShieldTaken || !!d.spearUpgradeTaken || !!d.waterSpearTaken ||
-   !!d.hammerPlus || !!d.waterSpear ||
+   !!d.hammerPlus || !!d.waterSpear || !!d.flameSword || !!d.lavaBossDefeated ||
    (Number.isFinite(d.x)&&Number.isFinite(d.y)&&d.x>6150&&d.y<-1850);
  if(progressedPastRace){
    cloudRaceUnlocked=true;cloudRaceWon=true;vineBossDefeated=true;
@@ -1107,6 +1160,11 @@ function loadProgress(){
  fruitSpearBossDefeated=!!d.fruitSpearBossDefeated;
  waterBossDefeated=!!d.waterBossDefeated;
  if(waterBossDefeated){waterBoss.dead=true;waterBoss.active=false;}
+ lavaBossDefeated=!!d.lavaBossDefeated;
+ if(lavaBossDefeated){lavaBoss.dead=true;lavaBoss.active=false;}
+ flameSwordPickup.taken=!!d.flameSwordTaken||!!d.flameSword;
+ flameSwordPickup.active=lavaBossDefeated&&!flameSwordPickup.taken;
+ if(flameSwordPickup.taken){player.flameSword=true;unlockedWeapons[0]=true;}
  waterSpearPickup.taken=!!d.waterSpearTaken||!!d.waterSpear;
  waterSpearPickup.active=waterBossDefeated&&!waterSpearPickup.taken;
  if(waterSpearPickup.taken){player.waterSpear=true;unlockedWeapons[1]=true;}
@@ -1157,6 +1215,7 @@ function loadProgress(){
    player.weapon===0&&player.swordPlus?'翠鋼の剣':
    player.weapon===2&&player.hammerPlus?'パインハンマー':
    player.weapon===1&&player.waterSpear?'水龍の槍':
+   player.weapon===0&&player.flameSword?'炎神の剣':
    weapons[player.weapon].name;
  return true;
 }
@@ -1522,7 +1581,7 @@ function fireMagic(w,charged,base){
      // 青杖：前方の水流・池・滝をまとめて凍結。
      for(let d=55;d<=maxRange;d+=45){
        const fx=player.x+Math.cos(base)*d,fy=player.y+Math.sin(base)*d;
-       freezeStreamsAt(fx,fy,58);freezeLegacyWaterAt(fx,fy,58);
+       freezeStreamsAt(fx,fy,58);freezeLegacyWaterAt(fx,fy,58);freezeLavaAt(fx,fy,68);
      }
      particle(player.x+Math.cos(base)*70,player.y+Math.sin(base)*70,'キィィン！','#eafaff',.4,18);
    }
@@ -1657,7 +1716,11 @@ function hitStage8Spinner(range,base){
 
 function hitVegArea(damage,range,base,cone,weapon){
  if(!cloudRaceWon)return;
-  if(waterBoss.active&&!waterBoss.dead){
+  if(lavaBoss.active&&!lavaBoss.dead){
+   const ld=dist(player.x,player.y,lavaBoss.x,lavaBoss.y),la=Math.atan2(lavaBoss.y-player.y,lavaBoss.x-player.x);
+   if(ld<=range+lavaBoss.r+20&&Math.abs(angleDiff(la,base))<=cone/2+.2){lavaBoss.hp-=damage;lavaBoss.flash=.2;particle(lavaBoss.x,lavaBoss.y-45,`-${damage}`,'#ff7440',.4,16);}
+ }
+ if(waterBoss.active&&!waterBoss.dead){
    const wd=dist(player.x,player.y,waterBoss.x,waterBoss.y),wa=Math.atan2(waterBoss.y-player.y,waterBoss.x-player.x);
    if(wd<=range+waterBoss.r+20&&Math.abs(angleDiff(wa,base))<=cone/2+.2){waterBoss.hp-=damage;waterBoss.flash=.2;particle(waterBoss.x,waterBoss.y-45,`-${damage}`,'#268bc1',.4,16);}
  }
@@ -1686,6 +1749,7 @@ if(fruitSpearBoss.active&&!fruitSpearBoss.dead){
    for(const e of roadFlowers)hit(e);
    for(const e of fruitMiniBosses)hit(e);
    for(const e of waterRaiders)hit(e);
+   for(const e of lavaThrowers)hit(e);
  }
  for(const e of flyingVeg){
    if(e.dead)continue;
@@ -1851,6 +1915,12 @@ function hitVineContent(damage,range,base,cone,kind='physical'){
    if(v.dead||v.perma)continue;
    const d=dist(player.x,player.y,v.x,v.y),a=Math.atan2(v.y-player.y,v.x-player.x);
    if(d<=range+v.r&&Math.abs(angleDiff(a,base))<=cone/2+.12){
+     if(kind==='iceSpear'){
+       if(v.iceStage===0){v.iceStage=1;v.hp=v.maxHp;particle(v.x,v.y-18,'キュッ…','#bdeeff',.45,15);}
+       else if(v.iceStage===1){v.iceStage=2;v.iceT=5;particle(v.x,v.y+22,'カチコチ！','#e8fbff',.6,18);}
+       else {v.iceT=Math.max(v.iceT||0,5);particle(v.x,v.y,'キン！','#dff8ff',.25,12);}
+       continue;
+     }
      if(v.iceStage===2&&kind!=='fire'){
        v.perma=true;v.dead=true;v.iceStage=0;v.regenT=999999;
        particle(v.x,v.y,'パキィン！','#e9fbff',.75,22);
@@ -1910,7 +1980,7 @@ function hitBoss(damage,range,base,cone=Math.PI*2){
  }
 }
 
-function swordDamage(v){return player.swordPlus?v+2:v}
+function swordDamage(v){return player.flameSword?v+4:(player.swordPlus?v+2:v)}
 function doAttack(charged=false){
  if(player.attackCooldown>0)return;
  const wasDash=player.dashT>0||player.dashAuto;
@@ -1988,6 +2058,7 @@ function doAttack(charged=false){
      }
    }
    hitBoss(4,285,base,.55);hitIslandBoss(4,285,base,.55);hitFireBoss(4,285,base,.55);hitStage2(4,285,base,.55);hitStage3(4,285,base,.55,w,true);hitStage45(8,285,base,.55,w);hitStage8Spinner(285,base);
+   if(player.waterSpear)freezeVinesArc(300,base,.62);
    // 槍でも岩は削れるが、5回必要。ハンマーなら1発。
    for(const r of stage7Rocks){
      if(r.dead)continue;
@@ -2031,7 +2102,7 @@ function doAttack(charged=false){
  for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);const aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<=range+e.r&&Math.abs(angleDiff(aa,base))<=cone/2){let dmg=jumpStrike?5:(wasDash?5:(w===2?(player.hammerPlus?7:4):3));if(w===0)dmg=swordDamage(dmg);e.hp-=dmg;e.flash=.14;particle(e.x,e.y-22,`-${dmg}`,'#b31313',.45,16);if(e.hp<=0){e.dead=true;stage1DeathEffect(e);killDrop(e,.55)}}}
  let commonD=jumpStrike?5:(wasDash?5:(w===2?(player.hammerPlus?7:4):3));if(w===1&&player.waterSpear)commonD+=2;if(w===0)commonD=swordDamage(commonD);
  for(const e of iceEnemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y),aa=Math.atan2(e.y-player.y,e.x-player.x);if(d<range+e.r&&Math.abs(angleDiff(aa,base))<cone){e.hp-=commonD;e.flash=.16;enemyHitReact(e,48);particle(e.x,e.y-20,`-${commonD}`,'#b31313',.35,15);if(e.hp<=0)e.dead=true}}
- hitVineContent(commonD,range,base,cone,w===3?'fire':'physical');
+ hitVineContent(commonD,range,base,cone,w===3?'fire':(w===1&&player.waterSpear?'iceSpear':'physical'));
  hitBoss(commonD,range,base,cone);hitIslandBoss(commonD,range,base,cone);hitFireBoss(commonD,range,base,cone);hitIceBoss(commonD,range,base,cone);
  hitStage2(commonD,range,base,cone);hitStage3(commonD,range,base,cone,w,false);hitStage45(commonD,range,base,cone,w);
  if(w===1)hitStage8Spinner(range+48,base);
@@ -2044,6 +2115,14 @@ function doAttack(charged=false){
    });
  }
 
+ if(w===0&&player.flameSword&&!charged){
+   const dmg=3;
+   projectiles.push({
+     x:player.x+Math.cos(base)*58,y:player.y+Math.sin(base)*58,
+     vx:Math.cos(base)*310,vy:Math.sin(base)*310,r:15,life:.46,
+     kind:'flameCrescent',damage:dmg,hit:false
+   });
+ }
  if(w===0){
   for(const g of props.grass){if(!g.dead&&dist(player.x,player.y,g.x,g.y)<range+28){g.dead=true;particle(g.x,g.y,'ザシュ','#267524')}}
   for(const tr of props.smallTrees){if(!tr.dead&&dist(player.x,player.y,tr.x,tr.y)<range+45){tr.dead=true;particle(tr.x,tr.y-18,'バサッ！','#3a7e35',.45,16)}}
@@ -2173,7 +2252,7 @@ function resolveAirMagic(m){
    for(const o of iceRouteBlocks){if(!o.dead&&dist(m.x,m.y,o.x,o.y)<100){o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.4,15)}}
  }else{
    freezeLegacyWaterAt(m.x,m.y,100);
-   freezeStreamsAt(m.x,m.y,100);
+   freezeStreamsAt(m.x,m.y,100);freezeLavaAt(m.x,m.y,112);
  }
 }
 
@@ -2389,7 +2468,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        const key='p'+tick;
        if(!player.skillHit.has(key)){
          player.skillHit.add(key);
-         hitVineContent(2,76,sa,Math.PI*2,'physical');hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitFireBoss(2,76,sa,Math.PI*2);hitIceBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
+         hitVineContent(2,76,sa,Math.PI*2,player.waterSpear?'iceSpear':'physical');if(player.waterSpear)freezeVinesArc(92,sa,Math.PI*2);hitBoss(2,76,sa,Math.PI*2);hitIslandBoss(2,76,sa,Math.PI*2);hitFireBoss(2,76,sa,Math.PI*2);hitIceBoss(2,76,sa,Math.PI*2);hitStage2(2,76,sa,Math.PI*2);hitStage3(2,76,sa,Math.PI*2,1,false);hitStage45(2,76,sa,Math.PI*2,1);
          for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<76+e.r){e.hp-=2;e.flash=.12;enemyHitReact(e,35);if(e.hp<=0)e.dead=true}}
        }
      }else{
@@ -2399,7 +2478,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        if(p>.35&&!player.skillHit.has('finish')){
          player.skillHit.add('finish');
          particle(player.x+Math.cos(sa)*90,player.y+Math.sin(sa)*90,'ズドッ！','#fff',.3,17);
-         hitVineContent(6,165,sa,.42,'physical');hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitFireBoss(6,165,sa,.42);hitIceBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
+         hitVineContent(6,165,sa,.42,player.waterSpear?'iceSpear':'physical');if(player.waterSpear)freezeVinesArc(185,sa,.55);hitBoss(6,165,sa,.42);hitIslandBoss(6,165,sa,.42);hitFireBoss(6,165,sa,.42);hitIceBoss(6,165,sa,.42);hitStage2(6,165,sa,.42);hitStage3(6,165,sa,.42,1,true);hitStage45(6,165,sa,.42,1);hitStage8Spinner(165,sa);
          for(const e of enemies){if(e.dead)continue;const dx=e.x-player.x,dy=e.y-player.y,along=dx*Math.cos(sa)+dy*Math.sin(sa),side=Math.abs(dx*Math.sin(sa)-dy*Math.cos(sa));if(along>0&&along<165&&side<35+e.r*.4){e.hp-=6;e.flash=.18;enemyHitReact(e,70);if(e.hp<=0)e.dead=true}}
        }
      }
@@ -2721,7 +2800,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    if(d<minD){player.x=fireBoss.x+dx/d*minD;player.y=fireBoss.y+dy/d*minD;}
  }
  // 大型ボスの中心には入り込めない。接触自体は攻撃ではない。
- for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,fruitSpearBoss,waterBoss]){
+ for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,fruitSpearBoss,waterBoss,lavaBoss]){
    if(!b.active||b.dead)continue;
    const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,minD=player.r+b.r*.72;
    if(d<minD){const push=minD-d;player.x+=dx/d*push;player.y+=dy/d*push}
@@ -2741,7 +2820,17 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    player.airAttackDone=true;
    const w=player.weapon;
    if(w===0||w===1){
-     const rad=w===0?64:(player.spearPlus?92:72),dmg=(w===1&&player.spearPlus)?7:5;
+     const rad=w===0?64:(player.waterSpear?104:(player.spearPlus?92:72)),dmg=(w===1&&player.waterSpear)?8:((w===1&&player.spearPlus)?7:5);
+     if(w===1&&player.waterSpear){
+       airMagicImpacts.push({x:player.x,y:player.y,kind:'ice',life:.92,max:.92,flake:true});
+       freezeLegacyWaterAt(player.x,player.y,118);freezeStreamsAt(player.x,player.y,118);freezeLavaAt(player.x,player.y,118);
+       freezeVinesArc(118,0,Math.PI*2);
+       particle(player.x,player.y-18,'氷華！','#bfeeff',.55,18);
+     }
+     if(w===0&&player.flameSword){
+       airMagicImpacts.push({x:player.x,y:player.y,kind:'fire',life:.52,max:.52});
+       particle(player.x,player.y-18,'炎柱！','#ff6a2a',.55,19);
+     }
      particle(player.x,player.y,w===0?'ズブッ！':'ドスッ！','#fff',.38,17);
      hitBoss(dmg,rad,0,Math.PI*2);hitFireBoss(dmg,rad,0,Math.PI*2);hitStage2(dmg,rad,0,Math.PI*2);hitStage3(dmg,rad,0,Math.PI*2,w,false);hitStage45(dmg,rad,0,Math.PI*2,w);
      for(const e of enemies){if(!e.dead&&dist(player.x,player.y,e.x,e.y)<rad+e.r){e.hp-=dmg;e.flash=.18;enemyHitReact(e,42);if(e.hp<=0)e.dead=true}}
@@ -2793,7 +2882,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
  player.fireTrail=player.fireTrail.filter(f=>f.life>0);
  for(const f of player.iceTrail)f.life-=dt;
  player.iceTrail=player.iceTrail.filter(f=>f.life>0);
- if(player.skillKind==='ice'&&player.skillT>0){freezeStreamsAt(player.x,player.y,72);freezeLegacyWaterAt(player.x,player.y,72)}
+ if(player.skillKind==='ice'&&player.skillT>0){freezeStreamsAt(player.x,player.y,72);freezeLegacyWaterAt(player.x,player.y,72);freezeLavaAt(player.x,player.y,82)}
  function iceHitTarget(pr,e){
    if(!e||e.dead)return false;
    if(dist(pr.x,pr.y,e.x,e.y)>=pr.r+(e.r||24))return false;
@@ -2804,14 +2893,14 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    pr.hit=true;return true;
  }
  function iceHitAnything(pr){
-   const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg];
+   const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg,lavaThrowers];
    for(const list of lists){
      for(const e of list){
        // 回転花も氷は有効。少し凍って動きを止める。
        if(iceHitTarget(pr,e))return true;
      }
    }
-   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss]){
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss,lavaBoss]){
      if(!b||b.dead||!b.active)continue;
      if(iceHitTarget(pr,b))return true;
    }
@@ -2848,22 +2937,23 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      continue;
    }
 
-   if(pr.kind==='fire'||pr.kind==='fireWheel'){
+   if(pr.kind==='fire'||pr.kind==='fireWheel'||pr.kind==='flameCrescent'){
      for(const o of iceRouteBlocks){
        if(!o.dead&&dist(pr.x,pr.y,o.x,o.y)<pr.r+o.r){
          o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.45,16);pr.hit=true;
        }
      }
      for(const g of props.grass){if(!g.dead&&dist(pr.x,pr.y,g.x,g.y)<pr.r+24){g.dead=true;particle(g.x,g.y,'ボワッ','#e43');pr.hit=true;break}}
-   }else if(pr.kind==='ice'){
+   }else if(pr.kind==='ice'||(pr.kind==='iceShard'&&pr.waterTrail)){
      const frozeLegacy=freezeLegacyWaterAt(pr.x,pr.y,pr.r+22);
      const frozeStream=freezeStreamsAt(pr.x,pr.y,pr.r+16);
-     if(frozeLegacy||frozeStream)particle(pr.x,pr.y,'カチッ','#167bad',.22,12);
+     const frozeLava=freezeLavaAt(pr.x,pr.y,pr.r+28);
+     if(frozeLegacy||frozeStream||frozeLava)particle(pr.x,pr.y,'カチッ','#167bad',.22,12);
      // 水を凍らせても氷弾は消えず、そのまま敵まで飛ぶ。
    }
    if(pr.hit)continue;
    if(pr.kind==='ice'&&iceHitAnything(pr))continue;
-   if(pr.kind==='fire'||pr.kind==='fireWheel'||pr.kind==='ice'){
+   if(pr.kind==='fire'||pr.kind==='fireWheel'||pr.kind==='flameCrescent'||pr.kind==='ice'){
      for(const o of elementalObstacles){
        if(o.dead)continue;
        if(dist(pr.x,pr.y,o.x,o.y)<pr.r+o.r){
@@ -3793,6 +3883,50 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
    if(waterSpearPickup.active&&!waterSpearPickup.taken&&dist(player.x,player.y,waterSpearPickup.x,waterSpearPickup.y)<78){
      waterSpearPickup.taken=true;player.waterSpear=true;unlockedWeapons[1]=true;player.weapon=1;weaponNameEl.textContent='水龍の槍';
      particle(player.x,player.y-55,'水龍の槍 GET！','#bfeeff',.9,22);say('通常突きに氷のトゲ！ 回転中は魔法弾も弾く！');saveProgress();
+   }
+ }
+
+ // 水龍の先：溶岩地帯。
+ if(waterBossDefeated){
+   for(const l of lavaFlows)l.frozen=Math.max(0,(l.frozen||0)-dt);
+   // 液体溶岩に触れると継続ダメージ。凍ると灰色の足場になる。
+   for(const l of lavaFlows){
+     if(l.frozen>0)continue;
+     if(player.x>l.x&&player.x<l.x+l.w&&player.y>l.y&&player.y<l.y+l.h&&player.jumpT<=0&&player.inv<=0){
+       const got=takeDamage(5);player.inv=.55;particle(player.x,player.y-30,`-${got}`,'#ff6b32',.42,16);
+     }
+   }
+   for(const e of lavaThrowers){
+     if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;
+     const d=dist(player.x,player.y,e.x,e.y);
+     if(d<520&&e.attackCd<=0){
+       e.attackCd=1.55;
+       const a=Math.atan2(player.y-e.y,player.x-e.x);
+       projectiles.push({x:e.x,y:e.y-12,vx:Math.cos(a)*205,vy:Math.sin(a)*205,r:17,life:2.6,kind:'lavaRock',damage:7,enemyShot:true,hit:false});
+       particle(e.x,e.y-38,'ゴロッ！','#ff7440',.28,14);
+     }
+   }
+   const b=lavaBoss,dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;
+   if(!b.dead&&!b.active&&player.x>16000){b.active=true;say('炎唐辛子！ 炎神の剣を構えた！');}
+   if(b.active&&!b.dead){
+     b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.windup=Math.max(0,b.windup-dt);b.swingT=Math.max(0,b.swingT-dt);b.side=dx<0?-1:1;
+     if(d>125&&d<500){b.x+=dx/d*54*dt;b.y+=dy/d*54*dt;}
+     if(d<185&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.25;b.windup=.34;b.didHit=false;particle(b.x,b.y-74,'メラッ！','#ff8b35',.28,15);}
+     if(b.windup>0&&b.windup<=.06&&!b.didHit){
+       b.didHit=true;b.swingT=.28;
+       if(d<205&&player.jumpT<=0){
+         if(shieldBlocks(b))particle(player.x,player.y-34,'ガキィン！','#ffd25a',.32,17);
+         else if(player.inv<=0){const got=takeDamage(12);player.inv=.65;particle(player.x,player.y-35,`-${got}`,'#c11',.45,17);}
+       }
+     }
+     if(b.hp<=0){
+       b.dead=true;b.active=false;lavaBossDefeated=true;flameSwordPickup.active=true;flameSwordPickup.x=b.x;flameSwordPickup.y=b.y;
+       particle(b.x,b.y-60,'撃破！','#fff',.9,25);say('炎唐辛子撃破！ 炎神の剣が残った！');saveProgress();
+     }
+   }
+   if(flameSwordPickup.active&&!flameSwordPickup.taken&&dist(player.x,player.y,flameSwordPickup.x,flameSwordPickup.y)<78){
+     flameSwordPickup.taken=true;flameSwordPickup.active=false;player.flameSword=true;unlockedWeapons[0]=true;player.weapon=0;weaponNameEl.textContent='炎神の剣';
+     particle(player.x,player.y-55,'炎神の剣 GET！','#ff9140',.9,22);say('通常斬りに炎の三日月！ ジャンプ着地で火柱！');saveProgress();
    }
  }
  // カボチャ武将の先：細い一本道。外側の花は固定砲台、道上の兵士は待ち伏せ。
@@ -4991,6 +5125,39 @@ function drawWorld(){
          circle(0,0,9,'#fff','#111',3);ctx.restore();
        }
 
+       if(waterBossDefeated){
+         for(const r of lavaGeo.path){
+           ctx.fillStyle='#5a4035';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,42);ctx.fill();ctx.stroke();
+           ctx.fillStyle='#8a5c42';ctx.globalAlpha=.34;ctx.beginPath();ctx.roundRect(r.x+18,r.y+18,r.w-36,r.h-36,32);ctx.fill();ctx.globalAlpha=1;
+         }
+         for(const l of lavaFlows){
+           ctx.fillStyle=l.frozen>0?'#777b7d':'#e64a2e';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.roundRect(l.x,l.y,l.w,l.h,36);ctx.fill();ctx.stroke();
+           if(l.frozen>0){
+             ctx.strokeStyle='#b9c4c9';ctx.lineWidth=4;ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(l.x+20,l.y+70);ctx.lineTo(l.x+l.w-25,l.y+145);ctx.lineTo(l.x+28,l.y+230);ctx.stroke();ctx.globalAlpha=1;
+           }else{
+             ctx.strokeStyle='#ffb13b';ctx.lineWidth=7;ctx.globalAlpha=.75;for(let yy=l.y+45;yy<l.y+l.h;yy+=75){ctx.beginPath();ctx.moveTo(l.x+12,yy);ctx.quadraticCurveTo(l.x+l.w*.55,yy-22,l.x+l.w-12,yy);ctx.stroke();}ctx.globalAlpha=1;
+           }
+         }
+         for(const e of lavaThrowers){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);if(e.flash>0)ctx.globalAlpha=.55;
+           circle(0,0,e.r,'#7f372c','#111',6);circle(-10,-8,4,'#111','#111',1);circle(10,-8,4,'#111','#111',1);
+           circle(0,19,13,'#d9492f','#111',4);ctx.restore();
+         }
+         if(!lavaBoss.dead){const b=lavaBoss;ctx.save();ctx.translate(b.x,b.y);if(b.flash>0)ctx.globalAlpha=.55;
+           ctx.fillStyle='#d93828';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-28,-55);ctx.quadraticCurveTo(35,-60,45,0);ctx.quadraticCurveTo(42,58,-10,66);ctx.quadraticCurveTo(-50,44,-42,-5);ctx.closePath();ctx.fill();ctx.stroke();
+           ctx.fillStyle='#ef7f30';ctx.beginPath();ctx.moveTo(-10,-48);ctx.quadraticCurveTo(28,-30,30,10);ctx.quadraticCurveTo(23,38,0,48);ctx.quadraticCurveTo(12,5,-10,-48);ctx.fill();
+           line(0,-57,9,-85,10,'#4f9a45');circle(-11,-10,5,'#111','#111',1);circle(14,-9,5,'#111','#111',1);
+           const side=b.side||-1;ctx.save();ctx.scale(side,1);ctx.rotate(b.swingT>0?-1.05:.20);
+           line(18,8,76,8,15,'#111');line(18,8,74,8,7,'#8b4a2e');
+           ctx.fillStyle='#ff6230';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(66,8);ctx.lineTo(91,-13);ctx.lineTo(132,-4);ctx.lineTo(96,10);ctx.lineTo(132,25);ctx.lineTo(90,28);ctx.closePath();ctx.fill();ctx.stroke();
+           ctx.strokeStyle='#ffb43f';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(83,1);ctx.lineTo(119,2);ctx.stroke();ctx.restore();ctx.restore();
+           ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('炎唐辛子',b.x,b.y-112);ctx.fillRect(b.x-82,b.y+88,164,13);ctx.fillStyle='#fff';ctx.fillRect(b.x-77,b.y+92,154*Math.max(0,b.hp/b.maxHp),5);
+         }
+         if(flameSwordPickup.active&&!flameSwordPickup.taken){ctx.save();ctx.translate(flameSwordPickup.x,flameSwordPickup.y);ctx.rotate(-.35);
+           line(-48,0,34,0,13,'#111');line(-45,0,32,0,6,'#8b4a2e');ctx.fillStyle='#ff6230';ctx.strokeStyle='#111';ctx.lineWidth=5;
+           ctx.beginPath();ctx.moveTo(28,0);ctx.lineTo(52,-14);ctx.lineTo(100,-5);ctx.lineTo(58,3);ctx.lineTo(100,18);ctx.lineTo(52,20);ctx.closePath();ctx.fill();ctx.stroke();
+           ctx.strokeStyle='#ffbd49';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(48,-3);ctx.lineTo(88,1);ctx.stroke();ctx.restore();
+         }
+       }
        if(fruitSpearBossDefeated){
          // 窪んだ浅いプール。縁の内側だけに水を収める。
          const p=waterGeo.pool;ctx.save();
@@ -5420,6 +5587,19 @@ function drawObjectiveArrow(){
 }
 
 function drawProjectile(pr){
+ if(pr.kind==='lavaRock'){
+   ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(performance.now()*.012);
+   circle(0,0,pr.r,'#8f2d22','#111',5);circle(5,-4,pr.r*.48,'#e6502c','transparent',0);
+   ctx.strokeStyle='#ff9a42';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-3);ctx.lineTo(2,6);ctx.lineTo(11,-8);ctx.stroke();ctx.restore();return;
+ }
+ if(pr.kind==='flameCrescent'){
+   ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));
+   ctx.globalCompositeOperation='screen';ctx.globalAlpha=.30;ctx.strokeStyle='#ff4d22';ctx.lineWidth=20;
+   ctx.beginPath();ctx.arc(-2,0,27,-.85,.85);ctx.stroke();
+   ctx.globalAlpha=.92;ctx.strokeStyle='#ff8b31';ctx.lineWidth=10;ctx.beginPath();ctx.arc(-2,0,25,-.9,.9);ctx.stroke();
+   ctx.strokeStyle='#ffd15a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(-2,0,22,-.9,.9);ctx.stroke();ctx.restore();return;
+ }
+
  if(pr.kind==='thrownIce'){
    ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(performance.now()*.012);
    ctx.fillStyle='#bdeeff';ctx.strokeStyle='#111';ctx.lineWidth=4;
@@ -5810,7 +5990,7 @@ function drawShieldBack(hx,hy,a,raised){
  circle(-7,0,7,'#f7fbff','#111',4);
  ctx.restore();ctx.restore();
 }
-function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,player.swordPlus?'#c8f2d2':'#eef5fa');if(player.swordPlus)line(10,-2,41,-2,2,'#64c58b');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,player.swordPlus?'#6fbd78':'#d8a93d')}
+function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,player.flameSword?'#ff6b2f':(player.swordPlus?'#c8f2d2':'#eef5fa'));if(player.flameSword)line(10,-2,41,-2,3,'#ffd05a');else if(player.swordPlus)line(10,-2,41,-2,2,'#64c58b');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,player.flameSword?'#e34c27':(player.swordPlus?'#6fbd78':'#d8a93d'))}
  else if(w===1){
    // 水龍の槍を取った後は、柄も穂先も青い氷金属へ変化。
    const water=!!player.waterSpear;
