@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={minX:-1500,minY:-3900,w:20550,h:1100};
+const world={minX:-1500,minY:-3900,w:23550,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -26,7 +26,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 147: 最初の浮遊草原ステージ
+// Prototype 148: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -49,9 +49,10 @@ const shields=[
  {name:'マジックシールド',heal:4,move:.92,jump:1,magic:true,reflect:false},
  {name:'雲の盾',heal:5,move:1.08,jump:1.42,magic:false,reflect:false},
  {name:'蓄力の盾',heal:5,move:.98,jump:1,magic:false,reflect:false,chargeGuard:true},
- {name:'水晶の盾',heal:5,move:1,jump:1,magic:false,reflect:true,crystalMagic:true}
+ {name:'水晶の盾',heal:5,move:1,jump:1,magic:false,reflect:true,crystalMagic:true},
+ {name:'光の盾',heal:11,move:1.08,jump:1.42,magic:true,reflect:true,chargeGuard:true,crystalMagic:true,allShield:true}
 ];
-const unlockedShields=[true,false,false,false,false,false,false];
+const unlockedShields=[true,false,false,false,false,false,false,false];
 
 
 let areaMapOpen=false,area1Cleared=false;
@@ -541,10 +542,36 @@ const crystalPlants=[
  {x:19000,y:-2510,r:40,hp:16,maxHp:16,attackCd:.9,flash:0,dead:false}
 ];
 const crystalThrowers=[];
-const crystalBoss={name:'水晶樹王',x:19820,y:-2470,r:92,hp:78,maxHp:78,active:false,dead:false,attackCd:1.0,flash:0,whip:0,rootCd:1.5};
+const crystalBoss={name:'水晶樹王',x:19820,y:-2470,r:96,hp:78,maxHp:78,active:false,dead:false,attackCd:1.0,flash:0,whip:0,whipA:0,rootCd:1.5,crystalSpin:0};
 let crystalBossDefeated=false;
 const crystalShieldPickup={x:19820,y:-2470,active:false,taken:false};
 const crystalRoots=[];
+const lightGardenGeo={path:[
+ {x:20340,y:-2780,w:760,h:600},{x:21020,y:-2820,w:760,h:650},
+ {x:21700,y:-2770,w:760,h:590},{x:22380,y:-2820,w:950,h:650}
+]};
+const rapidFlowers=[
+ {x:20580,y:-2520,r:28,hp:10,maxHp:10,burstCd:.3,burst:0,flash:0,dead:false},
+ {x:20860,y:-2360,r:28,hp:10,maxHp:10,burstCd:.7,burst:0,flash:0,dead:false},
+ {x:21200,y:-2600,r:30,hp:11,maxHp:11,burstCd:.4,burst:0,flash:0,dead:false},
+ {x:21520,y:-2380,r:30,hp:11,maxHp:11,burstCd:.8,burst:0,flash:0,dead:false},
+ {x:21860,y:-2580,r:30,hp:12,maxHp:12,burstCd:.5,burst:0,flash:0,dead:false},
+ {x:22200,y:-2370,r:30,hp:12,maxHp:12,burstCd:.9,burst:0,flash:0,dead:false},
+ {x:22520,y:-2580,r:31,hp:13,maxHp:13,burstCd:.6,burst:0,flash:0,dead:false}
+];
+const ultraVines=[
+ {x:20720,y:-2450,r:42,hp:8,maxHp:8,dead:false,regenT:0,phase:0},
+ {x:21050,y:-2550,r:44,hp:8,maxHp:8,dead:false,regenT:0,phase:1},
+ {x:21400,y:-2440,r:45,hp:9,maxHp:9,dead:false,regenT:0,phase:2},
+ {x:21730,y:-2540,r:44,hp:9,maxHp:9,dead:false,regenT:0,phase:3},
+ {x:22080,y:-2440,r:46,hp:10,maxHp:10,dead:false,regenT:0,phase:4},
+ {x:22410,y:-2540,r:46,hp:10,maxHp:10,dead:false,regenT:0,phase:5}
+];
+const lightBoss={name:'光花砲王',x:22940,y:-2470,r:92,hp:86,maxHp:86,active:false,dead:false,flash:0,burstCd:1.0,burstLeft:0,shotCd:0,summonCd:3.2};
+let lightBossDefeated=false;
+const walkingGrass=[];
+const lightShieldPickup={x:22940,y:-2470,active:false,taken:false};
+
 
 
 
@@ -964,6 +991,7 @@ function visibleGroundRects(){
        if(fruitSpearBossDefeated){grounds.push(waterGeo.pool,{x:13020,y:-2750,w:820,h:610});}
        if(waterBossDefeated)grounds.push(...lavaGeo.path);
        if(lavaBossDefeated)grounds.push(...crystalIceGeo.path);
+       if(crystalBossDefeated)grounds.push(...lightGardenGeo.path);
      }
    }
  }
@@ -1097,17 +1125,17 @@ function saveProgress(){
    saveSchema:SAVE_SCHEMA,
    saveVersion:116,
    x:player.x,y:player.y,hp:player.hp,weapon:player.weapon,shieldType:player.shieldType,inv:player.inv,
-   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,flameSword:!!player.flameSword,crystalShield:!!player.crystalShield,
+   currentStage,checkpoint:stage.checkpoint,swordPlus:!!player.swordPlus,spearPlus:!!player.spearPlus,hammerPlus:!!player.hammerPlus,waterSpear:!!player.waterSpear,flameSword:!!player.flameSword,crystalShield:!!player.crystalShield,lightShield:!!player.lightShield,
    unlockedWeapons:[...unlockedWeapons],unlockedShields:[...unlockedShields],
    stageBossDefeated:!!stage.bossDefeated,stageBridgeOpen:!!stage.bridgeOpen,
    stage2Started,stage2BossDefeated,stage2BridgeOpen,
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,lightBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
-   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,crystalShieldTaken:!!crystalShieldPickup.taken,
+   healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,crystalShieldTaken:!!crystalShieldPickup.taken,lightShieldTaken:!!lightShieldPickup.taken,
    seedBossDead:!!seedBoss.dead,grassFinalBossDead:!!grassFinalBoss.dead,
    fireBossDead:!!fireBoss.dead,iceBossDead:!!iceBoss.dead,rockBossDead:!!rockBoss.dead,
    hammerGuardianDead:!!hammerGuardian.dead,islandBossDead:!!islandBoss.dead,vineBossDead:!!vineBoss.dead,vegBossDead:!!vegBoss.dead,
@@ -1127,7 +1155,8 @@ function loadProgress(){
   hammerPlus:!!d.hammerPlus||!!d.spearPlus,
   waterSpear:!!d.waterSpear,
   flameSword:!!d.flameSword,
-  crystalShield:!!d.crystalShield
+  crystalShield:!!d.crystalShield,
+  lightShield:!!d.lightShield
  });
  if(Number.isFinite(d.inv))player.inv=d.inv;
  if(Number.isInteger(d.currentStage))currentStage=d.currentStage;
@@ -1202,6 +1231,11 @@ function loadProgress(){
  if(lavaBossDefeated){lavaBoss.dead=true;lavaBoss.active=false;}
  crystalBossDefeated=!!d.crystalBossDefeated;
  if(crystalBossDefeated){crystalBoss.dead=true;crystalBoss.active=false;}
+ lightBossDefeated=!!d.lightBossDefeated;
+ if(lightBossDefeated){lightBoss.dead=true;lightBoss.active=false;}
+ lightShieldPickup.taken=!!d.lightShieldTaken||!!d.lightShield;
+ lightShieldPickup.active=lightBossDefeated&&!lightShieldPickup.taken;
+ if(lightShieldPickup.taken){player.lightShield=true;unlockedShields[7]=true;}
  crystalShieldPickup.taken=!!d.crystalShieldTaken||!!d.crystalShield;
  crystalShieldPickup.active=crystalBossDefeated&&!crystalShieldPickup.taken;
  if(crystalShieldPickup.taken){player.crystalShield=true;unlockedShields[6]=true;}
@@ -1452,7 +1486,7 @@ shortcutBtn.addEventListener('pointerup',releaseShortcut);
 shortcutBtn.addEventListener('pointercancel',ev=>{if(shortcutHoldTimer)clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null;shortcutPointer=null;shortcutLong=false;});
 
 
-function jump(){if(player.jumpT<=0){player.jumpDur=player.shieldType===4?.92:.62;player.jumpHeight=player.shieldType===4?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+function jump(){if(player.jumpT<=0){player.jumpDur=(player.shieldType===4||player.shieldType===7)?.92:.62;player.jumpHeight=(player.shieldType===4||player.shieldType===7)?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
 function steerAngle(current,target,maxStep){
  const d=angleDiff(target,current);
@@ -1560,7 +1594,7 @@ function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of e
 
 function fireMagic(w,charged,base){
  // 杖は入力方向を優先しつつ、その方向にいる敵・的へ軽く吸い付く。
- const crystal=player.shieldType===6;
+ const crystal=player.shieldType===6||player.shieldType===7;
  const magicSnap=skillAutoAim(base,charged?(crystal?520:390):520,charged?.48:.62);
  if(magicSnap.target)base=magicSnap.angle;
  // 杖チャージは「弾を大量に出す」のではなく、武器ごとの固有範囲技。
@@ -1568,9 +1602,9 @@ function fireMagic(w,charged,base){
    const kind=w===3?'fireCone':'blizzardCone';
    player.staffChargeFx={kind,base,t:.52,max:.52};
 
-   const maxRange=(w===3?260:275)*(crystal?1.48:1);
-   const half=(w===3?.52:.58)*(crystal?1.38:1);
-   const damage=(w===3?7:6)+(crystal?4:0);
+   const maxRange=(w===3?260:275)*(crystal?2.15:1);
+   const half=(w===3?.52:.58)*(crystal?1.95:1);
+   const damage=(w===3?7:6)+(crystal?6:0);
 
    // 扇形の中にいる敵へ一度だけダメージ。
    const hitOne=(e)=>{
@@ -1762,7 +1796,8 @@ function hitStage8Spinner(range,base){
 
 function hitVegArea(damage,range,base,cone,weapon){
  if(!cloudRaceWon)return;
-  if(crystalBoss.active&&!crystalBoss.dead){const cd=dist(player.x,player.y,crystalBoss.x,crystalBoss.y),ca=Math.atan2(crystalBoss.y-player.y,crystalBoss.x-player.x);if(cd<=range+crystalBoss.r+20&&Math.abs(angleDiff(ca,base))<=cone/2+.2){crystalBoss.hp-=damage;crystalBoss.flash=.2;}}
+  if(lightBoss.active&&!lightBoss.dead){const d=dist(player.x,player.y,lightBoss.x,lightBoss.y),a=Math.atan2(lightBoss.y-player.y,lightBoss.x-player.x);if(d<=range+lightBoss.r+20&&Math.abs(angleDiff(a,base))<=cone/2+.2){lightBoss.hp-=damage;lightBoss.flash=.2;}}
+ if(crystalBoss.active&&!crystalBoss.dead){const cd=dist(player.x,player.y,crystalBoss.x,crystalBoss.y),ca=Math.atan2(crystalBoss.y-player.y,crystalBoss.x-player.x);if(cd<=range+crystalBoss.r+20&&Math.abs(angleDiff(ca,base))<=cone/2+.2){crystalBoss.hp-=damage;crystalBoss.flash=.2;}}
  if(lavaBoss.active&&!lavaBoss.dead){
    const ld=dist(player.x,player.y,lavaBoss.x,lavaBoss.y),la=Math.atan2(lavaBoss.y-player.y,lavaBoss.x-player.x);
    if(ld<=range+lavaBoss.r+20&&Math.abs(angleDiff(la,base))<=cone/2+.2){lavaBoss.hp-=damage;lavaBoss.flash=.2;particle(lavaBoss.x,lavaBoss.y-45,`-${damage}`,'#ff7440',.4,16);}
@@ -1797,7 +1832,7 @@ if(fruitSpearBoss.active&&!fruitSpearBoss.dead){
    for(const e of fruitMiniBosses)hit(e);
    for(const e of waterRaiders)hit(e);
    for(const e of lavaThrowers)hit(e);
-   for(const e of crystalPlants)hit(e);for(const e of crystalThrowers)hit(e);
+   for(const e of crystalPlants)hit(e);for(const e of crystalThrowers)hit(e);for(const e of rapidFlowers)hit(e);for(const e of ultraVines)hit(e);for(const e of walkingGrass)hit(e);
  }
  for(const e of flyingVeg){
    if(e.dead)continue;
@@ -2260,7 +2295,7 @@ function doAttack(charged=false){
  }
 }
 function gainShieldEnergy(){
- if(player.shieldType!==5)return;
+ if(player.shieldType!==5&&player.shieldType!==7)return;
  const before=player.shieldEnergy||0;
  player.shieldEnergy=Math.min(player.shieldEnergyMax||5,before+1);
  if(player.shieldEnergy>before){
@@ -2281,7 +2316,7 @@ function shieldBlocks(enemy){
  return blocked;
 }
 function releaseShieldEnergy(base){
- if(player.shieldType!==5||!player.shieldEnergy)return 0;
+ if((player.shieldType!==5&&player.shieldType!==7)||!player.shieldEnergy)return 0;
  const n=player.shieldEnergy;player.shieldEnergy=0;
  const bonus=n*3,rad=85+n*13;
  particle(player.x,player.y-48,`蓄力解放 +${bonus}`,'#ffd34d',.65,19);
@@ -2361,6 +2396,10 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
  // P16 チャージ攻撃の時間処理
  if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
  if(player.flameCharge>0)player.flameCharge=Math.max(0,player.flameCharge-dt);
+ if(player.flameCharge>0&&player.flameSword){
+   const fp=1-player.flameCharge/(player.flameChargeMax||.78);
+   meltCrystalIceAt(player.x,player.y,80+fp*245);
+ }
  if(player.staffChargeFx){player.staffChargeFx.t-=dt;if(player.staffChargeFx.t<=0)player.staffChargeFx=null;}
  if(player.hammerSmash>0){
    player.hammerSmash-=dt;player.hammerSmashT+=dt;
@@ -3030,7 +3069,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        if(pr.kind!=='enemyFire'&&player.jumpT>0){
          particle(player.x,player.y-45,'スカッ','#333',.3,13);
        }else if(shieldBlocks({x:pr.x,y:pr.y})){
-         if(player.shieldType===6){pr.enemyShot=false;pr.vx*=-1.25;pr.vy*=-1.25;pr.damage=Math.max(pr.damage||3,7);pr.life=1.5;particle(pr.x,pr.y,'反射！','#bdf6ff',.35,16);continue;}
+         if(player.shieldType===6||player.shieldType===7){pr.enemyShot=false;pr.vx*=-1.25;pr.vy*=-1.25;pr.damage=Math.max(pr.damage||3,7);pr.life=1.5;particle(pr.x,pr.y,'反射！','#bdf6ff',.35,16);continue;}
          particle(pr.x,pr.y,pr.kind==='enemyFire'?'ボォン！':(pr.kind==='seed'?'カン！':'ポフン！'),'#111',.35,14);
        }else if(player.inv<=0){
          const got=takeDamage(pr.damage);
@@ -3993,6 +4032,32 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  }
 
 
+
+ // 水晶樹王の先：反射を主役にした光花庭園。
+ if(crystalBossDefeated){
+  for(const v of ultraVines){
+   v.phase+=dt*2.2;
+   if(v.dead){v.regenT-=dt;if(v.regenT<=0){v.dead=false;v.hp=v.maxHp;particle(v.x,v.y,'超再生！','#79ff9b',.4,15);}continue;}
+   if(v.hp<=0){v.dead=true;v.regenT=.72;}
+  }
+  for(const f of rapidFlowers){
+   if(f.dead)continue;f.flash=Math.max(0,f.flash-dt);f.burstCd-=dt;
+   const d=dist(player.x,player.y,f.x,f.y);
+   if(d<600&&f.burstCd<=0&&f.burst<=0){f.burst=5;f.burstCd=2.0;}
+   if(f.burst>0){f.shotCd=(f.shotCd||0)-dt;if(f.shotCd<=0){f.shotCd=.12;f.burst--;const a=Math.atan2(player.y-f.y,player.x-f.x);projectiles.push({x:f.x,y:f.y,vx:Math.cos(a)*285,vy:Math.sin(a)*285,r:9,life:2.4,kind:'seed',damage:5,enemyShot:true,hit:false});}}
+  }
+  for(const g of walkingGrass){if(g.dead)continue;const d=dist(player.x,player.y,g.x,g.y),a=Math.atan2(player.y-g.y,player.x-g.x);if(d>45){g.x+=Math.cos(a)*62*dt;g.y+=Math.sin(a)*62*dt;}else if(player.inv<=0&&!shieldBlocks(g)){const got=takeDamage(5);player.inv=.45;particle(player.x,player.y-25,`-${got}`,'#48a84d',.3,14);}}
+  const b=lightBoss,bd=dist(player.x,player.y,b.x,b.y);
+  if(!b.dead&&!b.active&&player.x>22620){b.active=true;say('光花砲王！ 弾幕を盾で返せ！');}
+  if(b.active&&!b.dead){
+   b.flash=Math.max(0,b.flash-dt);b.burstCd-=dt;b.summonCd-=dt;b.shotCd-=dt;
+   if(b.burstCd<=0&&b.burstLeft<=0){b.burstLeft=14;b.burstCd=2.5;}
+   if(b.burstLeft>0&&b.shotCd<=0){b.shotCd=.085;b.burstLeft--;const a=Math.atan2(player.y-b.y,player.x-b.x)+(Math.random()-.5)*.09;projectiles.push({x:b.x,y:b.y,vx:Math.cos(a)*330,vy:Math.sin(a)*330,r:9,life:2.2,kind:'seed',damage:6,enemyShot:true,hit:false});}
+   if(b.summonCd<=0){b.summonCd=4.0;for(let i=0;i<3;i++)walkingGrass.push({x:b.x-90+i*90,y:b.y+80+(i%2)*35,r:24,hp:7,maxHp:7,dead:false});particle(b.x,b.y-70,'草兵召喚！','#77d55c',.4,16);}
+   if(b.hp<=0){b.dead=true;b.active=false;lightBossDefeated=true;lightShieldPickup.active=true;lightShieldPickup.x=b.x;lightShieldPickup.y=b.y;say('光の盾が現れた！');saveProgress();}
+  }
+  if(lightShieldPickup.active&&!lightShieldPickup.taken&&dist(player.x,player.y,lightShieldPickup.x,lightShieldPickup.y)<82){lightShieldPickup.taken=true;lightShieldPickup.active=false;player.lightShield=true;unlockedShields[7]=true;player.shieldType=7;say('光の盾 GET！ 全ての盾の力がひとつになった！');saveProgress();}
+ }
  // 炎神の剣の先：水晶氷原。
  if(lavaBossDefeated){
   for(const e of crystalPlants){
@@ -4006,8 +4071,8 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
   for(let i=crystalRoots.length-1;i>=0;i--)if(crystalRoots[i].life<=0)crystalRoots.splice(i,1);
   const b=crystalBoss,d=dist(player.x,player.y,b.x,b.y);
   if(!b.dead&&!b.active&&player.x>19400){b.active=true;say('水晶樹王！ ツタと根が地面を覆う！');}
-  if(b.active&&!b.dead){b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.rootCd-=dt;b.whip=Math.max(0,b.whip-dt);
-   if(d<310&&b.attackCd<=0){b.attackCd=1.3;b.whip=.35;if(d<185&&player.jumpT<=0&&!shieldBlocks(b)&&player.inv<=0){const got=takeDamage(10);player.inv=.6;particle(player.x,player.y-35,`ムチ -${got}`,'#6bd9ff',.4,16)}}
+  if(b.active&&!b.dead){b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.rootCd-=dt;b.whip=Math.max(0,b.whip-dt);b.crystalSpin=(b.crystalSpin||0)+dt*1.8;
+   if(d<310&&b.attackCd<=0){b.attackCd=1.3;b.whip=.48;b.whipA=Math.atan2(player.y-b.y,player.x-b.x);if(d<185&&player.jumpT<=0&&!shieldBlocks(b)&&player.inv<=0){const got=takeDamage(10);player.inv=.6;particle(player.x,player.y-35,`ムチ -${got}`,'#6bd9ff',.4,16)}}
    if(b.rootCd<=0){b.rootCd=1.65;crystalRoots.push({x:player.x,y:player.y,r:42,life:.72,hit:false});particle(player.x,player.y+20,'！','#111',.32,18);}
    if(b.hp<=0){b.dead=true;b.active=false;crystalBossDefeated=true;crystalShieldPickup.active=true;crystalShieldPickup.x=b.x;crystalShieldPickup.y=b.y;say('水晶の盾が現れた！');saveProgress();}
   }
@@ -5252,13 +5317,30 @@ function drawWorld(){
          circle(0,0,9,'#fff','#111',3);ctx.restore();
        }
 
+       if(crystalBossDefeated){
+        for(const r of lightGardenGeo.path){ctx.fillStyle='#c8efb2';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,45);ctx.fill();ctx.stroke();}
+        for(const v of ultraVines){if(v.dead)continue;ctx.save();ctx.translate(v.x,v.y);ctx.strokeStyle='#228a43';ctx.lineWidth=15;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-40,30);ctx.bezierCurveTo(-5,-55+Math.sin(v.phase)*24,25,55+Math.cos(v.phase)*25,55,-35);ctx.stroke();ctx.strokeStyle='#74d65f';ctx.lineWidth=7;ctx.stroke();ctx.restore();}
+        for(const f of rapidFlowers){if(f.dead)continue;ctx.save();ctx.translate(f.x,f.y);line(0,18,0,52,9,'#2f8d46');for(let i=0;i<8;i++){ctx.save();ctx.rotate(i*Math.PI/4);ctx.fillStyle='#f5ef75';ctx.beginPath();ctx.ellipse(0,-25,9,21,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}circle(0,0,16,'#7c5a31','#111',4);ctx.restore();}
+        for(const g of walkingGrass){if(g.dead)continue;ctx.save();ctx.translate(g.x,g.y);circle(0,6,g.r,'#65b94e','#111',5);for(let i=0;i<4;i++){ctx.save();ctx.rotate(-.8+i*.55);ctx.fillStyle='#85d765';ctx.beginPath();ctx.ellipse(0,-28,8,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}ctx.restore();}
+        if(!lightBoss.dead){const b=lightBoss;ctx.save();ctx.translate(b.x,b.y);circle(0,0,70,'#6cbf4d','#111',7);for(let i=0;i<10;i++){ctx.save();ctx.rotate(i*Math.PI/5);ctx.fillStyle=i%2?'#fff06a':'#d8ff70';ctx.beginPath();ctx.ellipse(0,-65,18,40,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}circle(0,0,34,'#70532e','#111',6);for(let i=0;i<5;i++){const a=i*.36-.72;circle(Math.cos(a)*28,-8+Math.sin(a)*28,5,'#111','#111',1);}ctx.restore();ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('光花砲王',b.x,b.y-122);}
+        if(lightShieldPickup.active&&!lightShieldPickup.taken){ctx.save();ctx.translate(lightShieldPickup.x,lightShieldPickup.y);ctx.globalCompositeOperation='screen';ctx.globalAlpha=.35;circle(0,0,58,'#fff5a8','transparent',0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#fff8c9';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(0,-48);ctx.lineTo(42,-20);ctx.lineTo(31,34);ctx.lineTo(0,52);ctx.lineTo(-31,34);ctx.lineTo(-42,-20);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#f0c94e';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-34);ctx.lineTo(0,34);ctx.moveTo(-27,0);ctx.lineTo(27,0);ctx.stroke();ctx.restore();}
+       }
        if(lavaBossDefeated){
         for(const r of crystalIceGeo.path){ctx.fillStyle='#d9f7ff';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,45);ctx.fill();ctx.stroke();}
         for(const c of crystalIceBlocks){if(c.dead)continue;ctx.save();ctx.translate(c.x,c.y);ctx.fillStyle='#a8edff';ctx.strokeStyle='#178db4';ctx.lineWidth=5;ctx.beginPath();for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3,rr=i%2?c.r*.72:c.r;const x=Math.cos(a)*rr,y=Math.sin(a)*rr;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
         for(const e of crystalPlants){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);circle(0,0,e.r,'#87e8ff','#111',5);for(let i=0;i<5;i++){ctx.save();ctx.rotate(i*Math.PI*2/5);ctx.fillStyle='#bff7ff';ctx.strokeStyle='#1687aa';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(18,-54);ctx.lineTo(32,-16);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}ctx.restore();}
         for(const e of crystalThrowers){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);circle(0,0,e.r,'#6fc9e8','#111',5);ctx.fillStyle='#dffaff';ctx.beginPath();ctx.moveTo(-18,-15);ctx.lineTo(0,-45);ctx.lineTo(18,-15);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
         for(const r of crystalRoots){ctx.save();ctx.translate(r.x,r.y);ctx.globalAlpha=.75;ctx.strokeStyle='#54cbe9';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,38,0,Math.PI*2);ctx.stroke();if(r.life<.32){ctx.fillStyle='#bff8ff';ctx.beginPath();ctx.moveTo(-15,25);ctx.lineTo(0,-65);ctx.lineTo(15,25);ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();}
-        if(!crystalBoss.dead){const b=crystalBoss;ctx.save();ctx.translate(b.x,b.y);if(b.flash>0)ctx.globalAlpha=.55;ctx.fillStyle='#75dcf5';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(0,-85);ctx.lineTo(58,-25);ctx.lineTo(42,60);ctx.lineTo(0,82);ctx.lineTo(-45,55);ctx.lineTo(-58,-28);ctx.closePath();ctx.fill();ctx.stroke();for(const q of [-1,1]){ctx.save();ctx.scale(q,1);ctx.strokeStyle='#48b8d5';ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(25,10);ctx.quadraticCurveTo(105,-20,125,58);ctx.stroke();ctx.restore();}ctx.restore();ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('水晶樹王',b.x,b.y-112);}
+        if(!crystalBoss.dead){const b=crystalBoss;ctx.save();ctx.translate(b.x,b.y);if(b.flash>0)ctx.globalAlpha=.55;
+          // 幹そのものを多面体の巨大水晶にする。
+          ctx.rotate(Math.sin((b.crystalSpin||0)*.35)*.035);
+          ctx.fillStyle='#7ee7ff';ctx.strokeStyle='#0b6f98';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(0,-102);ctx.lineTo(54,-58);ctx.lineTo(72,12);ctx.lineTo(38,82);ctx.lineTo(0,105);ctx.lineTo(-42,78);ctx.lineTo(-70,8);ctx.lineTo(-50,-62);ctx.closePath();ctx.fill();ctx.stroke();
+          ctx.fillStyle='#d9fbff';ctx.globalAlpha=.7;ctx.beginPath();ctx.moveTo(0,-92);ctx.lineTo(18,-38);ctx.lineTo(4,55);ctx.lineTo(-22,22);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+          // 背中から結晶の枝を放射。
+          for(let i=0;i<7;i++){ctx.save();ctx.rotate(i*Math.PI*2/7+(b.crystalSpin||0)*.08);ctx.fillStyle=i%2?'#b9f6ff':'#67d8f2';ctx.strokeStyle='#1686a8';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-12,-42);ctx.lineTo(0,-118-(i%3)*13);ctx.lineTo(14,-40);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+          // ムチは攻撃中に大きくしなって動く。
+          for(const q of [-1,1]){ctx.save();ctx.scale(q,1);ctx.strokeStyle='#0b789a';ctx.lineWidth=17;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(35,5);const wave=b.whip>0?Math.sin((.48-b.whip)*18)*62:Math.sin((b.crystalSpin||0)*2.4)*18;ctx.bezierCurveTo(92,-58+wave,150,60-wave,190,-4+wave*.35);ctx.stroke();ctx.strokeStyle='#79eaff';ctx.lineWidth=9;ctx.stroke();for(let k=0;k<4;k++){const x=78+k*30,y=Math.sin((b.crystalSpin||0)*2+k)*20;ctx.fillStyle='#d8fbff';ctx.beginPath();ctx.moveTo(x,y-13);ctx.lineTo(x+10,y);ctx.lineTo(x,y+13);ctx.lineTo(x-10,y);ctx.closePath();ctx.fill();}ctx.restore();}
+          ctx.restore();ctx.fillStyle='#111';ctx.font='900 16px system-ui';ctx.textAlign='center';ctx.fillText('水晶樹王',b.x,b.y-130);}
         if(crystalShieldPickup.active&&!crystalShieldPickup.taken){ctx.save();ctx.translate(crystalShieldPickup.x,crystalShieldPickup.y);ctx.fillStyle='#bff7ff';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(0,-48);ctx.lineTo(39,-24);ctx.lineTo(32,30);ctx.lineTo(0,50);ctx.lineTo(-32,30);ctx.lineTo(-39,-24);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
        }
        if(waterBossDefeated){
