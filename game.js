@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 164: 最初の浮遊草原ステージ
+// Prototype 165: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1625,7 +1625,7 @@ function skill(){
    player.skillKind='ice';player.skillT=.68;particle(player.x,player.y,'アイスサーフ！','#268bc1',.5,18);
  }else{
    // 光の翼：進行方向へ拘束された高速飛行。飛行中も通常攻撃ボタンを使える。
-   player.skillKind='lightWing';player.skillT=3.0;player.lightWingT=3.0;
+   player.skillKind='lightWing';player.skillT=3.0;player.lightWingT=3.0;player.lightTerrainCd=0;
    particle(player.x,player.y-20,'光翼！','#fff7b0',.5,19);
  }
 }
@@ -1691,18 +1691,22 @@ function lightAllEnemies(){
  return out;
 }
 function lightBreakTerrainAt(x,y,r=60){
- for(const o of iceRouteBlocks)if(!o.dead&&dist(x,y,o.x,o.y)<r+o.r){o.dead=true;particle(o.x,o.y,'光砕！','#fff5a8',.35,14);}
- for(const o of crystalIceBlocks)if(!o.dead&&dist(x,y,o.x,o.y)<r+o.r){o.dead=true;particle(o.x,o.y,'光融！','#fff5a8',.35,14);}
- for(const o of elementalObstacles)if(!o.dead&&dist(x,y,o.x,o.y)<r+o.r){o.dead=true;particle(o.x,o.y,'光破！','#fff5a8',.35,14);}
- for(const r0 of props.rocks)if(!r0.dead&&dist(x,y,r0.x,r0.y)<r+34){r0.dead=true;particle(r0.x,r0.y,'粉砕！','#fff5a8',.35,14);}
- for(const r0 of stage7Rocks)if(!r0.dead&&dist(x,y,r0.x,r0.y)<r+r0.r){r0.dead=true;particle(r0.x,r0.y,'粉砕！','#fff5a8',.35,14);}
- for(const r0 of hammerGuardianRocks)if(!r0.dead&&dist(x,y,r0.x,r0.y)<r+r0.r)r0.dead=true;
- for(const r0 of rollingRocks)if(!r0.dead&&dist(x,y,r0.x,r0.y)<r+r0.r)r0.dead=true;
- for(const g of props.grass)if(!g.dead&&dist(x,y,g.x,g.y)<r+24)g.dead=true;
- for(const tr of props.smallTrees)if(!tr.dead&&dist(x,y,tr.x,tr.y)<r+34)tr.dead=true;
- for(const v of vineWalls)if(!v.dead&&!v.perma&&dist(x,y,v.x,v.y)<r+v.r){v.dead=true;v.regenT=5;v.burned=true;}
- for(const v of vineKnot)if(!v.dead&&!v.perma&&dist(x,y,v.x,v.y)<r+v.r){v.dead=true;v.regenT=5;}
- for(const v of ultraVines)if(!v.dead&&ultraVineDistanceGlobal(v,x,y)<r+24){v.hp=0;v.dead=true;v.regenT=2.2;particle(v.x,v.y,'光断！','#fff5a8',.48,17);}
+ const near=(o,extra=0)=>o&&!o.dead&&dist(x,y,o.x,o.y)<r+(o.r||extra||28);
+ for(const o of iceRouteBlocks)if(near(o))o.dead=true;
+ for(const o of crystalIceBlocks)if(near(o))o.dead=true;
+ for(const o of elementalObstacles)if(near(o))o.dead=true;
+ for(const o of props.rocks)if(near(o,34))o.dead=true;
+ for(const o of stage7Rocks)if(near(o))o.dead=true;
+ for(const o of hammerGuardianRocks)if(near(o))o.dead=true;
+ for(const o of rollingRocks)if(near(o))o.dead=true;
+ for(const g of props.grass)if(near(g,24))g.dead=true;
+ for(const tr of props.smallTrees)if(near(tr,34))tr.dead=true;
+ for(const v of vineWalls)if(near(v)&&!v.perma){v.dead=true;v.regenT=5;v.burned=true;}
+ for(const v of vineKnot)if(near(v)&&!v.perma){v.dead=true;v.regenT=5;}
+ for(const v of ultraVines){
+   if(v.dead)continue;
+   if(dist(x,y,v.x,v.y)<r+(v.len||220)*.55){v.hp=0;v.dead=true;v.regenT=2.2;}
+ }
 }
 function lightKillCheck(e){
  if(!e||e.hp>0)return;
@@ -2935,7 +2939,8 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      const inputA=stickAngle();if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.0);
      player.aim=player.skillBase;mx=Math.cos(player.skillBase)*2.4;my=Math.sin(player.skillBase)*2.4;speed=360;player.face=faceFromVec(mx,my);
      for(const e of lightAllEnemies()){if(e.dead||player.skillHit.has(e))continue;if(dist(player.x,player.y,e.x,e.y)<88+(e.r||20)){e.hp-=8;e.flash=.18;player.skillHit.add(e);lightKillCheck(e);}}
-     lightBreakTerrainAt(player.x,player.y,92);
+     player.lightTerrainCd=(player.lightTerrainCd??0)-dt;
+     if(player.lightTerrainCd<=0){player.lightTerrainCd=.10;lightBreakTerrainAt(player.x,player.y,92);}
    }else if(player.skillKind==='fire'){
      // 赤杖：燃えるタイヤのように旋回。氷塊へ触れればスキルでも溶かせる。
      for(const o of iceRouteBlocks){
@@ -3437,7 +3442,8 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    }
    if(pr.hit)continue;
    if(pr.kind==='lightBolt'){
-     lightBreakTerrainAt(pr.x,pr.y,pr.r+24);
+     pr.lightTerrainCd=(pr.lightTerrainCd??0)-dt;
+     if(pr.lightTerrainCd<=0){pr.lightTerrainCd=.09;lightBreakTerrainAt(pr.x,pr.y,pr.r+24);}
      const lh=(e)=>{if(!e||e.dead||pr.hit)return;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||22)){e.hp=(e.hp??1)-pr.damage;e.flash=.18;particle(e.x,e.y-22,`光 -${pr.damage}`,'#e6c94b',.3,14);pr.pierce--;lightKillCheck(e);if(pr.pierce<=0)pr.hit=true;}};
      for(const e of lightAllEnemies())lh(e);
    }
@@ -6469,17 +6475,6 @@ function drawPlayer(){
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
  ctx.save();ctx.translate(player.x,player.y-lift-bounce);
- if(player.shield&&player.shieldType===7&&player.lightStaff){
-   ctx.save();ctx.globalCompositeOperation='screen';
-   const pulse=.5+.5*Math.sin(performance.now()*.009);
-   ctx.globalAlpha=.16+pulse*.08;ctx.fillStyle='#fff4a3';ctx.strokeStyle='#fffde2';ctx.lineWidth=5;
-   ctx.beginPath();ctx.moveTo(0,-64);ctx.quadraticCurveTo(58,-50,66,2);ctx.quadraticCurveTo(58,60,0,80);ctx.quadraticCurveTo(-58,60,-66,2);ctx.quadraticCurveTo(-58,-50,0,-64);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.globalAlpha=.10+pulse*.05;ctx.strokeStyle='#e7c44a';ctx.lineWidth=14;ctx.stroke();
-   // 内側にも薄い輪郭を入れて、明るい背景でも見失わない。
-   ctx.globalAlpha=.28;ctx.strokeStyle='#fff';ctx.lineWidth=2;
-   ctx.beginPath();ctx.moveTo(0,-54);ctx.quadraticCurveTo(48,-41,55,3);ctx.quadraticCurveTo(47,50,0,67);ctx.quadraticCurveTo(-47,50,-55,3);ctx.quadraticCurveTo(-48,-41,0,-54);ctx.closePath();ctx.stroke();
-   ctx.restore();
- }
  if(player.falling){
    const ft=clamp(player.fallT/player.fallDur,0,1);
    const sc=1-ft*.78;
@@ -6682,6 +6677,15 @@ function drawPlayer(){
      ctx.globalAlpha=.13+pulse*.08;ctx.fillStyle='#fff';
      ctx.beginPath();ctx.ellipse(0,-8,27,36,0,0,Math.PI*2);ctx.fill();
    }
+   ctx.restore();
+ }
+ if(player.shield&&(player.lightStaff||player.weapon===5)&&(player.shieldType===7||player.lightShield)){
+   ctx.save();ctx.globalCompositeOperation='screen';
+   const pulse=.5+.5*Math.sin(performance.now()*.010);
+   ctx.globalAlpha=.28+pulse*.10;ctx.fillStyle='#fff1a0';ctx.strokeStyle='#ffffff';ctx.lineWidth=7;
+   ctx.beginPath();ctx.moveTo(0,-74);ctx.quadraticCurveTo(72,-55,78,4);ctx.quadraticCurveTo(67,72,0,94);ctx.quadraticCurveTo(-67,72,-78,4);ctx.quadraticCurveTo(-72,-55,0,-74);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.globalAlpha=.38+pulse*.10;ctx.strokeStyle='#e8c43d';ctx.lineWidth=5;ctx.stroke();
+   ctx.globalAlpha=.18;ctx.strokeStyle='#fff';ctx.lineWidth=18;ctx.stroke();
    ctx.restore();
  }
  ctx.restore();
