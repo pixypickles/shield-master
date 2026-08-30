@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 167: 最初の浮遊草原ステージ
+// Prototype 168: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -616,10 +616,11 @@ const finalSkyRoute={
  ]
 };
 const finalBoss={
- name:'天空核',x:29320,y:-2470,r:96,hp:120,maxHp:120,
+ name:'天空核',x:29320,y:-2470,r:96,hp:260,maxHp:260,
  active:false,dead:false,flash:0,pulseCd:1.8,pulseWarn:0,pulseHit:false,shotCd:.8
 };
 let finalBossDefeated=false;
+let endingActive=false,endingT=0;
 
 
 
@@ -1676,6 +1677,9 @@ function ultraVineDistanceGlobal(v,x,y){
  const dx=bx-ax,dy=by-ay,l2=Math.max(1,dx*dx+dy*dy),t=clamp(((x-ax)*dx+(y-ay)*dy)/l2,0,1);
  return Math.hypot(x-(ax+dx*t),y-(ay+dy*t));
 }
+function staffCrystalBoost(){
+ return !!shields[player.shieldType]?.crystalMagic;
+}
 function lightAllEnemies(){
  const out=[];
  for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,
@@ -1729,7 +1733,7 @@ function lightLineHit(x,y,a,len,width,damage){
 }
 function fireMagic(w,charged,base){
  // 杖は入力方向を優先しつつ、その方向にいる敵・的へ軽く吸い付く。
- const crystal=player.shieldType===6||player.shieldType===7;
+ const crystal=staffCrystalBoost();
  const magicSnap=skillAutoAim(base,charged?(crystal?520:390):520,charged?.48:.62);
  if(magicSnap.target)base=magicSnap.angle;
  // 杖チャージは「弾を大量に出す」のではなく、武器ごとの固有範囲技。
@@ -1754,25 +1758,8 @@ function fireMagic(w,charged,base){
      if(e.hp<=0)e.dead=true;
    };
 
-   for(const e of enemies)hitOne(e);
-   for(const e of stage2Enemies)hitOne(e);
-   for(const e of stage3Enemies){
-     if(e.type==='spinnerflower'){
-       if(w===4&&dist(player.x,player.y,e.x,e.y)<maxRange+e.r)particle(e.x,e.y-24,'キン！','#fff',.3,14);
-     }else hitOne(e);
-   }
-   for(const e of stage4Enemies)hitOne(e);
-   for(const e of stage6Enemies)hitOne(e);
-   for(const e of stage10Enemies)if(e.type!=='spinnerflower')hitOne(e);
-   for(const e of bossWalnuts)hitOne(e);
-
-   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,iceBoss]){
-     if(!b||b.dead||!b.active)continue;
-     const dx=b.x-player.x,dy=b.y-player.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
-     if(d<=maxRange+b.r&&Math.abs(angleDiff(a,base))<=half){
-       b.hp-=damage;b.flash=.22;particle(b.x,b.y-45,`-${damage}`,w===3?'#e34a3a':'#d9f7ff',.42,17);
-     }
-   }
+   // 杖のチャージ攻撃は追加された後半敵も含め、現在存在する全戦闘対象へ同じ判定を使う。
+   for(const e of lightAllEnemies())hitOne(e);
 
    if(w===3){
      for(const o of iceRouteBlocks){
@@ -2265,7 +2252,7 @@ function doAttack(charged=false){
      // 杖：ジャンプ中に斜め下へ「実際に見える弾」を撃つ。
      const landX=player.x+Math.cos(base)*125,landY=player.y+Math.sin(base)*125;
      player.airMagic={
-       kind:w===3?'fire':'ice', crystalTriple:player.shieldType===6,
+       kind:w===3?'fire':'ice', crystalTriple:staffCrystalBoost(),
        sx:player.x,sy:player.y,
        x:landX,y:landY,
        t:0,dur:.28,done:false,
@@ -2513,34 +2500,66 @@ function releaseShieldEnergy(base){
 function resolveAirMagic(m){
  if(!m||m.done)return;
  m.done=true;
+ const boosted=!!m.crystalTriple;
+ const rad=boosted?108:88,dmg=boosted?8:5;
+ const centers=[{x:m.x,y:m.y}];
+
+ if(boosted){
+   const a=Math.atan2(m.y-player.y,m.x-player.x),px=-Math.sin(a),py=Math.cos(a);
+   centers.push({x:m.x+px*82,y:m.y+py*82},{x:m.x-px*82,y:m.y-py*82});
+ }
+
  particle(m.x,m.y,m.kind==='fire'?'ボォン！':'キィン！',m.kind==='fire'?'#e43':'#268bc1',.55,20);
- airMagicImpacts.push({x:m.x,y:m.y,kind:m.kind,life:m.kind==='ice'?.92:.52,max:m.kind==='ice'?.92:.52,flake:m.kind==='ice'});
- const rad=m.crystalTriple?105:86,dmg=m.crystalTriple?8:5;
- if(m.crystalTriple){const a=Math.atan2(m.y-player.y,m.x-player.x);for(const off of [-.28,.28]){const xx=m.x+Math.cos(a+Math.PI/2)*off*260,yy=m.y+Math.sin(a+Math.PI/2)*off*260;airMagicImpacts.push({x:xx,y:yy,kind:m.kind,life:.62,max:.62,flake:m.kind==='ice'});}}
+ for(const c of centers){
+   airMagicImpacts.push({
+     x:c.x,y:c.y,kind:m.kind,
+     life:m.kind==='ice'?.92:.52,max:m.kind==='ice'?.92:.52,
+     flake:m.kind==='ice'
+   });
+ }
+
  const hit=(e)=>{
    if(!e||e.dead)return;
-   if(dist(m.x,m.y,e.x,e.y)<rad+(e.r||20)){
-     e.hp=(e.hp??1)-dmg;e.flash=.2;
-     particle(e.x,e.y-25,`-${dmg}`,m.kind==='fire'?'#e43':'#268bc1',.4,16);
-     if(e.hp<=0)e.dead=true;
+   let inside=false;
+   for(const c of centers){
+     if(dist(c.x,c.y,e.x,e.y)<rad+(e.r||20)){inside=true;break;}
+   }
+   if(!inside)return;
+   e.hp=(e.hp??1)-dmg;e.flash=.22;
+   particle(e.x,e.y-25,`-${dmg}`,m.kind==='fire'?'#e43':'#268bc1',.4,16);
+   if(e.hp<=0){
+     e.dead=true;
+     if(ultraVines.includes(e))e.regenT=m.kind==='fire'?2.4:.9;
    }
  };
- for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg,roadVegSoldiers,roadFlowers,fruitMiniBosses]){
-   for(const e of list){
-     if(e.type==='spinnerflower'){if(dist(m.x,m.y,e.x,e.y)<rad+e.r)particle(e.x,e.y-25,'キン！','#111',.3,14)}
-     else hit(e);
+
+ // 赤杖・青杖のジャンプ着弾は、後半追加敵・中ボス・ラスボスまで共通で当たる。
+ for(const e of lightAllEnemies())hit(e);
+
+ if(m.kind==='fire'){
+   for(const c of centers){
+     for(const g of props.grass){
+       if(!g.dead&&dist(c.x,c.y,g.x,g.y)<105){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}
+     }
+     for(const o of iceRouteBlocks){
+       if(!o.dead&&dist(c.x,c.y,o.x,o.y)<105){o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.4,15)}
+     }
+     meltCrystalIceAt(c.x,c.y,112);
+     // 再生ツタ類も火柱の範囲にいれば燃やして破壊。
+     for(const v of [...vineWalls,...vineKnot]){
+       if(v.dead||v.perma||dist(c.x,c.y,v.x,v.y)>=rad+(v.r||30))continue;
+       v.hp=(v.hp??1)-dmg;
+       if(v.hp<=0){v.dead=true;v.burned=true;v.regenT=5;particle(v.x,v.y,'ボワッ！','#e43',.45,16);}
+     }
+   }
+ }else{
+   for(const c of centers){
+     freezeLegacyWaterAt(c.x,c.y,105);
+     freezeStreamsAt(c.x,c.y,105);
+     freezeLavaAt(c.x,c.y,118);
    }
  }
- for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss]){
-   if(b&&(!('active' in b)||b.active)&&!b.dead)hit(b);
- }
- if(m.kind==='fire'){
-   for(const g of props.grass){if(!g.dead&&dist(m.x,m.y,g.x,g.y)<100){g.dead=true;particle(g.x,g.y,'ボワッ','#e43')}}
-   for(const o of iceRouteBlocks){if(!o.dead&&dist(m.x,m.y,o.x,o.y)<100){o.dead=true;particle(o.x,o.y,'ジュワッ！','#bfeeff',.4,15)}}
- }else{
-   freezeLegacyWaterAt(m.x,m.y,100);
-   freezeStreamsAt(m.x,m.y,100);freezeLavaAt(m.x,m.y,112);
- }
+ resolveProgressionDeaths();
 }
 
 
@@ -2616,7 +2635,9 @@ function resolveProgressionDeaths(){
 }
 function startCloudRaceIntro(){cloudRace.started=false;cloudRace.intro=true;cloudRace.introPage=0;cloudRace.introT=0;cloudRace.lastIntroPage=-1;cloudRace.time=0;cloudRace.cp=0;player.skillT=0;player.skillKind='';player.shield=false;player.charging=false}
 function cloudRaceIntroText(p){if(p===0)return ['雲ライダー','「ここまで来たか！ この雲上サーキットで勝負だ！」'];if(p===1)return ['コース説明','大きく歪んだ楕円コースを1周。1/3地点と2/3地点の太いチェックラインを順番に通ろう。'];if(p===2)return ['勝利条件','相手はかなり速い。普通に走るだけでは追いつけないぞ。'];return ['攻略のコツ','赤杖の炎輪／青杖のアイスサーフで加速を繋げ！']}
-function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,Math.floor(cloudRace.introT/2.25));cloudRace.introPage=p;if(p!==cloudRace.lastIntroPage){cloudRace.lastIntroPage=p;const t=cloudRaceIntroText(p);say(`${t[0]}：${t[1]}`)}if(cloudRace.introT>=9){cloudRace.intro=false;cloudRace.started=true;cloudRace.countdown=2;cloudRace.time=0;cloudRace.cp=0;particle(cloudRaceGeo.start.x,cloudRaceGeo.start.y-55,'READY!','#fff',.65,21);say('READY… 杖スキルを準備！')}return;}
+function update(dt){
+ if(endingActive)endingT+=dt;
+ if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,Math.floor(cloudRace.introT/2.25));cloudRace.introPage=p;if(p!==cloudRace.lastIntroPage){cloudRace.lastIntroPage=p;const t=cloudRaceIntroText(p);say(`${t[0]}：${t[1]}`)}if(cloudRace.introT>=9){cloudRace.intro=false;cloudRace.started=true;cloudRace.countdown=2;cloudRace.time=0;cloudRace.cp=0;particle(cloudRaceGeo.start.x,cloudRaceGeo.start.y-55,'READY!','#fff',.65,21);say('READY… 杖スキルを準備！')}return;}
 
  // 凍結ツタは実際のガードステップ（shieldStepT）で永久破壊。
  if((player.shieldStepT||0)>0){
@@ -2961,16 +2982,12 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      if(!player.fireTrail.length || dist(player.x,player.y,player.fireTrail[player.fireTrail.length-1].x,player.fireTrail[player.fireTrail.length-1].y)>34){
        player.fireTrail.push({x:player.x,y:player.y,life:2.15});
      }
-     for(const e of enemies){
+     for(const e of lightAllEnemies()){
        if(e.dead||player.skillHit.has(e))continue;
-       if(dist(player.x,player.y,e.x,e.y)<70){
-         e.hp-=player.shieldType===6?6:3;e.flash=.15;player.skillHit.add(e);particle(e.x,e.y-20,'炎！','#e43',.4,15);
-         if(e.hp<=0)e.dead=true;
+       if(dist(player.x,player.y,e.x,e.y)<78+(e.r||20)){
+         e.hp-=staffCrystalBoost()?6:3;e.flash=.15;player.skillHit.add(e);particle(e.x,e.y-20,'炎！','#e43',.4,15);
+         if(e.hp<=0){e.dead=true;if(ultraVines.includes(e))e.regenT=2.4;}
        }
-     }
-     for(const e of [...walkingGrass,...rapidFlowers]){
-       if(e.dead||player.skillHit.has(e))continue;
-       if(dist(player.x,player.y,e.x,e.y)<78){e.hp-=player.shieldType===6||player.shieldType===7?6:3;e.flash=.15;player.skillHit.add(e);if(e.hp<=0)e.dead=true;}
      }
 
    }else if(player.skillKind==='ice'){
@@ -2991,17 +3008,13 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      if(!player.iceTrail.length || dist(player.x,player.y,player.iceTrail[player.iceTrail.length-1].x,player.iceTrail[player.iceTrail.length-1].y)>28){
        player.iceTrail.push({x:player.x,y:player.y,life:1.15,phase:Math.random()*Math.PI*2});
      }
-     for(const e of enemies){
+     for(const e of lightAllEnemies()){
        if(e.dead||player.skillHit.has(e))continue;
-       if(dist(player.x,player.y,e.x,e.y)<72){
-         e.hp-=player.shieldType===6?6:3;e.flash=.15;e.stagger=Math.max(e.stagger||0,.55);player.skillHit.add(e);
+       if(dist(player.x,player.y,e.x,e.y)<82+(e.r||20)){
+         e.hp-=staffCrystalBoost()?6:3;e.flash=.15;e.stagger=Math.max(e.stagger||0,.55);player.skillHit.add(e);
          particle(e.x,e.y-20,'ガツン！','#268bc1',.4,15);
-         if(e.hp<=0)e.dead=true;
+         if(e.hp<=0){e.dead=true;if(ultraVines.includes(e))e.regenT=.9;}
        }
-     }
-     for(const e of [...walkingGrass,...rapidFlowers]){
-       if(e.dead||player.skillHit.has(e))continue;
-       if(dist(player.x,player.y,e.x,e.y)<82){e.hp-=player.shieldType===6||player.shieldType===7?6:3;e.flash=.15;player.skillHit.add(e);if(e.hp<=0)e.dead=true;}
      }
    }
  }
@@ -3097,7 +3110,8 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    const visibleHere=pointSupportedByGround(player.x,player.y,player.r*.35);
    const visibleWater=seg&&pointSupportedByGround(seg.px,seg.py,10);
    const sameGround=seg&&pointOnSameVisibleGround({x:player.x,y:player.y},{x:seg.px,y:seg.py},10);
-   if(seg&&visibleHere&&visibleWater&&sameGround&&st.frozen<=0){
+   const roadFlow=!!st.visibleRoad&&!!seg&&visibleHere;
+   if(seg&&visibleHere&&(roadFlow||(visibleWater&&sameGround))&&st.frozen<=0){
      const nx=seg.dx/(seg.len||1),ny=seg.dy/(seg.len||1);
      player.x+=nx*st.speed*dt;player.y+=ny*st.speed*dt;
    }
@@ -3313,13 +3327,13 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      }
    }
    f.life-=dt;
-   for(const e of enemies){
+   for(const e of lightAllEnemies()){
      if(e.dead||f.life<=0)continue;
-     if(dist(f.x,f.y,e.x,e.y)<30){
+     if(dist(f.x,f.y,e.x,e.y)<30+(e.r||18)*.35){
        e.fireTick=(e.fireTick||0)-dt;
        if(e.fireTick<=0){
          e.fireTick=.35;e.hp-=1;e.flash=.1;
-         if(e.hp<=0)e.dead=true;
+         if(e.hp<=0){e.dead=true;if(ultraVines.includes(e))e.regenT=2.4;}
        }
      }
    }
@@ -3337,12 +3351,27 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    if(e.hp<=0)e.dead=true;
    pr.hit=true;return true;
  }
+ function fireHitAnything(pr){
+   for(const e of lightAllEnemies()){
+     if(!e||e.dead)continue;
+     if(dist(pr.x,pr.y,e.x,e.y)>=pr.r+(e.r||24))continue;
+     const dmg=(pr.damage||2)+(e===iceBoss?1:0);
+     e.hp=(e.hp??1)-dmg;e.flash=.18;
+     particle(e.x,e.y-22,`-${dmg}`,'#e34a3a',.4,15);
+     if(e.hp<=0){
+       e.dead=true;
+       if(ultraVines.includes(e))e.regenT=2.4;
+     }
+     pr.hit=true;return true;
+   }
+   return false;
+ }
  function iceHitAnything(pr){
    // 青杖通常弾の対象漏れをなくす。氷エリアのペンギン/投擲敵もここで直接判定する。
    const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,
      bossWalnuts,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,vegArmy,vegFireFlowers,flyingVeg,
      roadVegSoldiers,roadFlowers,fruitMiniBosses,waterRaiders,lavaThrowers,crystalPlants,crystalThrowers,
-     rapidFlowers,walkingGrass,rushFlowers,rushMiniBosses];
+     rapidFlowers,ultraVines,walkingGrass,rushFlowers,rushMiniBosses];
    for(const list of lists){
      for(const e of list){
        // 回転花も氷は有効。少し凍って動きを止める。
@@ -3430,6 +3459,9 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        }
      }
    }
+   if(pr.hit)continue;
+   if(pr.kind==='fire'&&fireHitAnything(pr))continue;
+
    if(pr.kind==='lightning'){
      if(pr.life<=.08){
        const lx=pr.targetX??pr.x,ly=pr.targetY??pr.y;
@@ -4453,7 +4485,13 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
      // 合間は小さな光弾。盾で凌げる。
      if(fb.shotCd<=0){fb.shotCd=.9;const a=Math.atan2(player.y-fb.y,player.x-fb.x);projectiles.push({x:fb.x,y:fb.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:10,life:2.4,kind:'seed',damage:7,enemyShot:true,hit:false,sourceEnemy:fb});}
-     if(fb.hp<=0){fb.hp=0;fb.dead=true;fb.active=false;finalBossDefeated=true;particle(fb.x,fb.y-80,'FINAL CLEAR！','#fff',1.2,28);say('天空核を撃破！ 「盾を構えてれば何とか凌げる」 完！');saveProgress();}
+     if(fb.hp<=0){
+       fb.hp=0;fb.dead=true;fb.active=false;finalBossDefeated=true;
+       endingActive=true;endingT=0;
+       particle(fb.x,fb.y-80,'FINAL CLEAR！','#fff',1.2,28);
+       say('天空核を撃破！');
+       saveProgress();
+     }
    }
  }
 
@@ -4869,6 +4907,30 @@ function drawSurfaceStreams(){
    }
    ctx.restore();drawStreamCloud(st);
  }
+}
+function drawUpperExpressCurrent(){
+ const st=currentStreams.find(x=>x.id==='upperExpress');
+ if(!st)return;
+ const active=st.frozen<=0;
+ ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+ // 草地の上にはっきり残る水路。縁・水面・流向矢印の3層。
+ ctx.globalAlpha=.98;ctx.strokeStyle=active?'#167fae':'#aeeaff';ctx.lineWidth=st.width+14;traceStreamPath(st);ctx.stroke();
+ ctx.strokeStyle=active?'#57c8ea':'#dff8ff';ctx.lineWidth=st.width+2;traceStreamPath(st);ctx.stroke();
+ ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=5;
+ const tm=performance.now()/1000*st.speed*.72;
+ for(let i=0;i<st.pts.length-1;i++){
+   const a=st.pts[i],b=st.pts[i+1],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,nx=dx/len,ny=dy/len,px=-ny,py=nx;
+   for(let q=30+((tm+i*31)%120);q<len;q+=120){
+     const x=a.x+nx*q,y=a.y+ny*q,sz=16;
+     // ptsは右→左なので、このV字の先が実際の流れ方向を向く。
+     ctx.beginPath();
+     ctx.moveTo(x-nx*sz-px*sz*.72,y-ny*sz-py*sz*.72);
+     ctx.lineTo(x,y);
+     ctx.lineTo(x-nx*sz+px*sz*.72,y-ny*sz+py*sz*.72);
+     ctx.stroke();
+   }
+ }
+ ctx.restore();
 }
 function drawSoilUnderRect(r,depth=58){
  // 草地の下に共通の土の層を描く。隣の島と見た目が揃うように台形で統一。
@@ -5422,6 +5484,8 @@ function drawWorld(){
        ctx.fillStyle='rgba(110,77,52,.82)';
        ctx.beginPath();ctx.moveTo(r.x+45,r.y+r.h);ctx.lineTo(r.x+r.w-45,r.y+r.h);ctx.lineTo(r.x+r.w-75,r.y+r.h+36);ctx.lineTo(r.x+75,r.y+r.h+36);ctx.closePath();ctx.fill();
      }
+     // 上段の草地を描き終えた後に水流を描く。これで地面に隠れない。
+     drawUpperExpressCurrent();
 
      if(!upperSwordPickup.taken){
        ctx.save();ctx.translate(upperSwordPickup.x,upperSwordPickup.y);ctx.rotate(-.28);
@@ -6854,9 +6918,11 @@ function drawStaffSkillEffects(){
    ctx.save();ctx.translate(player.x,player.y-wingLift);ctx.globalCompositeOperation='screen';
    const a=player.skillBase||0,dx=Math.cos(a),dy=Math.sin(a);
    const angelWing=(side)=>{
-     ctx.save();ctx.scale(side,1);ctx.translate(7,-8);
+     ctx.save();ctx.scale(side,1);
+     // 翼の付け根は腹ではなく、左右の肩甲骨あたり。身体は後から描かれるので根元が背中に隠れる。
+     ctx.translate(20,-22);
      ctx.globalAlpha=.92;ctx.fillStyle='rgba(255,255,245,.96)';ctx.strokeStyle='rgba(231,211,113,.96)';ctx.lineWidth=3;
-     const feathers=[{y:-30,l:78,w:17},{y:-16,l:84,w:18},{y:-1,l:77,w:17},{y:14,l:66,w:16},{y:29,l:53,w:14}];
+     const feathers=[{y:-25,l:78,w:16},{y:-12,l:86,w:18},{y:2,l:80,w:17},{y:15,l:69,w:16},{y:27,l:56,w:14}];
      for(const f of feathers){
        ctx.beginPath();ctx.moveTo(0,2);ctx.quadraticCurveTo(f.l*.42,f.y-f.w,f.l,f.y);ctx.quadraticCurveTo(f.l*.64,f.y+f.w,8,18);ctx.closePath();ctx.fill();ctx.stroke();
      }
@@ -7148,7 +7214,25 @@ function drawSpinSlash(){
 function drawAttackArc(a){const w=player.weapon,r=weapons[w].range;ctx.save();ctx.rotate(a);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=w===2?19:11;ctx.lineCap='round';ctx.beginPath();const span=w===1?.45:1.15;ctx.arc(0,0,r*.76,-span/2,span/2);ctx.stroke();ctx.restore()}
 
 function drawCloudRaceIntroOverlay(){if(!cloudRace.intro)return;const t=cloudRaceIntroText(cloudRace.introPage);ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='rgba(8,20,31,.78)';ctx.fillRect(0,0,canvas.width,canvas.height);const bw=Math.min(canvas.width-36,520),bh=245,bx=(canvas.width-bw)/2,by=(canvas.height-bh)/2;ctx.fillStyle='rgba(255,255,255,.97)';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(bx,by,bw,bh,24);ctx.fill();ctx.stroke();ctx.textAlign='center';ctx.fillStyle='#17384b';ctx.font='900 27px system-ui';ctx.fillText(t[0],canvas.width/2,by+48);ctx.fillStyle='#111';ctx.font='800 18px system-ui';let lines=[],cur='';for(const ch of t[1]){const test=cur+ch;if(ctx.measureText(test).width>bw-54){lines.push(cur);cur=ch}else cur=test}if(cur)lines.push(cur);lines.slice(0,4).forEach((x,i)=>ctx.fillText(x,canvas.width/2,by+91+i*30));for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(canvas.width/2-36+i*24,by+216,6,0,Math.PI*2);ctx.fillStyle=i===cloudRace.introPage?'#17384b':'#b9c9d1';ctx.fill()}ctx.restore()}
-let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();drawCloudRaceIntroOverlay();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+function drawEndingOverlay(){
+ if(!endingActive)return;
+ const fade=clamp(endingT/1.15,0,1);
+ ctx.save();
+ ctx.globalAlpha=.86*fade;ctx.fillStyle='#18334a';ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.globalAlpha=fade;ctx.textAlign='center';
+ const cx=canvas.width/2,cy=canvas.height/2;
+ ctx.fillStyle='#fff7b0';ctx.strokeStyle='#111';ctx.lineWidth=7;
+ ctx.font=`900 ${Math.max(34,Math.min(58,canvas.width*.07))}px system-ui`;
+ ctx.strokeText('FINAL CLEAR!',cx,cy-92);ctx.fillText('FINAL CLEAR!',cx,cy-92);
+ ctx.fillStyle='#fff';ctx.font=`900 ${Math.max(22,Math.min(34,canvas.width*.042))}px system-ui`;
+ ctx.fillText('盾を構えとけば何とか凌げる',cx,cy-22);
+ ctx.fillStyle='#dff7ff';ctx.font=`700 ${Math.max(16,Math.min(23,canvas.width*.028))}px system-ui`;
+ ctx.fillText('最後まで凌ぎきった。',cx,cy+28);
+ ctx.fillStyle='#fff7b0';ctx.font=`900 ${Math.max(26,Math.min(40,canvas.width*.05))}px system-ui`;
+ ctx.fillText('THE END',cx,cy+94);
+ ctx.restore();
+}
+let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);last=t;update(dt);drawWorld();drawCloudRaceIntroOverlay();drawEndingOverlay();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 
 // keyboard fallback
 addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='j')player.shield=true;if(k==='k')doAttack(false);if(k==='l')jump();if(k==='i')skill();if(k==='q')openEquipPanel()});
