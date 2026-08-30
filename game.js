@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 165: 最初の浮遊草原ステージ
+// Prototype 166: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1373,9 +1373,32 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)saveProgres
 window.addEventListener('pagehide',saveProgress);
 window.addEventListener('DOMContentLoaded',()=>{
  const m=document.getElementById('startMenu'),c=document.getElementById('continueBtn'),n=document.getElementById('newGameBtn');
- let has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}
+ let has=false;
+ try{
+   has=!!localStorage.getItem(SAVE_KEY);
+   // 互換セーブが残っている場合も「続きから」を無効化しない。
+   if(!has){
+     for(let i=localStorage.length-1;i>=0;i--){
+       const k=localStorage.key(i);
+       if(k&&/^shieldHeroSave_v\d+$/.test(k)){has=true;break;}
+     }
+   }
+ }catch(e){}
  c.disabled=!has;
  c.onclick=()=>{
+   try{
+     if(!localStorage.getItem(SAVE_KEY)){
+       let bestKey=null,bestN=-1;
+       for(let i=0;i<localStorage.length;i++){
+         const k=localStorage.key(i),m=k&&k.match(/^shieldHeroSave_v(\d+)$/);
+         if(m&&+m[1]>bestN){bestN=+m[1];bestKey=k;}
+       }
+       if(bestKey){
+         const legacy=localStorage.getItem(bestKey);
+         if(legacy)localStorage.setItem(SAVE_KEY,legacy);
+       }
+     }
+   }catch(e){}
    const ok=loadProgress();
    if(ok){
      // 壊れた/旧式座標だけで「最初から」に見えるのを防ぐ。
@@ -1517,48 +1540,7 @@ document.getElementById('equipShieldTab').onclick=()=>{equipMode='shield';render
 document.getElementById('equipClose').onclick=closeEquipPanel;
 
 
-const shortcutBtn=null;
-const shortcutLabel=document.getElementById('shortcutLabel');
-function updateShortcutLabel(){
- if(shortcut.index<0){shortcutLabel.textContent='なし';return}
- shortcutLabel.textContent=shortcut.type==='weapon'?weapons[shortcut.index].name:shields[shortcut.index].name;
-}
-let shortcutHoldTimer=null,shortcutLong=false,shortcutPointer=null;
-shortcutBtn.addEventListener('pointerdown',(ev)=>{
- ev.preventDefault();shortcutPointer=ev.pointerId;shortcutLong=false;
- try{shortcutBtn.setPointerCapture(ev.pointerId)}catch(_){}
- shortcutHoldTimer=setTimeout(()=>{
-   shortcutLong=true;
-   // 長押し＝今使っている武器を登録。武器タブ/盾タブとは切り離す。
-   shortcut={type:'weapon',index:player.weapon,returnType:null,returnIndex:-1};
-   updateShortcutLabel();say(`${weapons[player.weapon].name}をSHORTに登録`);
- },520);
-});
-function releaseShortcut(ev){
- if(shortcutPointer!==null&&ev&&ev.pointerId!==shortcutPointer)return;
- if(shortcutHoldTimer){clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null}
- shortcutPointer=null;
- if(shortcutLong){shortcutLong=false;return}
- if(shortcut.index<0){say('SHORTを長押しすると、今の武器を登録できます');return}
- if(shortcut.type==='weapon'){
-   if(player.weapon!==shortcut.index){
-     shortcut.returnType='weapon';shortcut.returnIndex=player.weapon;
-     player.weapon=shortcut.index;weaponNameEl.textContent=weapons[player.weapon].name;
-   }else if(shortcut.returnType==='weapon'&&shortcut.returnIndex>=0&&unlockedWeapons[shortcut.returnIndex]){
-     const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;
-     player.weapon=back;weaponNameEl.textContent=weapons[player.weapon].name;
-   }
- }else{
-   if(player.shieldType!==shortcut.index){
-     shortcut.returnType='shield';shortcut.returnIndex=player.shieldType;player.shieldType=shortcut.index;
-   }else if(shortcut.returnType==='shield'&&shortcut.returnIndex>=0&&unlockedShields[shortcut.returnIndex]){
-     const back=shortcut.returnIndex;shortcut.returnIndex=shortcut.index;player.shieldType=back;
-   }
- }
-}
-shortcutBtn.addEventListener('pointerup',releaseShortcut);
-shortcutBtn.addEventListener('pointercancel',ev=>{if(shortcutHoldTimer)clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null;shortcutPointer=null;shortcutLong=false;});
-
+// 装備ショートカットは廃止。関連イベントも完全に削除済み。
 
 function jump(){if(player.skillKind==='lightWing'&&player.skillT>0)return;if(player.jumpT<=0){player.jumpDur=(player.shieldType===4||player.shieldType===7)?.92:.62;player.jumpHeight=(player.shieldType===4||player.shieldType===7)?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
@@ -7142,8 +7124,7 @@ let last=performance.now();function loop(t){let dt=Math.min(.033,(t-last)/1000);
 // keyboard fallback
 addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='j')player.shield=true;if(k==='k')doAttack(false);if(k==='l')jump();if(k==='i')skill();if(k==='q')openEquipPanel()});
 addEventListener('keyup',e=>{if(e.key.toLowerCase()==='j')player.shield=false});
-})();let shortcut={type:null,index:-1,returnType:null,returnIndex:-1};
-let currentStage=1;
+})();let currentStage=1;
 let stage2Started=false;
 let stage2BossDefeated=false;
 let stage2BridgeOpen=false;
