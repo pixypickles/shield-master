@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 166: 最初の浮遊草原ステージ
+// Prototype 167: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1119,34 +1119,38 @@ function enemySupportedByGround(e,pad=10){
  return pointSupportedByGround(e.x,e.y,p);
 }
 function keepGroundEnemyOnGround(e,dt){
- if(!e||e.dead||e.enemyFalling)return;
+ if(!e||e.dead)return;
 
- // 初回だけスポーン位置を検証。地形の縁や描画の下側に出ていたら、
- // 近くの実際の地面へ補正してからAIを開始する。
+ // 敵は自分のAI移動で崖から落ちない。
+ // 初回スポーン位置が少しズレている場合は、まず最寄りの地面へ戻す。
  if(!e.groundSpawnChecked){
    e.groundSpawnChecked=true;
    if(!enemySupportedByGround(e,8)){
-     if(snapEnemyToNearestGround(e,130))return;
-     // 近くに地面自体が無い場合は「落下した敵」とせず待機。
-     // 遠方ステージの地形がまだ未解放なだけで敵が消えるのを防ぐ。
-     e.waitForGround=true;return;
+     if(!snapEnemyToNearestGround(e,160)){e.waitForGround=true;return;}
    }
  }
  if(e.waitForGround){
-   if(enemySupportedByGround(e,8)||snapEnemyToNearestGround(e,130)){
+   if(enemySupportedByGround(e,8)||snapEnemyToNearestGround(e,180)){
      e.waitForGround=false;e.enemyNoGroundT=0;
    }
    return;
  }
+
  if(enemySupportedByGround(e,8)){
    e.enemyNoGroundT=0;
    e.lastGroundX=e.x;e.lastGroundY=e.y;
+   e.enemyFalling=false;
    return;
  }
- // 地面上で一度正常に存在した敵だけ、足場を外れたら落下させる。
- e.enemyNoGroundT=(e.enemyNoGroundT||0)+dt;
- if(e.enemyNoGroundT<.18)return;
- e.enemyFalling=true;e.enemyFallT=0;e.enemyFallX=e.x;e.enemyFallY=e.y;e.enemyNoGroundT=0;
+
+ // 地面を外れたら落下アニメーションへ移行せず、直前の安全位置へ戻す。
+ if(Number.isFinite(e.lastGroundX)&&Number.isFinite(e.lastGroundY)){
+   e.x=e.lastGroundX;e.y=e.lastGroundY;
+ }else{
+   snapEnemyToNearestGround(e,220);
+ }
+ e.enemyNoGroundT=0;
+ e.enemyFalling=false;
 }
 function updateGroundEnemyFall(e,dt){
  if(!e||!e.enemyFalling)return false;
@@ -1163,6 +1167,17 @@ function enforceAllGroundEnemies(dt){
  if(typeof iceThrowers!=='undefined')lists.push(iceThrowers);
  if(typeof vineSeedFlowers!=='undefined')lists.push(vineSeedFlowers);
  if(typeof whipVines!=='undefined')lists.push(whipVines);
+ if(typeof vegFireFlowers!=='undefined')lists.push(vegFireFlowers);
+ if(typeof roadFlowers!=='undefined')lists.push(roadFlowers);
+ if(typeof fruitMiniBosses!=='undefined')lists.push(fruitMiniBosses);
+ if(typeof waterRaiders!=='undefined')lists.push(waterRaiders);
+ if(typeof lavaThrowers!=='undefined')lists.push(lavaThrowers);
+ if(typeof crystalPlants!=='undefined')lists.push(crystalPlants);
+ if(typeof crystalThrowers!=='undefined')lists.push(crystalThrowers);
+ if(typeof rapidFlowers!=='undefined')lists.push(rapidFlowers);
+ if(typeof walkingGrass!=='undefined')lists.push(walkingGrass);
+ if(typeof rushFlowers!=='undefined')lists.push(rushFlowers);
+ if(typeof rushMiniBosses!=='undefined')lists.push(rushMiniBosses);
  for(const list of lists)for(const e of list){
    if(!e||e.dead)continue;
    if(updateGroundEnemyFall(e,dt))continue;
@@ -4855,6 +4870,18 @@ function drawSurfaceStreams(){
    ctx.restore();drawStreamCloud(st);
  }
 }
+function drawSoilUnderRect(r,depth=58){
+ // 草地の下に共通の土の層を描く。隣の島と見た目が揃うように台形で統一。
+ ctx.save();
+ ctx.fillStyle='#73523a';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.lineJoin='round';
+ ctx.beginPath();
+ ctx.moveTo(r.x+28,r.y+r.h-3);
+ ctx.lineTo(r.x+r.w-28,r.y+r.h-3);
+ ctx.lineTo(r.x+r.w-78,r.y+r.h+depth);
+ ctx.lineTo(r.x+78,r.y+r.h+depth);
+ ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.restore();
+}
 function drawWorld(){
 
  // 空と雲
@@ -4907,6 +4934,7 @@ function drawWorld(){
  // ステージ4
  if(stage3BridgeOpen){
   for(const r of stage4Geo.path){
+   drawSoilUnderRect(r,58);
    ctx.fillStyle='#62b957';ctx.strokeStyle='#111';ctx.lineWidth=7;
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,48);ctx.fill();ctx.stroke();
   }
@@ -4915,6 +4943,7 @@ function drawWorld(){
  }
  if(stage4BridgeOpen){
   for(const r of stage5Geo.path){
+   drawSoilUnderRect(r,60);
    ctx.fillStyle='#58ae51';ctx.strokeStyle='#111';ctx.lineWidth=7;
    ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,50);ctx.fill();ctx.stroke();
   }
