@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 173: 最初の浮遊草原ステージ
+// Prototype 174: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -6951,18 +6951,24 @@ function drawPlayer(){
    ctx.restore();
  }
  if(postGameAngel){
-   // 白いギリシャ神話風の天使装束。既存装束の上から白布を重ねる。
+   // 肩→細い腰→分かれた裾。大きな盾のような板形を避ける。
    ctx.save();
+   line(-7,24,-9,39,9,'#111');line(-7,24,-9,39,5,'#f7fbff');
+   line(7,24,9,39,9,'#111');line(7,24,9,39,5,'#f7fbff');
+   circle(-9,40,5,'#e6c65c','#111',3);circle(9,40,5,'#e6c65c','#111',3);
    ctx.fillStyle='rgba(255,255,250,.98)';ctx.strokeStyle='#111';ctx.lineWidth=4;
-   ctx.beginPath();ctx.moveTo(-23,-3);ctx.quadraticCurveTo(-28,15,-20,35);ctx.lineTo(-10,46);ctx.lineTo(0,35);ctx.lineTo(10,46);ctx.lineTo(20,35);ctx.quadraticCurveTo(28,15,23,-3);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.strokeStyle='#e6c65c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18,13);ctx.lineTo(18,13);ctx.stroke();
-   ctx.strokeStyle='#fff';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(-16,0);ctx.lineTo(10,31);ctx.stroke();
-   // 金の月桂冠
-   ctx.strokeStyle='#d4b34b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-27,18,Math.PI*.15,Math.PI*.85);ctx.stroke();
-   for(let i=-2;i<=2;i++){ctx.fillStyle='#f2d66d';ctx.beginPath();ctx.ellipse(i*7,-41+Math.abs(i)*3,5,2.5,i*.28,0,Math.PI*2);ctx.fill();}
+   ctx.beginPath();ctx.moveTo(-19,-2);ctx.quadraticCurveTo(-18,7,-11,14);ctx.quadraticCurveTo(-9,19,-10,24);
+   ctx.lineTo(-17,34);ctx.lineTo(-7,32);ctx.lineTo(0,39);ctx.lineTo(7,32);ctx.lineTo(17,34);ctx.lineTo(10,24);
+   ctx.quadraticCurveTo(9,19,11,14);ctx.quadraticCurveTo(18,7,19,-2);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#e6c65c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-11,15);ctx.quadraticCurveTo(0,18,11,15);ctx.stroke();
+   ctx.strokeStyle='rgba(244,224,151,.95)';ctx.lineWidth=6;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(-14,1);ctx.quadraticCurveTo(-3,10,8,25);ctx.stroke();
+   // 月桂冠は頭頂側だけ。顔を横切らない。
+   ctx.strokeStyle='#d4b34b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-32,17,Math.PI*1.12,Math.PI*1.88);ctx.stroke();
+   for(let i=-2;i<=2;i++){const xx=i*6,yy=-45+Math.abs(i)*2;ctx.fillStyle='#f2d66d';ctx.beginPath();ctx.ellipse(xx,yy,4.5,2.2,i*.25,0,Math.PI*2);ctx.fill();}
    ctx.restore();
  }
- if(player.shield&&(player.lightStaff||player.weapon===5)&&(player.shieldType===7||player.lightShield)){
+ if(!postGameAngel&&player.shield&&(player.lightStaff||player.weapon===5)&&(player.shieldType===7||player.lightShield)){
    ctx.save();ctx.globalCompositeOperation='screen';
    const pulse=.5+.5*Math.sin(performance.now()*.010);
    ctx.globalAlpha=.28+pulse*.10;ctx.fillStyle='#fff1a0';ctx.strokeStyle='#ffffff';ctx.lineWidth=7;
@@ -7089,8 +7095,8 @@ function drawShield(hx,hy,a,raised,sideView=false){
    ctx.globalCompositeOperation='screen';
    const pulse=.65+.35*Math.sin(performance.now()*.012);
    ctx.globalAlpha=.24+pulse*.22;ctx.strokeStyle='#fffbe0';ctx.lineWidth=11;
-   ctx.beginPath();ctx.arc(0,0,r+7,0,Math.PI*2);ctx.stroke();
-   ctx.globalAlpha=.34;ctx.fillStyle='rgba(255,245,160,.30)';ctx.beginPath();ctx.arc(0,0,r+1,0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.arc(0,0,r+3,0,Math.PI*2);ctx.stroke();
+   ctx.globalAlpha=.24;ctx.fillStyle='rgba(255,245,160,.22)';ctx.beginPath();ctx.arc(0,0,r-3,0,Math.PI*2);ctx.fill();
    ctx.globalAlpha=.9;ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,r-5,0,Math.PI*2);ctx.stroke();
    ctx.restore();return;
  }
