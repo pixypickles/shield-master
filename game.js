@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 169: 最初の浮遊草原ステージ
+// Prototype 170: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -620,7 +620,7 @@ const finalBoss={
  active:false,dead:false,flash:0,pulseCd:1.8,pulseWarn:0,pulseHit:false,shotCd:.8
 };
 let finalBossDefeated=false;
-let endingActive=false,endingT=0;
+let endingActive=false,endingT=0,endingShown=false;
 
 
 
@@ -1204,7 +1204,7 @@ function saveProgress(){
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,lightBossDefeated,bananaBossDefeated,finalBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,lightBossDefeated,bananaBossDefeated,finalBossDefeated,endingShown:!!endingShown,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
    healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,crystalShieldTaken:!!crystalShieldPickup.taken,lightShieldTaken:!!lightShieldPickup.taken,lightStaffTaken:!!lightStaffPickup.taken,
@@ -1308,7 +1308,13 @@ function loadProgress(){
  lightBossDefeated=!!d.lightBossDefeated;
  if(lightBossDefeated){lightBoss.dead=true;lightBoss.active=false;}
  bananaBossDefeated=!!d.bananaBossDefeated;
- finalBossDefeated=!!d.finalBossDefeated;if(finalBossDefeated){finalBoss.dead=true;finalBoss.active=false;}
+ finalBossDefeated=!!d.finalBossDefeated;
+ endingShown=!!d.endingShown;
+ if(finalBossDefeated){
+   finalBoss.dead=true;finalBoss.active=false;finalBoss.hp=0;
+   // 旧セーブでは撃破済みでもエンディングが出ていないので、一度だけ救済表示する。
+   if(!endingShown){endingActive=true;endingT=0;endingShown=true;}
+ }
  if(bananaBossDefeated){bananaBoss.dead=true;bananaBoss.active=false;}
  // 旧/壊れたセーブで「boss.deadだけtrue、報酬フラグfalse」になったケースも復元。
  if(seedBoss.dead){stage2BossDefeated=true;stage2BridgeOpen=true;spearPickup.x=seedBoss.x;spearPickup.y=seedBoss.y;}
@@ -1382,6 +1388,7 @@ function loadProgress(){
    player.weapon===1&&player.waterSpear?'水龍の槍':
    player.weapon===0&&player.flameSword?'炎神の剣':
    weapons[player.weapon].name;
+ if(finalBossDefeated&&endingShown)saveProgress();
  return true;
 }
 setInterval(()=>{let m=document.getElementById('startMenu');if(m&&m.classList.contains('hidden'))saveProgress()},1500);
@@ -2616,6 +2623,15 @@ function resolveProgressionDeaths(){
    lightStaffPickup.active=!lightStaffPickup.taken;
    lightStaffPickup.x=bananaBoss.x;lightStaffPickup.y=bananaBoss.y;
    say('光の杖が現れた！');saveProgress();
+ }
+
+ // ラスボスも generic 攻撃が dead=true を先に立てても、必ずエンディングへ進める。
+ if((finalBoss.hp<=0||finalBoss.dead)&&!finalBossDefeated){
+   finalBoss.hp=0;finalBoss.dead=true;finalBoss.active=false;
+   finalBossDefeated=true;endingActive=true;endingT=0;endingShown=true;
+   particle(finalBoss.x,finalBoss.y-80,'FINAL CLEAR！','#fff',1.2,28);
+   say('天空核を撃破！');
+   saveProgress();
  }
 
  // 旧エリアの主要ボスも、deadだけ先に立った場合に進行停止しないよう修復。
@@ -4465,6 +4481,9 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
   if(lightStaffPickup.active&&!lightStaffPickup.taken&&dist(player.x,player.y,lightStaffPickup.x,lightStaffPickup.y)<82){lightStaffPickup.taken=true;lightStaffPickup.active=false;player.lightStaff=true;unlockedWeapons[5]=true;player.weapon=5;weaponNameEl.textContent='光の杖';say('光の杖 GET！ 光の盾が全方向防御へ覚醒！');saveProgress();}
  }
 
+ // 攻撃側でdeadが先に立ったボスも、ここで進行処理を確定する。
+ resolveProgressionDeaths();
+
  // 光の杖の翼で空路を渡った先：最終ボス島。
  if(player.lightStaff||bananaBossDefeated){
    const fb=finalBoss,fd=dist(player.x,player.y,fb.x,fb.y);
@@ -4485,13 +4504,7 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
      // 合間は小さな光弾。盾で凌げる。
      if(fb.shotCd<=0){fb.shotCd=.9;const a=Math.atan2(player.y-fb.y,player.x-fb.x);projectiles.push({x:fb.x,y:fb.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:10,life:2.4,kind:'seed',damage:7,enemyShot:true,hit:false,sourceEnemy:fb});}
-     if(fb.hp<=0){
-       fb.hp=0;fb.dead=true;fb.active=false;finalBossDefeated=true;
-       endingActive=true;endingT=0;
-       particle(fb.x,fb.y-80,'FINAL CLEAR！','#fff',1.2,28);
-       say('天空核を撃破！');
-       saveProgress();
-     }
+     if(fb.hp<=0)resolveProgressionDeaths();
    }
  }
 
