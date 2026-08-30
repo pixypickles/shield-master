@@ -11,7 +11,7 @@ let W=0,H=0;
 function resize(){W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 
-const world={minX:-1500,minY:-3900,w:26900,h:1100};
+const world={minX:-1500,minY:-3900,w:30450,h:1100};
 const camera={x:0,y:0};
 const keys={};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ') e.preventDefault()});
@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 157: 最初の浮遊草原ステージ
+// Prototype 159: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -148,7 +148,7 @@ const currentStreams=[
   pts:[{x:-1110,y:300},{x:-1110,y:455},{x:-1010,y:520},{x:-790,y:640},{x:-790,y:880}]},
  {id:'cloudUpperA',source:'cloud',cloudX:9850,cloudY:-45,width:78,speed:108,frozen:0,pts:[{x:9850,y:60},{x:9850,y:125},{x:9700,y:155},{x:9300,y:155},{x:9200,y:235},{x:9200,y:390}]},
  // 生命の盾後の上段はショートカット兼ご褒美ルート。右→左へ高速で運ぶ。
- {id:'upperExpress',source:'road',cloudX:14020,cloudY:-70,width:82,speed:235,frozen:0,visibleRoad:true,
+ {id:'upperExpress',source:'road',cloudX:14020,cloudY:-70,width:68,speed:235,frozen:0,visibleRoad:true,
   pts:[{x:14020,y:80},{x:13700,y:125},{x:12800,y:135},{x:11800,y:135},{x:10800,y:140},{x:9800,y:140},{x:8800,y:140},{x:7800,y:140},{x:6800,y:140},{x:5800,y:140},{x:4800,y:140},{x:3800,y:140},{x:2800,y:140},{x:1800,y:140},{x:850,y:145},{x:520,y:165}]},
 
 ];
@@ -472,9 +472,9 @@ const roadVegSoldiers=[
  {type:'leekSpear',x:11710,y:-2470,r:29,hp:13,maxHp:13,speed:60,attackCd:1.0,flash:0,dead:false}
 ];
 const fruitMiniBosses=[
- {type:'apple',name:'リンゴ隊長',x:9550,y:-2470,r:52,hp:26,maxHp:26,attackCd:1.0,flash:0,dead:false,active:false,windup:0},
- {type:'orange',name:'オレンジ親分',x:10320,y:-2460,r:55,hp:30,maxHp:30,attackCd:1.1,flash:0,dead:false,active:false,windup:0},
- {type:'grape',name:'ブドウ団長',x:11100,y:-2470,r:58,hp:34,maxHp:34,attackCd:1.2,flash:0,dead:false,active:false,windup:0}
+ {type:'apple',name:'リンゴ隊長',x:9550,y:-2470,r:52,hp:26,maxHp:26,attackCd:1.0,flash:0,dead:false,active:false,windup:0,thrustT:0,side:-1},
+ {type:'orange',name:'オレンジ親分',x:10320,y:-2460,r:55,hp:30,maxHp:30,attackCd:1.1,flash:0,dead:false,active:false,windup:0,thrustT:0,side:-1},
+ {type:'grape',name:'ブドウ団長',x:11100,y:-2470,r:58,hp:34,maxHp:34,attackCd:1.2,flash:0,dead:false,active:false,windup:0,thrustT:0,side:-1}
 ];
 const roadFlowerPads=roadFlowers.map((f,i)=>({
  x:f.x,y:f.y+18,r:48,cloud:i%3===1
@@ -564,12 +564,12 @@ const rapidFlowers=[
  {x:22520,y:-2580,r:31,hp:13,maxHp:13,burstCd:.6,burst:0,flash:0,dead:false}
 ];
 const ultraVines=[
- {x:20720,y:-2450,r:46,len:210,a:-.18,hp:8,maxHp:8,dead:false,regenT:0,phase:0,hurtCd:0},
- {x:21050,y:-2550,r:48,len:235,a:.20,hp:8,maxHp:8,dead:false,regenT:0,phase:1,hurtCd:0},
- {x:21400,y:-2440,r:48,len:225,a:-.15,hp:9,maxHp:9,dead:false,regenT:0,phase:2,hurtCd:0},
- {x:21730,y:-2540,r:48,len:245,a:.18,hp:9,maxHp:9,dead:false,regenT:0,phase:3,hurtCd:0},
- {x:22080,y:-2440,r:50,len:235,a:-.20,hp:10,maxHp:10,dead:false,regenT:0,phase:4,hurtCd:0},
- {x:22410,y:-2540,r:50,len:250,a:.16,hp:10,maxHp:10,dead:false,regenT:0,phase:5,hurtCd:0}
+ {x:20720,y:-2470,r:46,len:270,a:1.48,hp:8,maxHp:8,dead:false,regenT:0,phase:0,hurtCd:0},
+ {x:21050,y:-2470,r:48,len:285,a:1.66,hp:8,maxHp:8,dead:false,regenT:0,phase:1,hurtCd:0},
+ {x:21400,y:-2470,r:48,len:280,a:1.50,hp:9,maxHp:9,dead:false,regenT:0,phase:2,hurtCd:0},
+ {x:21730,y:-2470,r:48,len:295,a:1.64,hp:9,maxHp:9,dead:false,regenT:0,phase:3,hurtCd:0},
+ {x:22080,y:-2470,r:50,len:290,a:1.49,hp:10,maxHp:10,dead:false,regenT:0,phase:4,hurtCd:0},
+ {x:22410,y:-2470,r:50,len:300,a:1.65,hp:10,maxHp:10,dead:false,regenT:0,phase:5,hurtCd:0}
 ];
 const lightBoss={name:'光花砲王',x:22940,y:-2470,r:92,hp:86,maxHp:86,active:false,dead:false,flash:0,burstCd:1.0,burstLeft:0,shotCd:0,summonCd:3.2};
 let lightBossDefeated=false;
@@ -591,15 +591,36 @@ const rushFlowers=[
  {x:25440,y:-2760,r:30,hp:12,maxHp:12,attackCd:.6,dead:false,flash:0},{x:25700,y:-2240,r:30,hp:12,maxHp:12,attackCd:1.0,dead:false,flash:0}
 ];
 const rushMiniBosses=[
- {type:'melon',name:'メロン騎士',x:23820,y:-2470,r:48,hp:24,maxHp:24,attackCd:.6,dead:false,flash:0},
- {type:'berry',name:'ベリー将軍',x:24460,y:-2470,r:50,hp:28,maxHp:28,attackCd:.8,dead:false,flash:0},
- {type:'pine',name:'パイン重兵',x:25100,y:-2470,r:54,hp:32,maxHp:32,attackCd:1.0,dead:false,flash:0},
- {type:'citrus',name:'柑橘剣士',x:25720,y:-2470,r:52,hp:36,maxHp:36,attackCd:.7,dead:false,flash:0}
+ {type:'melon',name:'メロン騎士',x:23820,y:-2470,r:48,hp:24,maxHp:24,attackCd:.6,dead:false,flash:0,windup:0,thrustT:0,side:-1},
+ {type:'berry',name:'ベリー将軍',x:24460,y:-2470,r:50,hp:28,maxHp:28,attackCd:.8,dead:false,flash:0,windup:0,thrustT:0,side:-1},
+ {type:'pine',name:'パイン重兵',x:25100,y:-2470,r:54,hp:32,maxHp:32,attackCd:1.0,dead:false,flash:0,windup:0,thrustT:0,side:-1},
+ {type:'citrus',name:'柑橘剣士',x:25720,y:-2470,r:52,hp:36,maxHp:36,attackCd:.7,dead:false,flash:0,windup:0,thrustT:0,side:-1}
 ];
 const bananaBoss={name:'バナナ王',x:26410,y:-2470,r:88,hp:92,maxHp:92,active:false,dead:false,flash:0,attackCd:.8,peelCd:1.3,swingT:0};
 let bananaBossDefeated=false;
 const bananaPeels=[];
 const lightStaffPickup={x:26410,y:-2470,active:false,taken:false};
+// 光の杖入手後の最終空路。小島を光翼で渡り、丸い最終ボス島へ。
+const finalSkyRoute={
+ arrows:[
+  {x:26720,y:-2470,a:0},{x:27150,y:-2640,a:-.22},{x:27620,y:-2360,a:.18},
+  {x:28120,y:-2630,a:-.16},{x:28620,y:-2420,a:.10}
+ ],
+ stepping:[
+  {x:26940,y:-2700,r:105},{x:27380,y:-2300,r:112},{x:27840,y:-2700,r:108},
+  {x:28320,y:-2290,r:115},{x:28720,y:-2620,r:110}
+ ],
+ arena:{x:29320,y:-2470,r:360},
+ safe:[
+  {x:29320,y:-3020,r:135},{x:29900,y:-2470,r:135},{x:29320,y:-1915,r:135},{x:28740,y:-2470,r:135}
+ ]
+};
+const finalBoss={
+ name:'天空核',x:29320,y:-2470,r:96,hp:120,maxHp:120,
+ active:false,dead:false,flash:0,pulseCd:1.8,pulseWarn:0,pulseHit:false,shotCd:.8
+};
+let finalBossDefeated=false;
+
 
 
 
@@ -1022,6 +1043,11 @@ function visibleGroundRects(){
        if(lavaBossDefeated)grounds.push(...crystalIceGeo.path);
        if(crystalBossDefeated){grounds.push(...lightGardenGeo.path);const rb=lateRainbows[0];grounds.push({x:Math.min(rb.x1,rb.x2)-18,y:rb.y1-rb.w/2,w:Math.abs(rb.x2-rb.x1)+36,h:rb.w});}
        if(lightBossDefeated){grounds.push(...bananaRushGeo.path);const rb=lateRainbows[1];grounds.push({x:Math.min(rb.x1,rb.x2)-18,y:rb.y1-rb.w/2,w:Math.abs(rb.x2-rb.x1)+36,h:rb.w});}
+       if(player.lightStaff||bananaBossDefeated){
+         for(const q of finalSkyRoute.stepping)grounds.push({x:q.x-q.r,y:q.y-q.r,w:q.r*2,h:q.r*2});
+         const ar=finalSkyRoute.arena;grounds.push({x:ar.x-ar.r,y:ar.y-ar.r,w:ar.r*2,h:ar.r*2});
+         for(const q of finalSkyRoute.safe)grounds.push({x:q.x-q.r,y:q.y-q.r,w:q.r*2,h:q.r*2});
+       }
      }
    }
  }
@@ -1162,7 +1188,7 @@ function saveProgress(){
    stage3Started,stage3BossDefeated,stage3BridgeOpen,
    stage4Started,stage4Cleared,stage4BridgeOpen,
    stage5Started,grassAreaClear,stage6Started,stage7Started,stage8Started,stage9Started,stage10Started,
-   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,lightBossDefeated,bananaBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
+   rockBossDefeated,islandBossDefeated,fireBossDefeated,vineBossDefeated,cloudRaceWon,cloudRaceUnlocked,vegBossDefeated,fruitSpearBossDefeated,waterBossDefeated,lavaBossDefeated,crystalBossDefeated,lightBossDefeated,bananaBossDefeated,finalBossDefeated,fruitMiniBossDead:fruitMiniBosses.map(b=>!!b.dead),
    spearTaken:!!spearPickup.taken,hammerTaken:!!hammerPickup.taken,upperSwordTaken:!!upperSwordPickup.taken,
    redStaffTaken:!!redStaffPickup.taken,blueStaffTaken:!!blueStaffPickup.taken,
    healShieldTaken:!!healShieldPickup.taken,cloudShieldTaken:!!cloudShieldPickup.taken,chargeShieldTaken:!!chargeShieldPickup.taken,spearUpgradeTaken:!!spearUpgradePickup.taken,waterSpearTaken:!!waterSpearPickup.taken,flameSwordTaken:!!flameSwordPickup.taken,crystalShieldTaken:!!crystalShieldPickup.taken,lightShieldTaken:!!lightShieldPickup.taken,lightStaffTaken:!!lightStaffPickup.taken,
@@ -1266,6 +1292,7 @@ function loadProgress(){
  lightBossDefeated=!!d.lightBossDefeated;
  if(lightBossDefeated){lightBoss.dead=true;lightBoss.active=false;}
  bananaBossDefeated=!!d.bananaBossDefeated;
+ finalBossDefeated=!!d.finalBossDefeated;if(finalBossDefeated){finalBoss.dead=true;finalBoss.active=false;}
  if(bananaBossDefeated){bananaBoss.dead=true;bananaBoss.active=false;}
  // 旧/壊れたセーブで「boss.deadだけtrue、報酬フラグfalse」になったケースも復元。
  if(seedBoss.dead){stage2BossDefeated=true;stage2BridgeOpen=true;spearPickup.x=seedBoss.x;spearPickup.y=seedBoss.y;}
@@ -1589,7 +1616,7 @@ function skill(){
    player.skillKind='ice';player.skillT=.68;particle(player.x,player.y,'アイスサーフ！','#268bc1',.5,18);
  }else{
    // 光の翼：進行方向へ拘束された高速飛行。飛行中も通常攻撃ボタンを使える。
-   player.skillKind='lightWing';player.skillT=1.05;player.lightWingT=1.05;
+   player.skillKind='lightWing';player.skillT=1.45;player.lightWingT=1.45;
    particle(player.x,player.y-20,'光翼！','#fff7b0',.5,19);
  }
 }
@@ -1841,6 +1868,7 @@ function hitStage8Spinner(range,base){
 function hitVegArea(damage,range,base,cone,weapon){
  if(!cloudRaceWon)return;
   if(bananaBoss.active&&!bananaBoss.dead){const d=dist(player.x,player.y,bananaBoss.x,bananaBoss.y),a=Math.atan2(bananaBoss.y-player.y,bananaBoss.x-player.x);if(d<=range+bananaBoss.r+20&&Math.abs(angleDiff(a,base))<=cone/2+.2){bananaBoss.hp-=damage;bananaBoss.flash=.2;}}
+ if(finalBoss.active&&!finalBoss.dead){const d=dist(player.x,player.y,finalBoss.x,finalBoss.y),a=Math.atan2(finalBoss.y-player.y,finalBoss.x-player.x);if(d<=range+finalBoss.r+20&&Math.abs(angleDiff(a,base))<=cone/2+.2){finalBoss.hp-=damage;finalBoss.flash=.2;}}
  if(lightBoss.active&&!lightBoss.dead){const d=dist(player.x,player.y,lightBoss.x,lightBoss.y),a=Math.atan2(lightBoss.y-player.y,lightBoss.x-player.x);if(d<=range+lightBoss.r+20&&Math.abs(angleDiff(a,base))<=cone/2+.2){lightBoss.hp-=damage;lightBoss.flash=.2;}}
  if(crystalBoss.active&&!crystalBoss.dead){const cd=dist(player.x,player.y,crystalBoss.x,crystalBoss.y),ca=Math.atan2(crystalBoss.y-player.y,crystalBoss.x-player.x);if(cd<=range+crystalBoss.r+20&&Math.abs(angleDiff(ca,base))<=cone/2+.2){crystalBoss.hp-=damage;crystalBoss.flash=.2;}}
  if(lavaBoss.active&&!lavaBoss.dead){
@@ -2144,7 +2172,7 @@ function doAttack(charged=false){
      const fx=Math.cos(base),fy=Math.sin(base),dmg=15;
      const laserHit=(e)=>{if(!e||e.dead)return;const dx=e.x-player.x,dy=e.y-player.y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);if(along>0&&along<850&&side<28+(e.r||20)){e.hp=(e.hp??1)-dmg;e.flash=.22;if(e.hp<=0)e.dead=true;}};
      for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,vegArmy,roadVegSoldiers,fruitMiniBosses,waterRaiders,lavaThrowers,crystalPlants,crystalThrowers,rapidFlowers,ultraVines,walkingGrass,rushFlowers,rushMiniBosses])for(const e of list)laserHit(e);
-     for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss])if(b&&(!('active'in b)||b.active))laserHit(b);
+     for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss,finalBoss])if(b&&(!('active'in b)||b.active))laserHit(b);
      particle(player.x+fx*120,player.y+fy*120,'光線！','#fff6a8',.42,18);return;
    }
    player.attackMax=.26;player.attacking=.26;player.attackCooldown=.34;
@@ -2638,7 +2666,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,iceEnemies,iceThrowers,
        vineSeedFlowers,whipVines,bossWalnuts,vegArmy,vegFireFlowers,roadVegSoldiers,roadFlowers,fruitMiniBosses,waterRaiders,lavaThrowers,
        crystalPlants,crystalThrowers,rapidFlowers,ultraVines,walkingGrass,rushFlowers,rushMiniBosses])for(const e of list)smashTarget(e);
-     for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss]){
+     for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss,finalBoss]){
        if(b&&(!('active' in b)||b.active))smashTarget(b);
      }
      if(pine)particle(player.x,player.y-20,'パイン大震撃！！','#ffd34d',.7,23);
@@ -2839,7 +2867,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    }else if(player.skillKind==='lightWing'){
      // 光翼中は方向を少しだけ補正できる拘束高速移動。攻撃状態は止めない。
      const inputA=stickAngle();if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.0);
-     player.aim=player.skillBase;mx=Math.cos(player.skillBase)*3.7;my=Math.sin(player.skillBase)*3.7;speed=410;player.face=faceFromVec(mx,my);
+     player.aim=player.skillBase;mx=Math.cos(player.skillBase)*4.15;my=Math.sin(player.skillBase)*4.15;speed=455;player.face=faceFromVec(mx,my);
      for(const e of [...walkingGrass,...rapidFlowers,...rushMiniBosses]){if(e.dead||player.skillHit.has(e))continue;if(dist(player.x,player.y,e.x,e.y)<78){e.hp-=8;e.flash=.18;player.skillHit.add(e);if(e.hp<=0)e.dead=true;}}
    }else if(player.skillKind==='fire'){
      // 赤杖：燃えるタイヤのように旋回。氷塊へ触れればスキルでも溶かせる。
@@ -2913,7 +2941,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
  if(player.falling){mx=0;my=0;}
  if(player.launchTravel){mx=0;my=0;}
  // 全ボス共通：プレイヤーと中心が重ならないよう物理的に押し分ける。
- for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss]){
+ for(const b of [boss,seedBoss,grassFinalBoss,hammerGuardian,rockBoss,islandBoss,fireBoss,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss,finalBoss]){
    if(!b||b.dead||(('active'in b)&&!b.active))continue;const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy),minD=player.r+(b.r||55)*.72;
    if(d<minD){const a=d>.01?Math.atan2(dy,dx):faceAngle(player.face)+Math.PI;player.x=b.x+Math.cos(a)*minD;player.y=b.y+Math.sin(a)*minD;}
  }
@@ -3061,7 +3089,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
  // 「十分な高さで空中にいるのに落下扱い」になっていた原因は、
  // ワールド座標だけを見て地面から外れた瞬間に falling を開始していたこと。
  // 通常ジャンプ・雲ジャンプ・打ち上げ台の飛行は、着地するまで空中移動として扱う。
- if(player.jumpT>0 || player.launchTravel){
+ if(player.jumpT>0 || player.launchTravel || player.skillKind==='lightWing'){
    safe=true;
  }
 
@@ -3252,7 +3280,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        if(iceHitTarget(pr,e))return true;
      }
    }
-   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss]){
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss,finalBoss]){
      if(!b||b.dead||!b.active)continue;
      if(iceHitTarget(pr,b))return true;
    }
@@ -3338,7 +3366,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
        const lx=pr.targetX??pr.x,ly=pr.targetY??pr.y;
        const zap=(e)=>{if(!e||e.dead)return;if(dist(lx,ly,e.x,e.y)<62+(e.r||20)){e.hp=(e.hp??1)-9;e.flash=.22;if(e.hp<=0)e.dead=true;}};
        for(const list of [rapidFlowers,walkingGrass,rushFlowers,rushMiniBosses])for(const e of list)zap(e);
-       for(const b of [lightBoss,bananaBoss])if(b.active)zap(b);
+       for(const b of [lightBoss,bananaBoss,finalBoss])if(b.active)zap(b);
        airMagicImpacts.push({x:lx,y:ly,kind:'light',life:.45,max:.45});pr.hit=true;
      }
    }
@@ -3346,7 +3374,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    if(pr.kind==='lightBolt'){
      const lh=(e)=>{if(!e||e.dead||pr.hit)return;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||22)){e.hp=(e.hp??1)-pr.damage;e.flash=.18;particle(e.x,e.y-22,`-${pr.damage}`,'#e6c94b',.3,14);pr.pierce--;if(e.hp<=0)e.dead=true;if(pr.pierce<=0)pr.hit=true;}};
      for(const list of [rapidFlowers,walkingGrass,ultraVines,rushFlowers,rushMiniBosses])for(const e of list)lh(e);
-     for(const b of [lightBoss,bananaBoss])if(b.active)lh(b);
+     for(const b of [lightBoss,bananaBoss,finalBoss])if(b.active)lh(b);
    }
    if(pr.hit)continue;
    if(crystalBossDefeated){
@@ -4317,7 +4345,14 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
  // 光花砲王の先：細道の中ボスラッシュ～バナナ王。
  if(lightBossDefeated){
   for(const f of rushFlowers){if(f.dead)continue;f.flash=Math.max(0,f.flash-dt);f.attackCd-=dt;if(dist(player.x,player.y,f.x,f.y)<620&&f.attackCd<=0){f.attackCd=.72+Math.random()*.3;const a=Math.atan2(player.y-f.y,player.x-f.x);projectiles.push({x:f.x,y:f.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:9,life:2.6,kind:'seed',damage:5,enemyShot:true,hit:false,sourceEnemy:f});}}
-  for(const e of rushMiniBosses){if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(player.y-e.y,player.x-e.x);if(d<380&&d>78){e.x+=Math.cos(a)*34*dt;e.y+=Math.sin(a)*34*dt;}if(d<100&&e.attackCd<=0){e.attackCd=1.0;if(player.jumpT<=0&&!shieldBlocks(e)&&player.inv<=0){const got=takeDamage(7);player.inv=.5;particle(player.x,player.y-25,`-${got}`,'#b31313',.3,15);}}}
+  for(const e of rushMiniBosses){
+    if(e.dead)continue;e.flash=Math.max(0,e.flash-dt);e.attackCd-=dt;e.windup=Math.max(0,(e.windup||0)-dt);e.thrustT=Math.max(0,(e.thrustT||0)-dt);
+    const d=dist(player.x,player.y,e.x,e.y),a=Math.atan2(player.y-e.y,player.x-e.x);e.side=player.x<e.x?-1:1;
+    if(d<400&&d>130){e.x+=Math.cos(a)*30*dt;e.y+=Math.sin(a)*30*dt;}
+    if(d<195&&e.attackCd<=0&&e.windup<=0){e.attackCd=1.35;e.windup=.38;e.didHit=false;particle(e.x,e.y-58,'！','#fff',.25,14);}
+    if(e.windup>0&&e.windup<=.06&&!e.didHit){e.didHit=true;e.thrustT=.27;if(d<210&&player.jumpT<=0){if(shieldBlocks(e))particle(player.x,player.y-28,'ギィン！','#fff',.3,15);else if(player.inv<=0){const got=takeDamage(7);player.inv=.5;particle(player.x,player.y-25,`槍 -${got}`,'#b31313',.3,15);}}}
+    if(e.windup<=0)e.didHit=false;
+  }
   for(let i=bananaPeels.length-1;i>=0;i--){const p=bananaPeels[i];p.life-=dt;if(p.life<=0){bananaPeels.splice(i,1);continue;}if(!p.used&&player.jumpT<=0&&dist(player.x,player.y,p.x,p.y)<36){p.used=true;player.slipT=.55;const got=takeDamage(6);player.inv=.55;particle(player.x,player.y-30,`ツルッ！ -${got}`,'#ffd94d',.5,17);}}
   const b=bananaBoss,bd=dist(player.x,player.y,b.x,b.y);
   if(!b.dead&&!b.active&&player.x>26020){b.active=true;say('バナナ王！ 皮に気をつけろ！');}
@@ -4328,6 +4363,30 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
     if(b.hp<=0){b.dead=true;b.active=false;bananaBossDefeated=true;lightStaffPickup.active=true;lightStaffPickup.x=b.x;lightStaffPickup.y=b.y;say('光の杖が現れた！');saveProgress();}
   }
   if(lightStaffPickup.active&&!lightStaffPickup.taken&&dist(player.x,player.y,lightStaffPickup.x,lightStaffPickup.y)<82){lightStaffPickup.taken=true;lightStaffPickup.active=false;player.lightStaff=true;unlockedWeapons[5]=true;player.weapon=5;weaponNameEl.textContent='光の杖';say('光の杖 GET！ 光の盾が全方向防御へ覚醒！');saveProgress();}
+ }
+
+ // 光の杖の翼で空路を渡った先：最終ボス島。
+ if(player.lightStaff||bananaBossDefeated){
+   const fb=finalBoss,fd=dist(player.x,player.y,fb.x,fb.y);
+   if(!fb.dead&&!fb.active&&fd<470){fb.active=true;fb.pulseCd=1.4;say('最終決戦・天空核！ 島全体が光ったら周囲の小島へ飛べ！');}
+   if(fb.active&&!fb.dead){
+     fb.flash=Math.max(0,fb.flash-dt);fb.pulseCd-=dt;fb.shotCd-=dt;
+     if(fb.pulseCd<=0&&fb.pulseWarn<=0){fb.pulseWarn=1.25;fb.pulseHit=false;fb.pulseCd=4.0;particle(fb.x,fb.y-120,'島全体攻撃！','#fff5a8',.75,20);}
+     if(fb.pulseWarn>0){
+       fb.pulseWarn=Math.max(0,fb.pulseWarn-dt);
+       // 発光予告の最後に、丸いボス島全体へ一度だけ大ダメージ。
+       if(fb.pulseWarn<=.10&&!fb.pulseHit){
+         fb.pulseHit=true;
+         const ar=finalSkyRoute.arena;
+         if(dist(player.x,player.y,ar.x,ar.y)<ar.r-12){
+           const got=takeDamage(22);player.inv=.7;particle(player.x,player.y-45,`天光 -${got}`,'#fff0a0',.55,19);
+         }
+       }
+     }
+     // 合間は小さな光弾。盾で凌げる。
+     if(fb.shotCd<=0){fb.shotCd=.9;const a=Math.atan2(player.y-fb.y,player.x-fb.x);projectiles.push({x:fb.x,y:fb.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:10,life:2.4,kind:'seed',damage:7,enemyShot:true,hit:false,sourceEnemy:fb});}
+     if(fb.hp<=0){fb.hp=0;fb.dead=true;fb.active=false;finalBossDefeated=true;particle(fb.x,fb.y-80,'FINAL CLEAR！','#fff',1.2,28);say('天空核を撃破！ 「盾を構えてれば何とか凌げる」 完！');saveProgress();}
+   }
  }
 
  function ultraVineDistance(v,x,y){
@@ -4475,17 +4534,17 @@ if(stage2BridgeOpen && player.x>3470 && !stage3Started){
      }
    }
    for(const b of fruitMiniBosses){
-     if(b.dead)continue;b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.windup=Math.max(0,b.windup-dt);
-     const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;
+     if(b.dead)continue;b.flash=Math.max(0,b.flash-dt);b.attackCd-=dt;b.windup=Math.max(0,b.windup-dt);b.thrustT=Math.max(0,(b.thrustT||0)-dt);
+     const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;b.side=dx<0?-1:1;
      if(!b.active&&d<360){b.active=true;say(`${b.name}！`);}
      if(!b.active)continue;
-     if(d>105&&d<420){const ox=b.x,oy=b.y;b.x+=dx/d*34*dt;b.y+=dy/d*34*dt;if(!enemySupportedByGround(b,8)){b.x=ox;b.y=oy;}}
-     if(d<150&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.55;b.windup=.35;particle(b.x,b.y-58,'！','#fff',.25,15);}
-     if(b.windup>0&&b.windup<=.06&&!b.didHit){
-       b.didHit=true;
-       if(d<170&&player.jumpT<=0){
-         if(shieldBlocks(b))particle(player.x,player.y-32,'ガン！','#ffd34d',.32,16);
-         else if(player.inv<=0){const dmg=b.type==='grape'?8:(b.type==='orange'?7:6);const got=takeDamage(dmg);player.inv=.55;particle(player.x,player.y-34,`-${got}`,'#c11',.42,16);}
+     if(d>125&&d<420){const ox=b.x,oy=b.y;b.x+=dx/d*30*dt;b.y+=dy/d*30*dt;if(!enemySupportedByGround(b,8)){b.x=ox;b.y=oy;}}
+     if(d<190&&b.attackCd<=0&&b.windup<=0){b.attackCd=1.55;b.windup=.42;b.didHit=false;particle(b.x,b.y-58,'槍を構えた！','#fff',.25,14);}
+     if(b.windup>0&&b.windup<=.07&&!b.didHit){
+       b.didHit=true;b.thrustT=.28;
+       if(d<205&&player.jumpT<=0){
+         if(shieldBlocks(b))particle(player.x,player.y-32,'ギィン！','#ffd34d',.32,16);
+         else if(player.inv<=0){const dmg=b.type==='grape'?8:(b.type==='orange'?7:6);const got=takeDamage(dmg);player.inv=.55;particle(player.x,player.y-34,`槍 -${got}`,'#c11',.42,16);}
        }
      }
      if(b.windup<=0)b.didHit=false;
@@ -4716,8 +4775,11 @@ function drawSurfaceStreams(){
  for(const st of currentStreams){
    if(!streamHasSurface(st)&&!st.visibleRoad)continue;
    const active=st.frozen<=0;
-   ctx.save();clipVisibleGround();ctx.globalAlpha=.84;ctx.lineJoin='round';ctx.lineCap='round';
-   ctx.strokeStyle=active?(st.visibleRoad?'#359fc7':'#4ca6c8'):'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
+   ctx.save();
+   // 上段高速水流は通路そのものに沿う専用表示。地面矩形クリップで消さない。
+   if(!st.visibleRoad)clipVisibleGround();
+   ctx.globalAlpha=st.visibleRoad?.94:.84;ctx.lineJoin='round';ctx.lineCap='round';
+   ctx.strokeStyle=active?(st.visibleRoad?'#219fd0':'#4ca6c8'):'#bdeeff';ctx.lineWidth=st.width+8;traceStreamPath(st);ctx.stroke();
    ctx.strokeStyle=active?(st.visibleRoad?'#8ee5f6':'#9fe5f5'):'#e9fbff';ctx.lineWidth=Math.max(14,st.width-7);traceStreamPath(st);ctx.stroke();
    if(active){
      const tm=performance.now()/1000*st.speed*.72;
@@ -5635,10 +5697,33 @@ function drawWorld(){
         const rb=lateRainbows[1],cols=['#f44','#f90','#fd4','#5c5','#49f','#85f'];ctx.save();ctx.lineCap='round';for(let i=0;i<6;i++){ctx.strokeStyle=cols[i];ctx.lineWidth=rb.w/6+3;ctx.beginPath();ctx.moveTo(rb.x1,rb.y1+(i-2.5)*rb.w/6);ctx.lineTo(rb.x2,rb.y2+(i-2.5)*rb.w/6);ctx.stroke();}ctx.restore();
         for(const r of bananaRushGeo.path){ctx.fillStyle='#9bca67';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,38);ctx.fill();ctx.stroke();}
         for(const f of rushFlowers){if(f.dead)continue;ctx.save();ctx.translate(f.x,f.y);line(0,0,0,35,8,'#3b9149');for(let i=0;i<7;i++){ctx.save();ctx.rotate(i*Math.PI*2/7);ctx.fillStyle='#efef79';ctx.beginPath();ctx.ellipse(0,-22,8,17,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}circle(0,0,12,'#785b35','#111',4);ctx.restore();}
-        for(const e of rushMiniBosses){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);const c=e.type==='melon'?'#7acb65':e.type==='berry'?'#b65ac8':e.type==='pine'?'#d9a63e':'#ef9b43';circle(0,0,e.r,c,'#111',6);ctx.fillStyle='#fff';ctx.font='900 12px system-ui';ctx.textAlign='center';ctx.fillText(e.name,0,-e.r-10);ctx.restore();}
-        for(const p of bananaPeels){if(p.used)continue;ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#ffe44d';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,10);ctx.quadraticCurveTo(-6,-20,0,4);ctx.quadraticCurveTo(8,-24,18,10);ctx.quadraticCurveTo(4,2,0,18);ctx.quadraticCurveTo(-5,3,-18,10);ctx.fill();ctx.stroke();ctx.restore();}
-        if(!bananaBoss.dead){const b=bananaBoss;ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='#ffe14c';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,66,-2.5,.7);ctx.arc(4,-2,42,.7,-2.5,true);ctx.closePath();ctx.fill();ctx.stroke();ctx.save();ctx.rotate(b.swingT>0?-1.0:.25);ctx.fillStyle='#ffe14c';ctx.beginPath();ctx.arc(40,0,52,-1.5,1.5);ctx.arc(42,0,30,1.5,-1.5,true);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();ctx.restore();ctx.fillStyle='#111';ctx.font='900 17px system-ui';ctx.textAlign='center';ctx.fillText('バナナ王',b.x,b.y-105);}
+        for(const e of rushMiniBosses){if(e.dead)continue;ctx.save();ctx.translate(e.x,e.y);const c=e.type==='melon'?'#7acb65':e.type==='berry'?'#b65ac8':e.type==='pine'?'#d9a63e':'#ef9b43';circle(0,0,e.r,c,'#111',6);
+          circle(-14,-9,6,'#fff','#111',3);circle(14,-9,6,'#fff','#111',3);circle(-13,-8,2.5,'#111','#111',1);circle(13,-8,2.5,'#111','#111',1);
+          ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-20,-22);ctx.lineTo(-7,-17);ctx.moveTo(20,-22);ctx.lineTo(7,-17);ctx.moveTo(-14,15);ctx.quadraticCurveTo(0,23,14,15);ctx.stroke();
+          const side=e.side||-1;ctx.save();ctx.scale(side,1);const ex=e.thrustT>0?50:0;line(25,12,94+ex,12,11,'#111');line(25,12,94+ex,12,5,'#e5edf0');ctx.fillStyle='#eef8fb';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(92+ex,12);ctx.lineTo(107+ex,2);ctx.lineTo(132+ex,12);ctx.lineTo(107+ex,22);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+          ctx.fillStyle='#fff';ctx.font='900 12px system-ui';ctx.textAlign='center';ctx.fillText(e.name,0,-e.r-10);ctx.restore();}
+        for(const p of bananaPeels){if(p.used)continue;ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#ffe44d';ctx.strokeStyle='#111';ctx.lineWidth=4;
+          // 長い3本の皮で、遠目にもバナナの皮と分かる形。
+          for(const rot of [-.72,0,.72]){ctx.save();ctx.rotate(rot);ctx.beginPath();ctx.moveTo(-7,8);ctx.quadraticCurveTo(-4,-20,0,-39);ctx.quadraticCurveTo(7,-14,9,8);ctx.quadraticCurveTo(2,15,-7,8);ctx.fill();ctx.stroke();ctx.restore();}
+          circle(0,9,8,'#f1c82f','#111',3);ctx.restore();}
+        if(!bananaBoss.dead){const b=bananaBoss;ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='#ffe14c';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,66,-2.5,.7);ctx.arc(4,-2,42,.7,-2.5,true);ctx.closePath();ctx.fill();ctx.stroke();
+          // バナナ本体にも王様らしい顔。
+          circle(-17,-12,7,'#fff','#111',3);circle(17,-12,7,'#fff','#111',3);circle(-15,-11,3,'#111','#111',1);circle(15,-11,3,'#111','#111',1);
+          ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-25,-28);ctx.lineTo(-8,-21);ctx.moveTo(25,-28);ctx.lineTo(8,-21);ctx.moveTo(-17,15);ctx.quadraticCurveTo(0,25,17,15);ctx.stroke();
+          ctx.save();ctx.rotate(b.swingT>0?-1.0:.25);ctx.fillStyle='#ffe14c';ctx.beginPath();ctx.arc(40,0,52,-1.5,1.5);ctx.arc(42,0,30,1.5,-1.5,true);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();ctx.restore();ctx.fillStyle='#111';ctx.font='900 17px system-ui';ctx.textAlign='center';ctx.fillText('バナナ王',b.x,b.y-105);}
         if(lightStaffPickup.active&&!lightStaffPickup.taken){ctx.save();ctx.translate(lightStaffPickup.x,lightStaffPickup.y);line(0,35,0,-42,10,'#111');line(0,35,0,-42,5,'#fff4a8');circle(0,-52,18,'#fff8bd','#caa82e',5);ctx.restore();}
+       }
+       if(player.lightStaff||bananaBossDefeated){
+        // 飛行ルート：矢印→小島→最終丸島。橋は置かず、光翼で渡る。
+        for(const q of finalSkyRoute.stepping){ctx.fillStyle='#9ed77c';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#74543a';ctx.beginPath();ctx.moveTo(q.x-q.r*.72,q.y+q.r*.56);ctx.lineTo(q.x+q.r*.72,q.y+q.r*.56);ctx.lineTo(q.x+q.r*.38,q.y+q.r*.95);ctx.lineTo(q.x-q.r*.38,q.y+q.r*.95);ctx.closePath();ctx.fill();}
+        for(const ar of finalSkyRoute.arrows){ctx.save();ctx.translate(ar.x,ar.y);ctx.rotate(ar.a);ctx.globalAlpha=.72;ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(34,0);ctx.lineTo(-16,-18);ctx.lineTo(-5,0);ctx.lineTo(-16,18);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+        const fa=finalSkyRoute.arena;ctx.fillStyle='#8dcf70';ctx.strokeStyle='#111';ctx.lineWidth=10;ctx.beginPath();ctx.arc(fa.x,fa.y,fa.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#70513a';ctx.beginPath();ctx.arc(fa.x,fa.y+16,fa.r*.93,0,Math.PI);ctx.fill();
+        for(const q of finalSkyRoute.safe){ctx.fillStyle='#b2df87';ctx.strokeStyle='#111';ctx.lineWidth=8;ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,Math.PI*2);ctx.fill();ctx.stroke();}
+        if(finalBoss.active&&!finalBoss.dead&&finalBoss.pulseWarn>0){
+          const p=1-finalBoss.pulseWarn/1.25;ctx.save();ctx.globalAlpha=.18+.34*p;ctx.fillStyle='#fff2a0';ctx.beginPath();ctx.arc(fa.x,fa.y,fa.r-8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=12;ctx.beginPath();ctx.arc(fa.x,fa.y,(fa.r-30)*(0.35+0.65*p),0,Math.PI*2);ctx.stroke();ctx.restore();
+        }
+        if(!finalBoss.dead){const b=finalBoss;ctx.save();ctx.translate(b.x,b.y);if(b.flash>0)ctx.globalAlpha=.55;ctx.globalCompositeOperation='source-over';circle(0,0,86,'#fff3a8','#111',8);circle(0,0,57,'#e7d06b','#80691d',6);circle(-20,-10,7,'#111','#111',1);circle(20,-10,7,'#111','#111',1);ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,18,24,.1,Math.PI-.1);ctx.stroke();for(let i=0;i<8;i++){ctx.save();ctx.rotate(i*Math.PI/4+(performance.now()*.0005));ctx.fillStyle='#fff9d0';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(62,-12);ctx.lineTo(112,0);ctx.lineTo(62,12);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}ctx.restore();ctx.fillStyle='#111';ctx.font='900 18px system-ui';ctx.textAlign='center';ctx.fillText('天空核',b.x,b.y-120);ctx.fillRect(b.x-100,b.y+105,200,14);ctx.fillStyle='#fff';ctx.fillRect(b.x-95,b.y+109,190*Math.max(0,b.hp/b.maxHp),6);}
        }
        if(crystalBossDefeated){
         for(const r of lightGardenGeo.path){ctx.fillStyle='#c8efb2';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,45);ctx.fill();ctx.stroke();}
@@ -5815,7 +5900,15 @@ function drawWorld(){
              for(const [gx,gy] of [[0,-28],[-22,-10],[22,-10],[-32,14],[0,14],[32,14],[-18,38],[18,38]])circle(gx,gy,21,'#7850a5','#111',5);
              line(0,-47,6,-68,8,'#4b8f45');
            }
-           circle(-13,-9,4,'#111','#111',1);circle(13,-9,4,'#111','#111',1);line(-15,13,15,13,5,'#111');
+           // ちゃんと表情のある中ボス顔。
+           circle(-15,-10,6,'#fff','#111',3);circle(15,-10,6,'#fff','#111',3);
+           circle(-13,-9,2.8,'#111','#111',1);circle(13,-9,2.8,'#111','#111',1);
+           ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-21,-23);ctx.lineTo(-7,-18);ctx.moveTo(21,-23);ctx.lineTo(7,-18);ctx.stroke();
+           ctx.beginPath();ctx.arc(0,13,16,.15,Math.PI-.15);ctx.stroke();
+           // 全員、長い槍で突いてくる。
+           const side=b.side||-1;ctx.save();ctx.scale(side,1);const ex=b.thrustT>0?48:0;
+           line(28,12,98+ex,12,11,'#111');line(28,12,98+ex,12,5,'#dbe7ec');
+           ctx.fillStyle='#eaf5fa';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(94+ex,12);ctx.lineTo(109+ex,2);ctx.lineTo(132+ex,12);ctx.lineTo(109+ex,22);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
            ctx.fillStyle='#111';ctx.font='900 14px system-ui';ctx.textAlign='center';ctx.fillText(b.name,0,-76);
            ctx.fillRect(-54,64,108,10);ctx.fillStyle='#fff';ctx.fillRect(-50,67,100*Math.max(0,b.hp/b.maxHp),4);
            ctx.restore();
@@ -6547,7 +6640,21 @@ function drawShieldBack(hx,hy,a,raised){
  circle(-7,0,7,'#f7fbff','#111',4);
  ctx.restore();ctx.restore();
 }
-function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){line(0,0,45,0,11,'#111');line(0,0,45,0,5,player.flameSword?'#ff6b2f':(player.swordPlus?'#c8f2d2':'#eef5fa'));if(player.flameSword)line(10,-2,41,-2,3,'#ffd05a');else if(player.swordPlus)line(10,-2,41,-2,2,'#64c58b');line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,player.flameSword?'#e34c27':(player.swordPlus?'#6fbd78':'#d8a93d'))}
+function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translate(hx+Math.cos(a)*ext,hy+Math.sin(a)*ext);ctx.rotate(a);ctx.lineCap='round';if(w===0){
+   if(player.flameSword){
+     // 炎神の剣：槍に見えないよう、短い柄＋幅広い炎型の刀身。
+     line(-5,0,13,0,13,'#111');line(-5,0,13,0,6,'#7b3d27');
+     line(11,-15,11,15,8,'#111');line(11,-10,11,10,4,'#f0a33b');
+     ctx.fillStyle='#ff5528';ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.lineJoin='round';
+     ctx.beginPath();ctx.moveTo(15,-11);ctx.lineTo(39,-16);ctx.lineTo(55,-10);ctx.lineTo(72,-21);ctx.lineTo(65,-5);ctx.lineTo(88,0);ctx.lineTo(65,7);ctx.lineTo(73,21);ctx.lineTo(53,12);ctx.lineTo(38,17);ctx.lineTo(15,10);ctx.closePath();ctx.fill();ctx.stroke();
+     ctx.strokeStyle='#ffcf52';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(25,0);ctx.lineTo(67,0);ctx.lineTo(78,-1);ctx.stroke();
+     ctx.strokeStyle='#fff0a0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(29,-5);ctx.lineTo(56,-8);ctx.stroke();
+   }else{
+     line(0,0,45,0,11,'#111');line(0,0,45,0,5,player.swordPlus?'#c8f2d2':'#eef5fa');
+     if(player.swordPlus)line(10,-2,41,-2,2,'#64c58b');
+     line(5,-11,5,11,7,'#111');line(5,-7,5,7,3,player.swordPlus?'#6fbd78':'#d8a93d');
+   }
+ }
  else if(w===1){
    // 水龍の槍を取った後は、柄も穂先も青い氷金属へ変化。
    const water=!!player.waterSpear;
@@ -6610,8 +6717,42 @@ function drawStaffSkillEffects(){
  if(player.skillT<=0)return;
 
  if(player.skillKind==='lightWing'){
-   ctx.save();ctx.translate(player.x,player.y);ctx.globalCompositeOperation='screen';ctx.globalAlpha=.72;ctx.fillStyle='#fff6a8';ctx.strokeStyle='#e5c94d';ctx.lineWidth=4;
-   for(const q of [-1,1]){ctx.save();ctx.scale(q,1);ctx.beginPath();ctx.moveTo(-8,-20);ctx.quadraticCurveTo(48,-70,92,-38);ctx.quadraticCurveTo(52,-18,18,24);ctx.quadraticCurveTo(35,-18,-8,-20);ctx.fill();ctx.stroke();ctx.restore();}ctx.restore();
+   ctx.save();ctx.translate(player.x,player.y);ctx.globalCompositeOperation='screen';
+   const a=player.skillBase||0,dx=Math.cos(a),dy=Math.sin(a);
+   // 天使の翼：大きな一枚板ではなく、白い羽根が何段も重なる形。
+   const wing=(side,backOnly=false)=>{
+     ctx.save();
+     let ox=0,oy=-9,rot=0,flip=side;
+     if(backOnly){
+       // 横移動時は進行方向と反対＝背中側だけ。
+       const back=dx>0?-1:1;
+       ox=back*18;oy=-7;rot=back<0?Math.PI:0;flip=1;
+     }else{
+       ox=side*8;oy=-8;rot=side<0?Math.PI:0;flip=1;
+     }
+     ctx.translate(ox,oy);ctx.rotate(rot);ctx.scale(flip,1);
+     ctx.globalAlpha=.88;ctx.fillStyle='rgba(255,255,238,.95)';ctx.strokeStyle='rgba(226,205,95,.95)';ctx.lineWidth=3;
+     // 上段の大羽根
+     for(let i=0;i<4;i++){
+       const yy=-26+i*14,ln=70-i*9;
+       ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(ln*.38,yy-15,ln,yy);ctx.quadraticCurveTo(ln*.62,yy+16,8,13);ctx.closePath();ctx.fill();ctx.stroke();
+     }
+     // 下段の短い羽根
+     for(let i=0;i<3;i++){
+       const yy=13+i*10,ln=48-i*7;
+       ctx.globalAlpha=.78;
+       ctx.beginPath();ctx.moveTo(4,5);ctx.quadraticCurveTo(ln*.45,yy-9,ln,yy);ctx.quadraticCurveTo(ln*.58,yy+9,10,17);ctx.closePath();ctx.fill();ctx.stroke();
+     }
+     ctx.restore();
+   };
+   if(Math.abs(dy)>Math.abs(dx)){
+     // 下向き（上下移動）は左右へ大きく展開。
+     wing(-1,false);wing(1,false);
+   }else{
+     // 横向きは背中側だけ。前方へ翼が突き出さない。
+     wing(dx>0?-1:1,true);
+   }
+   ctx.restore();
  }else if(player.skillKind==='fire'){
    ctx.save();ctx.translate(player.x,player.y-(player.skillZ||0));
    const t=performance.now()*.018;
