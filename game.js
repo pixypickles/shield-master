@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 162: 最初の浮遊草原ステージ
+// Prototype 164: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1517,7 +1517,7 @@ document.getElementById('equipShieldTab').onclick=()=>{equipMode='shield';render
 document.getElementById('equipClose').onclick=closeEquipPanel;
 
 
-const shortcutBtn=document.getElementById('shortcutBtn');
+const shortcutBtn=null;
 const shortcutLabel=document.getElementById('shortcutLabel');
 function updateShortcutLabel(){
  if(shortcut.index<0){shortcutLabel.textContent='なし';return}
@@ -1673,6 +1673,12 @@ function skillAutoAim(base,maxDist=330,cone=Math.PI*.72){
 function autoAim(base,cone,maxDist){let best=null,bestScore=1e9;for(const e of enemies){if(e.dead)continue;const d=dist(player.x,player.y,e.x,e.y);if(d>maxDist)continue;const a=Math.atan2(e.y-player.y,e.x-player.x);const ad=Math.abs(angleDiff(a,base));if(ad>cone)continue;const score=d+ad*150;if(score<bestScore){bestScore=score;best=a}}return best??base}
 
 
+function ultraVineDistanceGlobal(v,x,y){
+ const ca=Math.cos(v.a||0),sa=Math.sin(v.a||0),hl=(v.len||180)/2;
+ const ax=v.x-ca*hl,ay=v.y-sa*hl,bx=v.x+ca*hl,by=v.y+sa*hl;
+ const dx=bx-ax,dy=by-ay,l2=Math.max(1,dx*dx+dy*dy),t=clamp(((x-ax)*dx+(y-ay)*dy)/l2,0,1);
+ return Math.hypot(x-(ax+dx*t),y-(ay+dy*t));
+}
 function lightAllEnemies(){
  const out=[];
  for(const list of [enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,
@@ -1696,7 +1702,7 @@ function lightBreakTerrainAt(x,y,r=60){
  for(const tr of props.smallTrees)if(!tr.dead&&dist(x,y,tr.x,tr.y)<r+34)tr.dead=true;
  for(const v of vineWalls)if(!v.dead&&!v.perma&&dist(x,y,v.x,v.y)<r+v.r){v.dead=true;v.regenT=5;v.burned=true;}
  for(const v of vineKnot)if(!v.dead&&!v.perma&&dist(x,y,v.x,v.y)<r+v.r){v.dead=true;v.regenT=5;}
- for(const v of ultraVines)if(!v.dead&&ultraVineDistance(v,x,y)<r+24){v.hp=0;v.dead=true;v.regenT=2.2;particle(v.x,v.y,'光断！','#fff5a8',.48,17);}
+ for(const v of ultraVines)if(!v.dead&&ultraVineDistanceGlobal(v,x,y)<r+24){v.hp=0;v.dead=true;v.regenT=2.2;particle(v.x,v.y,'光断！','#fff5a8',.48,17);}
 }
 function lightKillCheck(e){
  if(!e||e.hp>0)return;
@@ -6463,6 +6469,17 @@ function drawPlayer(){
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
  ctx.save();ctx.translate(player.x,player.y-lift-bounce);
+ if(player.shield&&player.shieldType===7&&player.lightStaff){
+   ctx.save();ctx.globalCompositeOperation='screen';
+   const pulse=.5+.5*Math.sin(performance.now()*.009);
+   ctx.globalAlpha=.16+pulse*.08;ctx.fillStyle='#fff4a3';ctx.strokeStyle='#fffde2';ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(0,-64);ctx.quadraticCurveTo(58,-50,66,2);ctx.quadraticCurveTo(58,60,0,80);ctx.quadraticCurveTo(-58,60,-66,2);ctx.quadraticCurveTo(-58,-50,0,-64);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.globalAlpha=.10+pulse*.05;ctx.strokeStyle='#e7c44a';ctx.lineWidth=14;ctx.stroke();
+   // 内側にも薄い輪郭を入れて、明るい背景でも見失わない。
+   ctx.globalAlpha=.28;ctx.strokeStyle='#fff';ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(0,-54);ctx.quadraticCurveTo(48,-41,55,3);ctx.quadraticCurveTo(47,50,0,67);ctx.quadraticCurveTo(-47,50,-55,3);ctx.quadraticCurveTo(-48,-41,0,-54);ctx.closePath();ctx.stroke();
+   ctx.restore();
+ }
  if(player.falling){
    const ft=clamp(player.fallT/player.fallDur,0,1);
    const sc=1-ft*.78;
@@ -6780,12 +6797,6 @@ function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translat
    }
  }ctx.restore()}
 function drawShield(hx,hy,a,raised,sideView=false){
- if(raised&&player.shieldType===7&&player.lightStaff){
-   ctx.save();ctx.translate(player.x-hx,player.y-hy);ctx.globalCompositeOperation='screen';
-   ctx.globalAlpha=.20;ctx.fillStyle='#fff7b3';ctx.strokeStyle='#fffbd8';ctx.lineWidth=5;
-   ctx.beginPath();ctx.moveTo(0,-62);ctx.quadraticCurveTo(58,-48,64,8);ctx.quadraticCurveTo(52,66,0,82);ctx.quadraticCurveTo(-52,66,-64,8);ctx.quadraticCurveTo(-58,-48,0,-62);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.globalAlpha=.16;ctx.strokeStyle='#f0cf55';ctx.lineWidth=12;ctx.stroke();ctx.restore();
- }
  ctx.save();ctx.translate(hx,hy);const r=raised?34:27;
  if(sideView){
    ctx.fillStyle='#e5eef3';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.ellipse(0,0,r*.43,r,0,0,Math.PI*2);ctx.fill();ctx.stroke();
