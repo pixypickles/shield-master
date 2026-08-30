@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 171: 最初の浮遊草原ステージ
+// Prototype 172: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -621,6 +621,8 @@ const finalBoss={
 };
 let finalBossDefeated=false;
 let endingActive=false,endingT=0,endingShown=false;
+let postGameAngel=false,angelSlow=false;
+const demonRaiders=[];
 
 
 
@@ -1312,8 +1314,8 @@ function loadProgress(){
  endingShown=!!d.endingShown;
  if(finalBossDefeated){
    finalBoss.dead=true;finalBoss.active=false;finalBoss.hp=0;
-   // 旧セーブでは撃破済みでもエンディングが出ていないので、一度だけ救済表示する。
    if(!endingShown){endingActive=true;endingT=0;endingShown=true;}
+   else postGameAngel=true;
  }
  if(bananaBossDefeated){bananaBoss.dead=true;bananaBoss.active=false;}
  // 旧/壊れたセーブで「boss.deadだけtrue、報酬フラグfalse」になったケースも復元。
@@ -1429,9 +1431,21 @@ window.addEventListener('DOMContentLoaded',()=>{
      if((player.x>6150&&player.y<-1850)||vegBossDefeated||fruitSpearBossDefeated||waterBossDefeated){
        cloudRaceUnlocked=true;cloudRaceWon=true;vineBossDefeated=true;vineBoss.dead=true;vineBoss.active=false;
      }
+     if(postGameAngel){
+       player.weapon=5;player.shieldType=7;player.lightStaff=true;player.lightShield=true;
+       unlockedWeapons[5]=true;unlockedShields[7]=true;
+       player.x=finalSkyRoute.arena.x;player.y=finalSkyRoute.arena.y;
+       player.falling=false;player.fallT=0;player.jumpT=0;player.skillT=0;player.skillKind='';
+       document.getElementById('changeBtn').disabled=true;
+       document.getElementById('changeBtn').textContent='装備固定';
+       jumpBtn.textContent='雷撃';
+       skillBtn.textContent='減速';
+       weaponNameEl.textContent='光の杖・天使装束';
+       spawnDemonRaiders(true);
+     }
      saveProgress();
      m.classList.add('hidden');
-     say('セーブデータから続きます');
+     say(postGameAngel?'クリア後：天使装束で空を自由に飛べる':'セーブデータから続きます');
    }else{
      say('セーブデータを読み込めませんでした');
    }
@@ -1523,6 +1537,7 @@ const equipItems=document.getElementById('equipItems');
 let equipMode='weapon';
 
 function openEquipPanel(){
+ if(postGameAngel){say('クリア後は最強装備で固定されています');return;}
  equipPanel.classList.remove('hidden');
  renderEquipPanel();
 }
@@ -1565,7 +1580,28 @@ document.getElementById('equipClose').onclick=closeEquipPanel;
 
 // 装備ショートカットは廃止。関連イベントも完全に削除済み。
 
-function jump(){if(player.skillKind==='lightWing'&&player.skillT>0)return;if(player.jumpT<=0){player.jumpDur=(player.shieldType===4||player.shieldType===7)?.92:.62;player.jumpHeight=(player.shieldType===4||player.shieldType===7)?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+function angelJumpAttack(){
+ const base=stickAngle()??player.aim??faceAngle(player.face);
+ player.aim=base;player.face=faceFromVec(Math.cos(base),Math.sin(base));
+ const tx=player.x+Math.cos(base)*155,ty=player.y+Math.sin(base)*155;
+ const px=-Math.sin(base),py=Math.cos(base),gap=125;
+ for(let i=-1;i<=1;i++){
+   const lx=tx+px*i*gap,ly=ty+py*i*gap;
+   projectiles.push({x:lx,y:ly-165,vx:0,vy:0,r:18,life:.22,kind:'lightning',damage:12,hit:false,lightning:true,targetX:lx,targetY:ly});
+ }
+ particle(tx,ty-20,'天雷！','#fff6a8',.45,18);
+}
+function jump(){
+ if(postGameAngel){angelJumpAttack();return;}
+ if(player.skillKind==='lightWing'&&player.skillT>0)return;
+ if(player.jumpT<=0){
+   player.jumpDur=(player.shieldType===4||player.shieldType===7)?.92:.62;
+   player.jumpHeight=(player.shieldType===4||player.shieldType===7)?118:105;
+   player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;
+   player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');
+   particle(player.x,player.y+24,'バッ！','#111',.45,18);
+ }
+}
 
 function steerAngle(current,target,maxStep){
  const d=angleDiff(target,current);
@@ -1577,6 +1613,12 @@ function stickAngle(){
 }
 
 function skill(){
+ if(postGameAngel){
+   angelSlow=!angelSlow;
+   skillBtn.textContent=angelSlow?'加速':'減速';
+   particle(player.x,player.y-34,angelSlow?'減速飛行':'高速飛行',angelSlow?'#dff8ff':'#fff3a0',.35,15);
+   return;
+ }
  // 光翼だけは発動中の再押しで任意解除できる。
  if(player.skillT>0&&player.skillKind==='lightWing'){
    player.skillT=0;player.lightWingT=0;player.skillKind='';player.skillElapsed=0;
@@ -1812,6 +1854,70 @@ function fireMagic(w,charged,base){
 
 
 
+function spawnDemonRaiders(force=false){
+ if(!postGameAngel)return;
+ if(force)demonRaiders.length=0;
+ while(demonRaiders.length<7){
+   const ang=Math.random()*Math.PI*2,rr=520+Math.random()*1300;
+   demonRaiders.push({x:player.x+Math.cos(ang)*rr,y:player.y+Math.sin(ang)*rr,r:42,hp:36,maxHp:36,dead:false,phase:Math.random()*6.28,shotCd:.7+Math.random()*1.6,scytheCd:1.1+Math.random()*1.8,scytheT:0,flash:0});
+ }
+}
+function updateDemonRaiders(dt){
+ if(!postGameAngel)return;
+ spawnDemonRaiders();
+ for(const d of demonRaiders){
+   if(d.dead)continue;
+   d.phase+=dt*.9;d.flash=Math.max(0,d.flash-dt);d.shotCd-=dt;d.scytheCd-=dt;d.scytheT=Math.max(0,d.scytheT-dt);
+   const dx=player.x-d.x,dy=player.y-d.y,dd=Math.hypot(dx,dy)||1;
+   const tang=Math.atan2(dy,dx)+Math.PI/2;
+   if(dd>360){d.x+=dx/dd*72*dt;d.y+=dy/dd*72*dt;}
+   d.x+=Math.cos(tang)*34*dt;d.y+=Math.sin(tang)*34*dt;
+   if(d.shotCd<=0&&dd<850){
+     d.shotCd=1.2+Math.random()*.8;
+     const a=Math.atan2(dy,dx);
+     projectiles.push({x:d.x,y:d.y-18,vx:Math.cos(a)*285,vy:Math.sin(a)*285,r:15,life:3,kind:'demonOrb',damage:10,enemyShot:true,hit:false,sourceEnemy:d});
+   }
+   if(d.scytheCd<=0&&dd<125){
+     d.scytheCd=1.8;d.scytheT=.42;
+     if(player.inv<=0){
+       if(shieldBlocks(d))particle(player.x,player.y-28,'キィン！','#fff6bd',.28,15);
+       else{const got=takeDamage(12);player.inv=.55;particle(player.x,player.y-35,`鎌 -${got}`,'#b64cff',.4,16);}
+     }
+   }
+ }
+ // 光杖の通常弾で撃破。
+ for(const d of demonRaiders){
+   if(d.dead)continue;
+   for(const pr of projectiles){
+     if(pr.hit||pr.enemyShot||pr.kind!=='lightBolt')continue;
+     pr.hitTargets??=new Set();
+     if(pr.hitTargets.has(d))continue;
+     if(dist(pr.x,pr.y,d.x,d.y)<pr.r+d.r){
+       pr.hitTargets.add(d);d.hp-=pr.damage||6;d.flash=.2;
+       if(d.hp<=0){d.dead=true;particle(d.x,d.y-45,'消滅','#fff',.6,18);}
+     }
+   }
+ }
+ if(demonRaiders.filter(d=>!d.dead).length<4){
+   const alive=demonRaiders.filter(d=>!d.dead);demonRaiders.length=0;demonRaiders.push(...alive);spawnDemonRaiders();
+ }
+}
+function drawDemonRaider(d){
+ if(d.dead)return;
+ ctx.save();ctx.translate(d.x,d.y);if(d.flash>0)ctx.globalAlpha=.55;
+ ctx.fillStyle='#39204f';ctx.strokeStyle='#111';ctx.lineWidth=6;
+ ctx.beginPath();ctx.moveTo(-12,-12);ctx.lineTo(-66,-45);ctx.lineTo(-48,2);ctx.lineTo(-75,28);ctx.lineTo(-18,20);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.beginPath();ctx.moveTo(12,-12);ctx.lineTo(66,-45);ctx.lineTo(48,2);ctx.lineTo(75,28);ctx.lineTo(18,20);ctx.closePath();ctx.fill();ctx.stroke();
+ circle(0,0,30,'#5a2b72','#111',6);
+ ctx.fillStyle='#7d4b95';ctx.strokeStyle='#111';ctx.lineWidth=5;
+ ctx.beginPath();ctx.moveTo(-18,-24);ctx.lineTo(-30,-52);ctx.lineTo(-5,-32);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.beginPath();ctx.moveTo(18,-24);ctx.lineTo(30,-52);ctx.lineTo(5,-32);ctx.closePath();ctx.fill();ctx.stroke();
+ circle(-10,-5,4,'#ff5cff','#111',2);circle(10,-5,4,'#ff5cff','#111',2);
+ const swing=d.scytheT>0?Math.sin((1-d.scytheT/.42)*Math.PI)*1.5:0;
+ ctx.save();ctx.translate(28,12);ctx.rotate(-.8+swing);line(0,0,0,-78,9,'#111');line(0,0,0,-78,4,'#d9d3df');
+ ctx.fillStyle='#d7d2df';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-78);ctx.quadraticCurveTo(48,-78,62,-42);ctx.quadraticCurveTo(35,-58,4,-52);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ ctx.restore();
+}
 function takeDamage(amount){
  const dmg=amount;
  player.hp=Math.max(1,player.hp-dmg);
@@ -2666,6 +2772,7 @@ function update(dt){
  }
  if(areaMapOpen||!equipPanel.classList.contains('hidden'))return;
  resolveProgressionDeaths();
+ updateDemonRaiders(dt);
  player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
  for(const e of enemies){
@@ -2855,6 +2962,10 @@ function update(dt){
    player.walkPhase+=dt*(9+Math.min(1,m)*4);
  }
  let speed=player.speed*(player.shield?.42:1)*shields[player.shieldType].move;
+ if(postGameAngel){
+   speed=angelSlow?235:520;
+   player.falling=false;player.fallT=0;player.fallGrace=1;
+ }
  // ステップは通常移動とは完全に別速度。
  // 盾の移動速度低下0.42倍を受けないので、見た目にも明確に大きく移動する。
  if(player.shieldStepT>0&&player.skillT<=0){
@@ -3188,7 +3299,7 @@ function update(dt){
  // 「十分な高さで空中にいるのに落下扱い」になっていた原因は、
  // ワールド座標だけを見て地面から外れた瞬間に falling を開始していたこと。
  // 通常ジャンプ・雲ジャンプ・打ち上げ台の飛行は、着地するまで空中移動として扱う。
- if(player.jumpT>0 || player.launchTravel || player.skillKind==='lightWing'){
+ if(player.jumpT>0 || player.launchTravel || player.skillKind==='lightWing' || postGameAngel){
    safe=true;
  }
 
@@ -3482,6 +3593,7 @@ function update(dt){
      if(pr.life<=.08){
        const lx=pr.targetX??pr.x,ly=pr.targetY??pr.y;
        lightAreaHit(lx,ly,78,9);
+       if(postGameAngel)for(const d of demonRaiders){if(!d.dead&&dist(lx,ly,d.x,d.y)<105+d.r){d.hp-=12;d.flash=.2;if(d.hp<=0)d.dead=true;}}
        airMagicImpacts.push({x:lx,y:ly,kind:'light',life:.45,max:.45});pr.hit=true;
      }
    }
@@ -6367,6 +6479,7 @@ function drawWorld(){
    ctx.restore();
  }
 
+ if(postGameAngel)for(const d of demonRaiders)drawDemonRaider(d);
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
  drawPlayer();
@@ -6505,6 +6618,9 @@ function drawProjectile(pr){
    ctx.beginPath();ctx.moveTo(pr.r+5,0);ctx.quadraticCurveTo(0,-pr.r,-pr.r-5,0);ctx.quadraticCurveTo(0,pr.r,pr.r+5,0);ctx.fill();ctx.stroke();
    line(-pr.r-7,0,pr.r+2,0,3,'#397a35');
  }else if(pr.kind==='snowball'||pr.kind==='icechunk'){circle(0,0,pr.r,pr.kind==='snowball'?'#f8fdff':'#bcecff','#507c91',3);ctx.globalAlpha=.65;line(-pr.r-10,0,-pr.r-2,0,3,'#fff');ctx.globalAlpha=1;
+ }else if(pr.kind==='demonOrb'){
+   ctx.globalCompositeOperation='screen';ctx.globalAlpha=.28;circle(0,0,pr.r+16,'#9b4cff','transparent',0);ctx.globalAlpha=1;
+   circle(0,0,pr.r,'#8d38d7','#31103f',4);circle(-4,-4,pr.r*.45,'#e5a7ff','transparent',0);
  }else if(pr.kind==='fire'){
    // 赤杖：魔法感は残しつつ、中心を大きくした「火の玉」。
    const t=performance.now()*.018+(pr.magicPhase||0);
@@ -6571,7 +6687,7 @@ function drawPlayer(){
  const normalLift=player.jumpT>0?Math.min(220,Math.max(0,Math.sin(jumpNorm*Math.PI)*(player.jumpHeight||105)*(shields[player.shieldType]?.jump||1))):0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
  const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
- const wingFlying=player.skillKind==='lightWing'&&player.skillT>0;
+ const wingFlying=(player.skillKind==='lightWing'&&player.skillT>0)||postGameAngel;
  const moving=player.moveMag>.16&&player.jumpT<=0&&!wingFlying;
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
@@ -6780,6 +6896,18 @@ function drawPlayer(){
    }
    ctx.restore();
  }
+ if(postGameAngel){
+   // 白いギリシャ神話風の天使装束。既存装束の上から白布を重ねる。
+   ctx.save();
+   ctx.fillStyle='rgba(255,255,250,.98)';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(-23,-3);ctx.quadraticCurveTo(-28,15,-20,35);ctx.lineTo(-10,46);ctx.lineTo(0,35);ctx.lineTo(10,46);ctx.lineTo(20,35);ctx.quadraticCurveTo(28,15,23,-3);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.strokeStyle='#e6c65c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18,13);ctx.lineTo(18,13);ctx.stroke();
+   ctx.strokeStyle='#fff';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(-16,0);ctx.lineTo(10,31);ctx.stroke();
+   // 金の月桂冠
+   ctx.strokeStyle='#d4b34b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-27,18,Math.PI*.15,Math.PI*.85);ctx.stroke();
+   for(let i=-2;i<=2;i++){ctx.fillStyle='#f2d66d';ctx.beginPath();ctx.ellipse(i*7,-41+Math.abs(i)*3,5,2.5,i*.28,0,Math.PI*2);ctx.fill();}
+   ctx.restore();
+ }
  if(player.shield&&(player.lightStaff||player.weapon===5)&&(player.shieldType===7||player.lightShield)){
    ctx.save();ctx.globalCompositeOperation='screen';
    const pulse=.5+.5*Math.sin(performance.now()*.010);
@@ -6903,6 +7031,15 @@ function drawWeapon(hx,hy,a,ext=0){const w=player.weapon;ctx.save();ctx.translat
  }ctx.restore()}
 function drawShield(hx,hy,a,raised,sideView=false){
  ctx.save();ctx.translate(hx,hy);const r=raised?34:27;
+ if(postGameAngel){
+   ctx.globalCompositeOperation='screen';
+   const pulse=.65+.35*Math.sin(performance.now()*.012);
+   ctx.globalAlpha=.24+pulse*.22;ctx.strokeStyle='#fffbe0';ctx.lineWidth=11;
+   ctx.beginPath();ctx.arc(0,0,r+7,0,Math.PI*2);ctx.stroke();
+   ctx.globalAlpha=.34;ctx.fillStyle='rgba(255,245,160,.30)';ctx.beginPath();ctx.arc(0,0,r+1,0,Math.PI*2);ctx.fill();
+   ctx.globalAlpha=.9;ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,r-5,0,Math.PI*2);ctx.stroke();
+   ctx.restore();return;
+ }
  if(sideView){
    ctx.fillStyle='#e5eef3';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.ellipse(0,0,r*.43,r,0,0,Math.PI*2);ctx.fill();ctx.stroke();
    ctx.strokeStyle='#4f90bd';ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(0,0,r*.28,r*.72,0,0,Math.PI*2);ctx.stroke();circle(0,0,5,'#f0c94d','#111',3);
@@ -6939,10 +7076,10 @@ function drawStaffSkillEffects(){
 
  if(player.skillT<=0)return;
 
- if(player.skillKind==='lightWing'&&player.face!=='up'){
+ if(((player.skillKind==='lightWing'&&player.skillT>0)||postGameAngel)&&player.face!=='up'){
    const wingLift=jumpLiftNow();
    ctx.save();ctx.translate(player.x,player.y-wingLift);ctx.globalCompositeOperation='screen';
-   const a=player.skillBase||0,dx=Math.cos(a),dy=Math.sin(a);
+   const a=postGameAngel?(player.aim||faceAngle(player.face)):(player.skillBase||0),dx=Math.cos(a),dy=Math.sin(a);
    const angelWing=(side)=>{
      ctx.save();ctx.scale(side,1);
      ctx.translate(7,-8);
@@ -7051,7 +7188,7 @@ function drawSwordSkillEffect(){
  ctx.restore();
 }
 function drawBackViewLightWings(){
- if(player.skillKind!=='lightWing'||player.skillT<=0||player.face!=='up')return;
+ if((!postGameAngel&&(player.skillKind!=='lightWing'||player.skillT<=0))||player.face!=='up')return;
  const wingLift=jumpLiftNow();
  ctx.save();ctx.translate(player.x,player.y-wingLift);ctx.globalCompositeOperation='screen';
  const angelWing=(side)=>{
