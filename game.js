@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 168: 最初の浮遊草原ステージ
+// Prototype 169: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -6346,6 +6346,8 @@ function drawWorld(){
  // 敵弾・魔法弾は地面や島の下に潜らないよう、地形と敵を描いた後に描画。
  for(const pr of projectiles)if(!pr.hit)drawProjectile(pr);
  drawPlayer();
+ // 背面飛行では羽が最前面。体や盾は羽の隙間から少し見える程度にする。
+ drawBackViewLightWings();
  if(player.shieldType===5&&(player.shieldEnergy||0)>0){
    ctx.save();ctx.translate(player.x,player.y-jumpLiftNow()-72);
    for(let i=0;i<player.shieldEnergyMax;i++)circle((i-2)*13,0,5,i<player.shieldEnergy?'#ffd34d':'rgba(255,255,255,.45)','#111',2);
@@ -6913,14 +6915,13 @@ function drawStaffSkillEffects(){
 
  if(player.skillT<=0)return;
 
- if(player.skillKind==='lightWing'){
+ if(player.skillKind==='lightWing'&&player.face!=='up'){
    const wingLift=jumpLiftNow();
    ctx.save();ctx.translate(player.x,player.y-wingLift);ctx.globalCompositeOperation='screen';
    const a=player.skillBase||0,dx=Math.cos(a),dy=Math.sin(a);
    const angelWing=(side)=>{
      ctx.save();ctx.scale(side,1);
-     // 翼の付け根は腹ではなく、左右の肩甲骨あたり。身体は後から描かれるので根元が背中に隠れる。
-     ctx.translate(20,-22);
+     ctx.translate(7,-8);
      ctx.globalAlpha=.92;ctx.fillStyle='rgba(255,255,245,.96)';ctx.strokeStyle='rgba(231,211,113,.96)';ctx.lineWidth=3;
      const feathers=[{y:-25,l:78,w:16},{y:-12,l:86,w:18},{y:2,l:80,w:17},{y:15,l:69,w:16},{y:27,l:56,w:14}];
      for(const f of feathers){
@@ -7023,6 +7024,24 @@ function drawSwordSkillEffect(){
    ctx.arc(0,0,58,bladeA-.5,bladeA+.5);
    ctx.stroke();
  }
+ ctx.restore();
+}
+function drawBackViewLightWings(){
+ if(player.skillKind!=='lightWing'||player.skillT<=0||player.face!=='up')return;
+ const wingLift=jumpLiftNow();
+ ctx.save();ctx.translate(player.x,player.y-wingLift);ctx.globalCompositeOperation='screen';
+ const angelWing=(side)=>{
+   ctx.save();ctx.scale(side,1);ctx.translate(7,-8);
+   ctx.globalAlpha=.96;ctx.fillStyle='rgba(255,255,245,.98)';ctx.strokeStyle='rgba(231,211,113,.98)';ctx.lineWidth=3;
+   const feathers=[{y:-30,l:78,w:17},{y:-16,l:84,w:18},{y:-1,l:77,w:17},{y:14,l:66,w:16},{y:29,l:53,w:14}];
+   for(const f of feathers){
+     ctx.beginPath();ctx.moveTo(0,2);ctx.quadraticCurveTo(f.l*.42,f.y-f.w,f.l,f.y);ctx.quadraticCurveTo(f.l*.64,f.y+f.w,8,18);ctx.closePath();ctx.fill();ctx.stroke();
+   }
+   ctx.globalAlpha=.82;ctx.strokeStyle='#fff';ctx.lineWidth=3;
+   for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(12,4+i*4);ctx.quadraticCurveTo(37,-15+i*13,65,-23+i*15);ctx.stroke();}
+   ctx.restore();
+ };
+ angelWing(-1);angelWing(1);
  ctx.restore();
 }
 function drawChargeEffects(){
