@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 170: 最初の浮遊草原ステージ
+// Prototype 171: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -88,7 +88,7 @@ function travelArea2(){
 }
 area1Btn.addEventListener('pointerdown',travelArea1);
 area2Btn.addEventListener('pointerdown',travelArea2);
-document.getElementById('mapBtn').addEventListener('pointerdown',openAreaMap);
+// 右上マップボタンは廃止。
 document.getElementById('areaMapClose').addEventListener('pointerdown',closeAreaMap);
 
 const enemies=[];
@@ -616,7 +616,7 @@ const finalSkyRoute={
  ]
 };
 const finalBoss={
- name:'天空核',x:29320,y:-2470,r:96,hp:260,maxHp:260,
+ name:'天空核',x:29320,y:-2470,r:96,hp:480,maxHp:480,
  active:false,dead:false,flash:0,pulseCd:1.8,pulseWarn:0,pulseHit:false,shotCd:.8
 };
 let finalBossDefeated=false;
@@ -2238,7 +2238,7 @@ function doAttack(charged=false){
    player.attackMax=.26;player.attacking=.26;player.attackCooldown=.34;
    for(let i=0;i<3;i++){
      const off=(i-1)*.055,spd=620-i*18;
-     projectiles.push({x:player.x+Math.cos(base)*48,y:player.y+Math.sin(base)*48,vx:Math.cos(base+off)*spd,vy:Math.sin(base+off)*spd,r:9,life:1.25,kind:'lightBolt',damage:6,hit:false,pierce:8});
+     projectiles.push({x:player.x+Math.cos(base)*48,y:player.y+Math.sin(base)*48,vx:Math.cos(base+off)*spd,vy:Math.sin(base+off)*spd,r:9,life:1.25,kind:'lightBolt',damage:6,hit:false,pierce:8,hitTargets:new Set()});
    }
    particle(player.x+Math.cos(base)*55,player.y+Math.sin(base)*55,'三連光！','#fff9bd',.25,14);return;
  }
@@ -3489,7 +3489,18 @@ function update(dt){
    if(pr.kind==='lightBolt'){
      pr.lightTerrainCd=(pr.lightTerrainCd??0)-dt;
      if(pr.lightTerrainCd<=0){pr.lightTerrainCd=.09;lightBreakTerrainAt(pr.x,pr.y,pr.r+24);}
-     const lh=(e)=>{if(!e||e.dead||pr.hit)return;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||22)){e.hp=(e.hp??1)-pr.damage;e.flash=.18;particle(e.x,e.y-22,`光 -${pr.damage}`,'#e6c94b',.3,14);pr.pierce--;lightKillCheck(e);if(pr.pierce<=0)pr.hit=true;}};
+     const lh=(e)=>{
+       if(!e||e.dead||pr.hit)return;
+       if(!pr.hitTargets)pr.hitTargets=new Set();
+       if(pr.hitTargets.has(e))return;
+       if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||22)){
+         pr.hitTargets.add(e);
+         e.hp=(e.hp??1)-pr.damage;e.flash=.18;
+         particle(e.x,e.y-22,`光 -${pr.damage}`,'#e6c94b',.3,14);
+         pr.pierce--;lightKillCheck(e);
+         if(pr.pierce<=0)pr.hit=true;
+       }
+     };
      for(const e of lightAllEnemies())lh(e);
    }
    if(pr.hit)continue;
