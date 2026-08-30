@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 161: 最初の浮遊草原ステージ
+// Prototype 162: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1560,7 +1560,7 @@ shortcutBtn.addEventListener('pointerup',releaseShortcut);
 shortcutBtn.addEventListener('pointercancel',ev=>{if(shortcutHoldTimer)clearTimeout(shortcutHoldTimer);shortcutHoldTimer=null;shortcutPointer=null;shortcutLong=false;});
 
 
-function jump(){if(player.jumpT<=0){player.jumpDur=(player.shieldType===4||player.shieldType===7)?.92:.62;player.jumpHeight=(player.shieldType===4||player.shieldType===7)?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
+function jump(){if(player.skillKind==='lightWing'&&player.skillT>0)return;if(player.jumpT<=0){player.jumpDur=(player.shieldType===4||player.shieldType===7)?.92:.62;player.jumpHeight=(player.shieldType===4||player.shieldType===7)?118:105;player.airAttack=false;player.airAttackDone=false;player.airMagic=null;player.airSlam=false;player.jumpT=player.jumpDur;player.shield=false;shieldBtn.classList.remove('active');particle(player.x,player.y+24,'バッ！','#111',.45,18)}}
 
 function steerAngle(current,target,maxStep){
  const d=angleDiff(target,current);
@@ -1579,7 +1579,9 @@ function skill(){
    particle(player.x,player.y-18,'光翼解除','#fff7b0',.34,15);
    return;
  }
- if(player.skillT>0||player.jumpT>0)return;
+ if(player.skillT>0)return;
+ // 光杖だけはジャンプ中から光翼へ移行できる。他武器は従来通り空中スキル不可。
+ if(player.jumpT>0&&player.weapon!==5)return;
  player.shield=false;
  const baseFace=faceAngle(player.face);
  let a=autoAim(baseFace,Math.PI*.65,320);
@@ -1694,12 +1696,19 @@ function lightBreakTerrainAt(x,y,r=60){
  for(const tr of props.smallTrees)if(!tr.dead&&dist(x,y,tr.x,tr.y)<r+34)tr.dead=true;
  for(const v of vineWalls)if(!v.dead&&!v.perma&&dist(x,y,v.x,v.y)<r+v.r){v.dead=true;v.regenT=5;v.burned=true;}
  for(const v of vineKnot)if(!v.dead&&!v.perma&&dist(x,y,v.x,v.y)<r+v.r){v.dead=true;v.regenT=5;}
+ for(const v of ultraVines)if(!v.dead&&ultraVineDistance(v,x,y)<r+24){v.hp=0;v.dead=true;v.regenT=2.2;particle(v.x,v.y,'光断！','#fff5a8',.48,17);}
+}
+function lightKillCheck(e){
+ if(!e||e.hp>0)return;
+ e.dead=true;
+ // 超再生植物も雷・光弾・レーザー・光翼で一度しっかり破壊される。
+ if(ultraVines.includes(e)){e.regenT=2.2;particle(e.x,e.y,'光断！','#fff5a8',.48,17);}
 }
 function lightAreaHit(x,y,r,damage){
  for(const e of lightAllEnemies()){
    if(e.dead||dist(x,y,e.x,e.y)>r+(e.r||22))continue;
    e.hp=(e.hp??1)-damage;e.flash=.22;particle(e.x,e.y-22,`光 -${damage}`,'#fff1a0',.3,14);
-   if(e.hp<=0)e.dead=true;
+   lightKillCheck(e);
  }
  lightBreakTerrainAt(x,y,r);
 }
@@ -1707,7 +1716,7 @@ function lightLineHit(x,y,a,len,width,damage){
  const fx=Math.cos(a),fy=Math.sin(a);
  for(const e of lightAllEnemies()){
    const dx=e.x-x,dy=e.y-y,along=dx*fx+dy*fy,side=Math.abs(dx*fy-dy*fx);
-   if(along>0&&along<len&&side<width+(e.r||20)){e.hp=(e.hp??1)-damage;e.flash=.22;if(e.hp<=0)e.dead=true;}
+   if(along>0&&along<len&&side<width+(e.r||20)){e.hp=(e.hp??1)-damage;e.flash=.22;lightKillCheck(e);}
  }
  for(let d=35;d<=len;d+=45)lightBreakTerrainAt(x+fx*d,y+fy*d,width+28);
 }
@@ -2919,7 +2928,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
      // 光翼中は方向を少しだけ補正できる拘束高速移動。攻撃状態は止めない。
      const inputA=stickAngle();if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.0);
      player.aim=player.skillBase;mx=Math.cos(player.skillBase)*2.4;my=Math.sin(player.skillBase)*2.4;speed=360;player.face=faceFromVec(mx,my);
-     for(const e of lightAllEnemies()){if(e.dead||player.skillHit.has(e))continue;if(dist(player.x,player.y,e.x,e.y)<88+(e.r||20)){e.hp-=8;e.flash=.18;player.skillHit.add(e);if(e.hp<=0)e.dead=true;}}
+     for(const e of lightAllEnemies()){if(e.dead||player.skillHit.has(e))continue;if(dist(player.x,player.y,e.x,e.y)<88+(e.r||20)){e.hp-=8;e.flash=.18;player.skillHit.add(e);lightKillCheck(e);}}
      lightBreakTerrainAt(player.x,player.y,92);
    }else if(player.skillKind==='fire'){
      // 赤杖：燃えるタイヤのように旋回。氷塊へ触れればスキルでも溶かせる。
@@ -3423,7 +3432,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    if(pr.hit)continue;
    if(pr.kind==='lightBolt'){
      lightBreakTerrainAt(pr.x,pr.y,pr.r+24);
-     const lh=(e)=>{if(!e||e.dead||pr.hit)return;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||22)){e.hp=(e.hp??1)-pr.damage;e.flash=.18;particle(e.x,e.y-22,`光 -${pr.damage}`,'#e6c94b',.3,14);pr.pierce--;if(e.hp<=0)e.dead=true;if(pr.pierce<=0)pr.hit=true;}};
+     const lh=(e)=>{if(!e||e.dead||pr.hit)return;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+(e.r||22)){e.hp=(e.hp??1)-pr.damage;e.flash=.18;particle(e.x,e.y-22,`光 -${pr.damage}`,'#e6c94b',.3,14);pr.pierce--;lightKillCheck(e);if(pr.pierce<=0)pr.hit=true;}};
      for(const e of lightAllEnemies())lh(e);
    }
    if(pr.hit)continue;
@@ -6299,7 +6308,14 @@ function drawProjectile(pr){
    circle(0,0,pr.r,'#8f2d22','#111',5);circle(5,-4,pr.r*.48,'#e6502c','transparent',0);
    ctx.strokeStyle='#ff9a42';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-3);ctx.lineTo(2,6);ctx.lineTo(11,-8);ctx.stroke();ctx.restore();return;
  }
- if(pr.kind==='lightBolt'){ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));ctx.globalCompositeOperation='screen';ctx.strokeStyle='#fff6a8';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(22,0);ctx.stroke();ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-22,0);ctx.lineTo(24,0);ctx.stroke();ctx.restore();return;}
+ if(pr.kind==='lightBolt'){
+   ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));ctx.globalCompositeOperation='screen';
+   // 高速で飛ぶ十字の光。中心から縦横4方向へ尖る。
+   ctx.globalAlpha=.28;ctx.fillStyle='#fff2a0';ctx.beginPath();ctx.moveTo(32,0);ctx.lineTo(8,-8);ctx.lineTo(0,-30);ctx.lineTo(-8,-8);ctx.lineTo(-32,0);ctx.lineTo(-8,8);ctx.lineTo(0,30);ctx.lineTo(8,8);ctx.closePath();ctx.fill();
+   ctx.globalAlpha=.96;ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(-25,0);ctx.lineTo(25,0);ctx.moveTo(0,-22);ctx.lineTo(0,22);ctx.stroke();
+   circle(0,0,6,'#fffbe0','#e4bf3d',2);ctx.restore();return;
+ }
  if(pr.kind==='lightning'){ctx.save();ctx.globalCompositeOperation='screen';ctx.strokeStyle='#fff5a0';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(pr.targetX??pr.x,(pr.targetY??pr.y)-180);ctx.lineTo((pr.targetX??pr.x)-12,(pr.targetY??pr.y)-110);ctx.lineTo((pr.targetX??pr.x)+10,(pr.targetY??pr.y)-65);ctx.lineTo(pr.targetX??pr.x,pr.targetY??pr.y);ctx.stroke();ctx.restore();return;}
  if(pr.kind==='flameCrescent'){
    ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx));
@@ -6442,7 +6458,8 @@ function drawPlayer(){
  const normalLift=player.jumpT>0?Math.min(220,Math.max(0,Math.sin(jumpNorm*Math.PI)*(player.jumpHeight||105)*(shields[player.shieldType]?.jump||1))):0;
  // 通常ジャンプだけでなくハンマーチャージの高さもキャラ全体に反映。
  const lift=Math.max(normalLift,player.jumpZ||0,player.skillZ||0);
- const moving=player.moveMag>.16&&player.jumpT<=0;
+ const wingFlying=player.skillKind==='lightWing'&&player.skillT>0;
+ const moving=player.moveMag>.16&&player.jumpT<=0&&!wingFlying;
  const step=moving?Math.sin(player.walkPhase):0;
  const bounce=moving?Math.abs(Math.sin(player.walkPhase))*2:0;
  ctx.save();ctx.translate(player.x,player.y-lift-bounce);
@@ -6478,6 +6495,11 @@ function drawPlayer(){
  const side=f==='left'||f==='right';
  let foot1={x:-9,y:31+legSwing*.25},foot2={x:9,y:31-legSwing*.25};
  if(side){foot1={x:-legSwing*.45,y:31};foot2={x:legSwing*.45,y:31}}
+ if(wingFlying){
+   // 飛行中は走らず、両足を少し後ろへ揃えて浮遊姿勢。
+   const backX=-frontX*8,backY=-frontY*5;
+   foot1={x:-7+backX,y:27+backY};foot2={x:7+backX,y:27+backY};
+ }
  // boots behind body
  line(-7,19,foot1.x,foot1.y,11,'#111');line(-7,19,foot1.x,foot1.y,6,'#7a4a2e');
  line(7,19,foot2.x,foot2.y,11,'#111');line(7,19,foot2.x,foot2.y,6,'#7a4a2e');
@@ -6802,7 +6824,8 @@ function drawStaffSkillEffects(){
  if(player.skillT<=0)return;
 
  if(player.skillKind==='lightWing'){
-   ctx.save();ctx.translate(player.x,player.y);ctx.globalCompositeOperation='screen';
+   const wingLift=jumpLiftNow();
+   ctx.save();ctx.translate(player.x,player.y-wingLift);ctx.globalCompositeOperation='screen';
    const a=player.skillBase||0,dx=Math.cos(a),dy=Math.sin(a);
    const angelWing=(side)=>{
      ctx.save();ctx.scale(side,1);ctx.translate(7,-8);
