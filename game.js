@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 160: 最初の浮遊草原ステージ
+// Prototype 161: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1572,6 +1572,13 @@ function stickAngle(){
 }
 
 function skill(){
+ // 光翼だけは発動中の再押しで任意解除できる。
+ if(player.skillT>0&&player.skillKind==='lightWing'){
+   player.skillT=0;player.lightWingT=0;player.skillKind='';player.skillElapsed=0;
+   player.fallGrace=Math.max(player.fallGrace||0,.35);
+   particle(player.x,player.y-18,'光翼解除','#fff7b0',.34,15);
+   return;
+ }
  if(player.skillT>0||player.jumpT>0)return;
  player.shield=false;
  const baseFace=faceAngle(player.face);
@@ -1616,7 +1623,7 @@ function skill(){
    player.skillKind='ice';player.skillT=.68;particle(player.x,player.y,'アイスサーフ！','#268bc1',.5,18);
  }else{
    // 光の翼：進行方向へ拘束された高速飛行。飛行中も通常攻撃ボタンを使える。
-   player.skillKind='lightWing';player.skillT=1.45;player.lightWingT=1.45;
+   player.skillKind='lightWing';player.skillT=3.0;player.lightWingT=3.0;
    particle(player.x,player.y-20,'光翼！','#fff7b0',.5,19);
  }
 }
@@ -2205,8 +2212,12 @@ function doAttack(charged=false){
    if(jumpStrike){
      player.attackMax=.34;player.attacking=.34;player.attackCooldown=.42;
      const tx=player.x+Math.cos(base)*145,ty=player.y+Math.sin(base)*145;
-     for(let i=-1;i<=1;i++)projectiles.push({x:tx+i*34,y:ty-150,r:18,life:.22,kind:'lightning',damage:9,hit:false,lightning:true,targetX:tx+i*34,targetY:ty});
-     particle(tx,ty-20,'雷光！','#fff6a8',.45,18);return;
+     const px=-Math.sin(base),py=Math.cos(base),gap=120;
+     for(let i=-1;i<=1;i++){
+       const lx=tx+px*i*gap,ly=ty+py*i*gap;
+       projectiles.push({x:lx,y:ly-165,r:18,life:.22,kind:'lightning',damage:9,hit:false,lightning:true,targetX:lx,targetY:ly});
+     }
+     particle(tx,ty-20,'三雷光！','#fff6a8',.45,18);return;
    }
    if(charged){
      player.attackMax=.48;player.attacking=.48;player.attackCooldown=.68;player.lightLaser=.48;player.lightLaserA=base;
@@ -2610,6 +2621,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
 
  // P16 チャージ攻撃の時間処理
  if(player.spiral>0)player.spiral=Math.max(0,player.spiral-dt);
+ if(player.lightWingT>0)player.lightWingT=Math.max(0,player.lightWingT-dt);
  if(player.flameCharge>0)player.flameCharge=Math.max(0,player.flameCharge-dt);if(player.lightLaser>0)player.lightLaser=Math.max(0,player.lightLaser-dt);if(player.hammerShockFx>0)player.hammerShockFx=Math.max(0,player.hammerShockFx-dt);
  if(player.flameCharge>0&&player.flameSword){
    const fp=1-player.flameCharge/(player.flameChargeMax||.78);
@@ -2906,7 +2918,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    }else if(player.skillKind==='lightWing'){
      // 光翼中は方向を少しだけ補正できる拘束高速移動。攻撃状態は止めない。
      const inputA=stickAngle();if(inputA!==null)player.skillBase=steerAngle(player.skillBase,inputA,dt*2.0);
-     player.aim=player.skillBase;mx=Math.cos(player.skillBase)*4.15;my=Math.sin(player.skillBase)*4.15;speed=455;player.face=faceFromVec(mx,my);
+     player.aim=player.skillBase;mx=Math.cos(player.skillBase)*2.4;my=Math.sin(player.skillBase)*2.4;speed=360;player.face=faceFromVec(mx,my);
      for(const e of lightAllEnemies()){if(e.dead||player.skillHit.has(e))continue;if(dist(player.x,player.y,e.x,e.y)<88+(e.r||20)){e.hp-=8;e.flash=.18;player.skillHit.add(e);if(e.hp<=0)e.dead=true;}}
      lightBreakTerrainAt(player.x,player.y,92);
    }else if(player.skillKind==='fire'){
@@ -6174,6 +6186,26 @@ function drawWorld(){
      ctx.fillStyle='#ff5a2d';ctx.strokeStyle='#111';ctx.lineWidth=5;
      ctx.beginPath();ctx.moveTo(-30,12);ctx.quadraticCurveTo(-42,-40,-10,-92*grow);ctx.quadraticCurveTo(0,-60,13,-112*grow);ctx.quadraticCurveTo(46,-48,28,12);ctx.closePath();ctx.fill();ctx.stroke();
      ctx.fillStyle='#ffd45a';ctx.beginPath();ctx.moveTo(-13,8);ctx.quadraticCurveTo(-15,-28,4,-70*grow);ctx.quadraticCurveTo(22,-28,15,8);ctx.closePath();ctx.fill();
+   }else if(fx.kind==='light'){
+     // 光杖ジャンプ着弾：氷結晶ではなく、地面を這う放射状の電撃。
+     const grow=Math.min(1,q*3.1),R=118*grow;
+     ctx.globalCompositeOperation='screen';
+     ctx.globalAlpha=Math.min(.95,fx.life/.12);
+     ctx.fillStyle='rgba(255,245,145,.20)';ctx.beginPath();ctx.arc(0,0,R*.72,0,Math.PI*2);ctx.fill();
+     for(let i=0;i<9;i++){
+       const a=i*Math.PI*2/9+q*.22;
+       const ex=Math.cos(a)*R,ey=Math.sin(a)*R;
+       const mx=Math.cos(a)*R*.48-Math.sin(a)*(i%2?12:-12);
+       const my=Math.sin(a)*R*.48+Math.cos(a)*(i%2?12:-12);
+       ctx.strokeStyle=i%2?'#fff7a3':'#ffffff';ctx.lineWidth=i%2?7:4;
+       ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(mx,my);ctx.lineTo(ex,ey);ctx.stroke();
+       if(R>45){
+         const ba=a+.7,bb=a-.65,bx=Math.cos(a)*R*.62,by=Math.sin(a)*R*.62;
+         line(bx,by,bx+Math.cos(ba)*R*.22,by+Math.sin(ba)*R*.22,3,'#fff8ba');
+         line(bx,by,bx+Math.cos(bb)*R*.18,by+Math.sin(bb)*R*.18,3,'#fff');
+       }
+     }
+     circle(0,0,13,'#fffdf0','#e5bf3b',4);
    }else{
      // 青杖ジャンプ着弾：地面一面へ大きな雪の結晶を刻む。
      const grow=Math.min(1,q*2.8),R=112*grow;
