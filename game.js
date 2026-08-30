@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 174: 最初の浮遊草原ステージ
+// Prototype 175: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -6951,21 +6951,50 @@ function drawPlayer(){
    ctx.restore();
  }
  if(postGameAngel){
-   // 肩→細い腰→分かれた裾。大きな盾のような板形を避ける。
+   // 元の青/黄装束を完全に覆う白いチュニック。
+   // 首元は低いV字にして、顔・口元には一切かからない。
    ctx.save();
-   line(-7,24,-9,39,9,'#111');line(-7,24,-9,39,5,'#f7fbff');
-   line(7,24,9,39,9,'#111');line(7,24,9,39,5,'#f7fbff');
+
+   // まず胴体を一枚の白布で覆う。極端なくびれは作らない。
+   ctx.fillStyle='rgba(255,255,250,.99)';ctx.strokeStyle='#111';ctx.lineWidth=4;
+   ctx.beginPath();
+   ctx.moveTo(-19,0);
+   ctx.lineTo(-11,-4);
+   ctx.lineTo(0,5);       // 低いVネック
+   ctx.lineTo(11,-4);
+   ctx.lineTo(19,0);
+   ctx.lineTo(18,28);
+   ctx.lineTo(11,37);
+   ctx.lineTo(4,32);
+   ctx.lineTo(0,39);
+   ctx.lineTo(-4,32);
+   ctx.lineTo(-11,37);
+   ctx.lineTo(-18,28);
+   ctx.closePath();ctx.fill();ctx.stroke();
+
+   // 元服の黄色帯を隠すため、腰幅いっぱいの白い腰布を重ねる。
+   ctx.fillStyle='#fffdf2';ctx.strokeStyle='#111';ctx.lineWidth=3;
+   ctx.beginPath();ctx.moveTo(-18,13);ctx.lineTo(18,13);ctx.lineTo(17,24);ctx.lineTo(-17,24);ctx.closePath();ctx.fill();ctx.stroke();
+
+   // 金の細い帯だけを新衣装として置く。
+   ctx.strokeStyle='#e6c65c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-16,17);ctx.lineTo(16,17);ctx.stroke();
+
+   // ギリシャ風の肩掛け布。首や顔には届かせない。
+   ctx.strokeStyle='#efd270';ctx.lineWidth=6;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(-13,1);ctx.quadraticCurveTo(-2,9,10,27);ctx.stroke();
+
+   // 足は裾から少しだけ見せる。
+   line(-8,32,-9,40,8,'#111');line(-8,32,-9,40,4,'#f7fbff');
+   line(8,32,9,40,8,'#111');line(8,32,9,40,4,'#f7fbff');
    circle(-9,40,5,'#e6c65c','#111',3);circle(9,40,5,'#e6c65c','#111',3);
-   ctx.fillStyle='rgba(255,255,250,.98)';ctx.strokeStyle='#111';ctx.lineWidth=4;
-   ctx.beginPath();ctx.moveTo(-19,-2);ctx.quadraticCurveTo(-18,7,-11,14);ctx.quadraticCurveTo(-9,19,-10,24);
-   ctx.lineTo(-17,34);ctx.lineTo(-7,32);ctx.lineTo(0,39);ctx.lineTo(7,32);ctx.lineTo(17,34);ctx.lineTo(10,24);
-   ctx.quadraticCurveTo(9,19,11,14);ctx.quadraticCurveTo(18,7,19,-2);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.strokeStyle='#e6c65c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-11,15);ctx.quadraticCurveTo(0,18,11,15);ctx.stroke();
-   ctx.strokeStyle='rgba(244,224,151,.95)';ctx.lineWidth=6;ctx.lineCap='round';
-   ctx.beginPath();ctx.moveTo(-14,1);ctx.quadraticCurveTo(-3,10,8,25);ctx.stroke();
-   // 月桂冠は頭頂側だけ。顔を横切らない。
-   ctx.strokeStyle='#d4b34b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-32,17,Math.PI*1.12,Math.PI*1.88);ctx.stroke();
-   for(let i=-2;i<=2;i++){const xx=i*6,yy=-45+Math.abs(i)*2;ctx.fillStyle='#f2d66d';ctx.beginPath();ctx.ellipse(xx,yy,4.5,2.2,i*.25,0,Math.PI*2);ctx.fill();}
+
+   // 月桂冠は頭頂だけ。顔面を横切らない。
+   ctx.strokeStyle='#d4b34b';ctx.lineWidth=3;
+   ctx.beginPath();ctx.arc(0,-34,17,Math.PI*1.12,Math.PI*1.88);ctx.stroke();
+   for(let i=-2;i<=2;i++){
+     const xx=i*6,yy=-47+Math.abs(i)*2;
+     ctx.fillStyle='#f2d66d';ctx.beginPath();ctx.ellipse(xx,yy,4.5,2.2,i*.25,0,Math.PI*2);ctx.fill();
+   }
    ctx.restore();
  }
  if(!postGameAngel&&player.shield&&(player.lightStaff||player.weapon===5)&&(player.shieldType===7||player.lightShield)){
