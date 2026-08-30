@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 172: 最初の浮遊草原ステージ
+// Prototype 173: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -622,7 +622,9 @@ const finalBoss={
 let finalBossDefeated=false;
 let endingActive=false,endingT=0,endingShown=false;
 let postGameAngel=false,angelSlow=false;
+let playerDead=false;
 const demonRaiders=[];
+let demonRespawnT=0;
 
 
 
@@ -1426,6 +1428,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    }catch(e){}
    const ok=loadProgress();
    if(ok){
+     playerDead=false;
+     const title=m.querySelector('.start-title'),note=m.querySelector('.save-note');
+     if(title)title.textContent='盾を構えとけば何とか凌げる';
+     if(note)note.textContent='進行状況はこの端末に自動保存されます';
      // 壊れた/旧式座標だけで「最初から」に見えるのを防ぐ。
      if(!Number.isFinite(player.x)||!Number.isFinite(player.y)){player.x=stage.checkpoint.x;player.y=stage.checkpoint.y;}
      if((player.x>6150&&player.y<-1850)||vegBossDefeated||fruitSpearBossDefeated||waterBossDefeated){
@@ -1856,50 +1862,58 @@ function fireMagic(w,charged,base){
 
 function spawnDemonRaiders(force=false){
  if(!postGameAngel)return;
- if(force)demonRaiders.length=0;
- while(demonRaiders.length<7){
-   const ang=Math.random()*Math.PI*2,rr=520+Math.random()*1300;
-   demonRaiders.push({x:player.x+Math.cos(ang)*rr,y:player.y+Math.sin(ang)*rr,r:42,hp:36,maxHp:36,dead:false,phase:Math.random()*6.28,shotCd:.7+Math.random()*1.6,scytheCd:1.1+Math.random()*1.8,scytheT:0,flash:0});
- }
+ if(force){demonRaiders.length=0;demonRespawnT=0;}
+ if(demonRaiders.some(d=>!d.dead))return;
+ if(demonRespawnT>0)return;
+ const ang=Math.random()*Math.PI*2,rr=700+Math.random()*500;
+ demonRaiders.push({
+   x:player.x+Math.cos(ang)*rr,y:player.y+Math.sin(ang)*rr,
+   r:54,hp:240,maxHp:240,dead:false,phase:Math.random()*6.28,
+   shotCd:1.0,scytheCd:1.6,scytheT:0,flash:0
+ });
+}
+function killDemonRaider(d){
+ if(!d||d.dead)return;
+ d.dead=true;demonRespawnT=4.5;
+ particle(d.x,d.y-55,'悪魔消滅','#fff',.75,20);
 }
 function updateDemonRaiders(dt){
  if(!postGameAngel)return;
+ if(demonRespawnT>0)demonRespawnT=Math.max(0,demonRespawnT-dt);
+ demonRaiders.splice(0,demonRaiders.length,...demonRaiders.filter(d=>!d.dead));
  spawnDemonRaiders();
- for(const d of demonRaiders){
-   if(d.dead)continue;
-   d.phase+=dt*.9;d.flash=Math.max(0,d.flash-dt);d.shotCd-=dt;d.scytheCd-=dt;d.scytheT=Math.max(0,d.scytheT-dt);
-   const dx=player.x-d.x,dy=player.y-d.y,dd=Math.hypot(dx,dy)||1;
-   const tang=Math.atan2(dy,dx)+Math.PI/2;
-   if(dd>360){d.x+=dx/dd*72*dt;d.y+=dy/dd*72*dt;}
-   d.x+=Math.cos(tang)*34*dt;d.y+=Math.sin(tang)*34*dt;
-   if(d.shotCd<=0&&dd<850){
-     d.shotCd=1.2+Math.random()*.8;
-     const a=Math.atan2(dy,dx);
-     projectiles.push({x:d.x,y:d.y-18,vx:Math.cos(a)*285,vy:Math.sin(a)*285,r:15,life:3,kind:'demonOrb',damage:10,enemyShot:true,hit:false,sourceEnemy:d});
-   }
-   if(d.scytheCd<=0&&dd<125){
-     d.scytheCd=1.8;d.scytheT=.42;
-     if(player.inv<=0){
-       if(shieldBlocks(d))particle(player.x,player.y-28,'キィン！','#fff6bd',.28,15);
-       else{const got=takeDamage(12);player.inv=.55;particle(player.x,player.y-35,`鎌 -${got}`,'#b64cff',.4,16);}
-     }
+
+ const d=demonRaiders[0];
+ if(!d)return;
+ d.phase+=dt*.9;d.flash=Math.max(0,d.flash-dt);d.shotCd-=dt;d.scytheCd-=dt;d.scytheT=Math.max(0,d.scytheT-dt);
+ const dx=player.x-d.x,dy=player.y-d.y,dd=Math.hypot(dx,dy)||1;
+ const tang=Math.atan2(dy,dx)+Math.PI/2;
+ if(dd>390){d.x+=dx/dd*64*dt;d.y+=dy/dd*64*dt;}
+ else if(dd<220){d.x-=dx/dd*36*dt;d.y-=dy/dd*36*dt;}
+ d.x+=Math.cos(tang)*30*dt;d.y+=Math.sin(tang)*30*dt;
+
+ if(d.shotCd<=0&&dd<900){
+   d.shotCd=1.15+Math.random()*.55;
+   const a=Math.atan2(dy,dx);
+   projectiles.push({x:d.x,y:d.y-20,vx:Math.cos(a)*300,vy:Math.sin(a)*300,r:17,life:3.2,kind:'demonOrb',damage:13,enemyShot:true,hit:false,sourceEnemy:d});
+ }
+ if(d.scytheCd<=0&&dd<145){
+   d.scytheCd=1.7;d.scytheT=.48;
+   if(player.inv<=0){
+     if(shieldBlocks(d))particle(player.x,player.y-28,'キィン！','#fff6bd',.28,15);
+     else{const got=takeDamage(15);player.inv=.55;particle(player.x,player.y-35,`鎌 -${got}`,'#b64cff',.4,16);}
    }
  }
- // 光杖の通常弾で撃破。
- for(const d of demonRaiders){
-   if(d.dead)continue;
-   for(const pr of projectiles){
-     if(pr.hit||pr.enemyShot||pr.kind!=='lightBolt')continue;
-     pr.hitTargets??=new Set();
-     if(pr.hitTargets.has(d))continue;
-     if(dist(pr.x,pr.y,d.x,d.y)<pr.r+d.r){
-       pr.hitTargets.add(d);d.hp-=pr.damage||6;d.flash=.2;
-       if(d.hp<=0){d.dead=true;particle(d.x,d.y-45,'消滅','#fff',.6,18);}
-     }
+
+ // 光杖通常弾。1本につき1回だけ。
+ for(const pr of projectiles){
+   if(pr.hit||pr.enemyShot||pr.kind!=='lightBolt')continue;
+   pr.hitTargets??=new Set();
+   if(pr.hitTargets.has(d))continue;
+   if(dist(pr.x,pr.y,d.x,d.y)<pr.r+d.r){
+     pr.hitTargets.add(d);d.hp-=pr.damage||6;d.flash=.2;
+     if(d.hp<=0){killDemonRaider(d);break;}
    }
- }
- if(demonRaiders.filter(d=>!d.dead).length<4){
-   const alive=demonRaiders.filter(d=>!d.dead);demonRaiders.length=0;demonRaiders.push(...alive);spawnDemonRaiders();
  }
 }
 function drawDemonRaider(d){
@@ -1913,14 +1927,44 @@ function drawDemonRaider(d){
  ctx.beginPath();ctx.moveTo(-18,-24);ctx.lineTo(-30,-52);ctx.lineTo(-5,-32);ctx.closePath();ctx.fill();ctx.stroke();
  ctx.beginPath();ctx.moveTo(18,-24);ctx.lineTo(30,-52);ctx.lineTo(5,-32);ctx.closePath();ctx.fill();ctx.stroke();
  circle(-10,-5,4,'#ff5cff','#111',2);circle(10,-5,4,'#ff5cff','#111',2);
+ // 一体だけの強敵なのでHPを読みやすく表示。
+ ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(-62,-82,124,14);
+ ctx.fillStyle='#c95cff';ctx.fillRect(-59,-79,118*clamp(d.hp/d.maxHp,0,1),8);
+ ctx.fillStyle='#fff';ctx.font='900 13px system-ui';ctx.textAlign='center';ctx.fillText('大鎌の悪魔',0,-91);
  const swing=d.scytheT>0?Math.sin((1-d.scytheT/.42)*Math.PI)*1.5:0;
  ctx.save();ctx.translate(28,12);ctx.rotate(-.8+swing);line(0,0,0,-78,9,'#111');line(0,0,0,-78,4,'#d9d3df');
  ctx.fillStyle='#d7d2df';ctx.strokeStyle='#111';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-78);ctx.quadraticCurveTo(48,-78,62,-42);ctx.quadraticCurveTo(35,-58,4,-52);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  ctx.restore();
 }
+function handlePlayerDeath(){
+ if(playerDead)return;
+ playerDead=true;
+ player.hp=0;player.shield=false;player.charging=false;player.skillT=0;player.skillKind='';
+ shieldBtn?.classList.remove('active');attackBtn?.classList.remove('active');
+ particle(player.x,player.y-30,'力尽きた…','#fff',1.0,24);
+
+ // 進行状況はそのまま、再開地点とHPだけ安全な状態で保存する。
+ const ox=player.x,oy=player.y,ohp=player.hp;
+ const rx=postGameAngel?finalSkyRoute.arena.x:(stage.checkpoint?.x??ox);
+ const ry=postGameAngel?finalSkyRoute.arena.y:(stage.checkpoint?.y??oy);
+ player.x=rx;player.y=ry;player.hp=player.maxHp;
+ saveProgress();
+ player.x=ox;player.y=oy;player.hp=ohp;
+
+ const menu=document.getElementById('startMenu');
+ const cont=document.getElementById('continueBtn');
+ const title=menu?.querySelector('.start-title');
+ const note=menu?.querySelector('.save-note');
+ if(title)title.textContent='力尽きた…';
+ if(note)note.textContent='「続きから」で同じ進行状況から再開';
+ if(cont)cont.disabled=false;
+ menu?.classList.remove('hidden');
+}
 function takeDamage(amount){
+ if(playerDead)return 0;
  const dmg=amount;
- player.hp=Math.max(1,player.hp-dmg);
+ player.hp=Math.max(0,player.hp-dmg);
+ if(player.hp<=0){handlePlayerDeath();return dmg;}
  if(player.shieldType===1){
    const heal=Math.min(3,player.maxHp-player.hp);
    if(heal>0){player.hp+=heal;particle(player.x,player.y-55,`+${heal}`,'#3aa85a',.38,14)}
@@ -2758,6 +2802,7 @@ function resolveProgressionDeaths(){
 function startCloudRaceIntro(){cloudRace.started=false;cloudRace.intro=true;cloudRace.introPage=0;cloudRace.introT=0;cloudRace.lastIntroPage=-1;cloudRace.time=0;cloudRace.cp=0;player.skillT=0;player.skillKind='';player.shield=false;player.charging=false}
 function cloudRaceIntroText(p){if(p===0)return ['雲ライダー','「ここまで来たか！ この雲上サーキットで勝負だ！」'];if(p===1)return ['コース説明','大きく歪んだ楕円コースを1周。1/3地点と2/3地点の太いチェックラインを順番に通ろう。'];if(p===2)return ['勝利条件','相手はかなり速い。普通に走るだけでは追いつけないぞ。'];return ['攻略のコツ','赤杖の炎輪／青杖のアイスサーフで加速を繋げ！']}
 function update(dt){
+ if(playerDead)return;
  if(endingActive)endingT+=dt;
  if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,Math.floor(cloudRace.introT/2.25));cloudRace.introPage=p;if(p!==cloudRace.lastIntroPage){cloudRace.lastIntroPage=p;const t=cloudRaceIntroText(p);say(`${t[0]}：${t[1]}`)}if(cloudRace.introT>=9){cloudRace.intro=false;cloudRace.started=true;cloudRace.countdown=2;cloudRace.time=0;cloudRace.cp=0;particle(cloudRaceGeo.start.x,cloudRaceGeo.start.y-55,'READY!','#fff',.65,21);say('READY… 杖スキルを準備！')}return;}
 
@@ -3593,7 +3638,7 @@ function update(dt){
      if(pr.life<=.08){
        const lx=pr.targetX??pr.x,ly=pr.targetY??pr.y;
        lightAreaHit(lx,ly,78,9);
-       if(postGameAngel)for(const d of demonRaiders){if(!d.dead&&dist(lx,ly,d.x,d.y)<105+d.r){d.hp-=12;d.flash=.2;if(d.hp<=0)d.dead=true;}}
+       if(postGameAngel)for(const d of demonRaiders){if(!d.dead&&dist(lx,ly,d.x,d.y)<105+d.r){d.hp-=12;d.flash=.2;if(d.hp<=0)killDemonRaider(d);}}
        airMagicImpacts.push({x:lx,y:ly,kind:'light',life:.45,max:.45});pr.hit=true;
      }
    }
@@ -5988,11 +6033,20 @@ function drawWorld(){
           // 長い3本の皮で、遠目にもバナナの皮と分かる形。
           for(const rot of [-.72,0,.72]){ctx.save();ctx.rotate(rot);ctx.beginPath();ctx.moveTo(-7,8);ctx.quadraticCurveTo(-4,-20,0,-39);ctx.quadraticCurveTo(7,-14,9,8);ctx.quadraticCurveTo(2,15,-7,8);ctx.fill();ctx.stroke();ctx.restore();}
           circle(0,9,8,'#f1c82f','#111',3);ctx.restore();}
-        if(!bananaBoss.dead){const b=bananaBoss;ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='#ffe14c';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,66,-2.5,.7);ctx.arc(4,-2,42,.7,-2.5,true);ctx.closePath();ctx.fill();ctx.stroke();
-          // バナナ本体にも王様らしい顔。
-          circle(-17,-12,7,'#fff','#111',3);circle(17,-12,7,'#fff','#111',3);circle(-15,-11,3,'#111','#111',1);circle(15,-11,3,'#111','#111',1);
-          ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-25,-28);ctx.lineTo(-8,-21);ctx.moveTo(25,-28);ctx.lineTo(8,-21);ctx.moveTo(-17,15);ctx.quadraticCurveTo(0,25,17,15);ctx.stroke();
-          ctx.save();ctx.rotate(b.swingT>0?-1.0:.25);ctx.fillStyle='#ffe14c';ctx.beginPath();ctx.arc(40,0,52,-1.5,1.5);ctx.arc(42,0,30,1.5,-1.5,true);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();ctx.restore();ctx.fillStyle='#111';ctx.font='900 17px system-ui';ctx.textAlign='center';ctx.fillText('バナナ王',b.x,b.y-105);}
+        if(!bananaBoss.dead){const b=bananaBoss;ctx.save();ctx.translate(b.x,b.y);
+          // 顔が地面の緑を透かして見えないよう、まず王の頭そのものを描く。
+          circle(0,8,54,'#f3c978','#111',7);
+          // バナナを「髪・王冠」のように頭の上へ扇状に配置。
+          const hairBanana=(ox,oy,rot,sc=1)=>{ctx.save();ctx.translate(ox,oy);ctx.rotate(rot);ctx.scale(sc,sc);ctx.fillStyle='#ffe14c';ctx.strokeStyle='#111';ctx.lineWidth=6;
+            ctx.beginPath();ctx.arc(0,0,48,-2.55,.65);ctx.arc(4,-2,29,.65,-2.55,true);ctx.closePath();ctx.fill();ctx.stroke();
+            circle(-35,-23,5,'#604414','#111',2);ctx.restore();};
+          hairBanana(-36,-42,-.78,.90);hairBanana(0,-55,-.28,1.02);hairBanana(35,-45,.30,.92);
+          // 顔は頭の中心に固定。
+          circle(-17,1,8,'#fff','#111',3);circle(17,1,8,'#fff','#111',3);circle(-15,2,3,'#111','#111',1);circle(15,2,3,'#111','#111',1);
+          ctx.strokeStyle='#111';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-26,-14);ctx.lineTo(-8,-8);ctx.moveTo(26,-14);ctx.lineTo(8,-8);ctx.moveTo(-18,27);ctx.quadraticCurveTo(0,38,18,27);ctx.stroke();
+          // 手に持つ長いバナナブレード。
+          ctx.save();ctx.translate(42,11);ctx.rotate(b.swingT>0?-1.0:.25);ctx.fillStyle='#ffe14c';ctx.strokeStyle='#111';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,57,-1.5,1.5);ctx.arc(3,0,33,1.5,-1.5,true);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+          ctx.restore();ctx.fillStyle='#111';ctx.font='900 17px system-ui';ctx.textAlign='center';ctx.fillText('バナナ王',b.x,b.y-125);}
         if(lightStaffPickup.active&&!lightStaffPickup.taken){ctx.save();ctx.translate(lightStaffPickup.x,lightStaffPickup.y);line(0,35,0,-42,10,'#111');line(0,35,0,-42,5,'#fff4a8');circle(0,-52,18,'#fff8bd','#caa82e',5);ctx.restore();}
        }
        if(player.lightStaff||bananaBossDefeated){
@@ -7074,7 +7128,7 @@ function drawStaffSkillEffects(){
    }
  }
 
- if(player.skillT<=0)return;
+ if(player.skillT<=0&&!postGameAngel)return;
 
  if(((player.skillKind==='lightWing'&&player.skillT>0)||postGameAngel)&&player.face!=='up'){
    const wingLift=jumpLiftNow();
