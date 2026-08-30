@@ -27,7 +27,7 @@ const weapons=[
 ];
 const player={x:230,y:545,r:28,speed:230,hp:100,maxHp:100,fallGrace:0,ledgeT:0,ledgeX:0,ledgeY:0,falling:false,fallT:0,fallDur:.55,fallFromX:0,fallFromY:0,fallReturnX:0,fallReturnY:0,face:'down',aim:0,shield:false,jumpT:0,jumpDur:.62,jumpHeight:105,attacking:0,spin:0,spinT:0,attackMax:.22,attackCooldown:0,charging:false,chargeStart:0,skillT:0,skillElapsed:0,skillBase:0,skillSide:1,skillHit:new Set(),skillKind:'',skillPhase:0,skillZ:0,hammerSpin:0,fireTrail:[],iceTrail:[],spiral:0,spiralA:0,spiralMax:.48,flameCharge:0,flameChargeMax:0,flameChargeA:0,flameChargeHit:new Set(),lightLaser:0,lightLaserA:0,lightWingT:0,slipT:0,hammerShockFx:0,hammerSmash:0,hammerSmashT:0,weapon:0,shieldType:0,inv:0,walkPhase:0,moveMag:0,dashT:0,dashAuto:false,dashDir:0,dashAttack:false,dashShieldHit:new Set(),shieldStepT:0,shieldStepDir:0,airAttack:false,airAttackDone:false,airMagic:null,airSlam:false,staffChargeFx:null,shieldEnergy:0,shieldEnergyMax:5};
 
-// Prototype 156: 最初の浮遊草原ステージ
+// Prototype 157: 最初の浮遊草原ステージ
 const stage={
  id:1,
  bossDefeated:false,
@@ -1267,6 +1267,14 @@ function loadProgress(){
  if(lightBossDefeated){lightBoss.dead=true;lightBoss.active=false;}
  bananaBossDefeated=!!d.bananaBossDefeated;
  if(bananaBossDefeated){bananaBoss.dead=true;bananaBoss.active=false;}
+ // 旧/壊れたセーブで「boss.deadだけtrue、報酬フラグfalse」になったケースも復元。
+ if(seedBoss.dead){stage2BossDefeated=true;stage2BridgeOpen=true;spearPickup.x=seedBoss.x;spearPickup.y=seedBoss.y;}
+ if(fruitSpearBoss.dead)fruitSpearBossDefeated=true;
+ if(waterBoss.dead)waterBossDefeated=true;
+ if(lavaBoss.dead)lavaBossDefeated=true;
+ if(crystalBoss.dead)crystalBossDefeated=true;
+ if(lightBoss.dead)lightBossDefeated=true;
+ if(bananaBoss.dead)bananaBossDefeated=true;
  lightStaffPickup.taken=!!d.lightStaffTaken||!!d.lightStaff;
  lightStaffPickup.active=bananaBossDefeated&&!lightStaffPickup.taken;
  if(lightStaffPickup.taken){player.lightStaff=true;unlockedWeapons[5]=true;}
@@ -2442,6 +2450,76 @@ function resolveAirMagic(m){
 }
 
 
+
+function resolveProgressionDeaths(){
+ // 種ボス：どの攻撃方法でHPが0になっても、槍と次の橋を必ず出す。
+ if((seedBoss.hp<=0||seedBoss.dead)&&!stage2BossDefeated){
+   seedBoss.hp=0;seedBoss.dead=true;seedBoss.active=false;
+   stage2BossDefeated=true;stage2BridgeOpen=true;
+   spearPickup.x=seedBoss.x;spearPickup.y=seedBoss.y;
+   particle(seedBoss.x,seedBoss.y,'撃破！','#fff',.8,26);
+   say('ボスがいた場所に槍が残った！ 虹の橋も開いた！');
+   saveProgress();
+ }
+
+ // 後半の報酬ボスも「倒し方」に依存させない。
+ if((fruitSpearBoss.hp<=0||fruitSpearBoss.dead)&&!fruitSpearBossDefeated){
+   fruitSpearBoss.hp=0;fruitSpearBoss.dead=true;fruitSpearBoss.active=false;
+   fruitSpearBossDefeated=true;
+   spearUpgradePickup.active=!spearUpgradePickup.taken;
+   spearUpgradePickup.x=fruitSpearBoss.x;spearUpgradePickup.y=fruitSpearBoss.y;
+   particle(fruitSpearBoss.x,fruitSpearBoss.y-60,'撃破！','#fff',.8,24);
+   say('パインクラッシャー撃破！ パインハンマーを落とした！');
+   saveProgress();
+ }
+ if((waterBoss.hp<=0||waterBoss.dead)&&!waterBossDefeated){
+   waterBoss.hp=0;waterBoss.dead=true;waterBoss.active=false;waterBossDefeated=true;
+   waterSpearPickup.active=!waterSpearPickup.taken;
+   waterSpearPickup.x=waterBoss.x;waterSpearPickup.y=waterBoss.y;
+   particle(waterBoss.x,waterBoss.y-60,'撃破！','#fff',.9,25);
+   say('水龍将撃破！ 水龍の槍が現れた！');
+   saveProgress();
+ }
+ if((lavaBoss.hp<=0||lavaBoss.dead)&&!lavaBossDefeated){
+   lavaBoss.hp=0;lavaBoss.dead=true;lavaBoss.active=false;lavaBossDefeated=true;
+   flameSwordPickup.active=!flameSwordPickup.taken;
+   flameSwordPickup.x=lavaBoss.x;flameSwordPickup.y=lavaBoss.y;
+   say('炎唐辛子撃破！ 炎神の剣が現れた！');saveProgress();
+ }
+ if((crystalBoss.hp<=0||crystalBoss.dead)&&!crystalBossDefeated){
+   crystalBoss.hp=0;crystalBoss.dead=true;crystalBoss.active=false;crystalBossDefeated=true;
+   crystalShieldPickup.active=!crystalShieldPickup.taken;
+   crystalShieldPickup.x=crystalBoss.x;crystalShieldPickup.y=crystalBoss.y;
+   say('水晶の盾が現れた！');saveProgress();
+ }
+ if((lightBoss.hp<=0||lightBoss.dead)&&!lightBossDefeated){
+   lightBoss.hp=0;lightBoss.dead=true;lightBoss.active=false;lightBossDefeated=true;
+   lightShieldPickup.active=!lightShieldPickup.taken;
+   lightShieldPickup.x=lightBoss.x;lightShieldPickup.y=lightBoss.y;
+   say('光の盾が現れた！');saveProgress();
+ }
+ if((bananaBoss.hp<=0||bananaBoss.dead)&&!bananaBossDefeated){
+   bananaBoss.hp=0;bananaBoss.dead=true;bananaBoss.active=false;bananaBossDefeated=true;
+   lightStaffPickup.active=!lightStaffPickup.taken;
+   lightStaffPickup.x=bananaBoss.x;lightStaffPickup.y=bananaBoss.y;
+   say('光の杖が現れた！');saveProgress();
+ }
+
+ // 旧エリアの主要ボスも、deadだけ先に立った場合に進行停止しないよう修復。
+ if((iceBoss.hp<=0||iceBoss.dead)&&!blueStaffPickup.taken){
+   iceBoss.hp=0;iceBoss.dead=true;iceBoss.active=false;
+   blueStaffPickup.active=true;blueStaffPickup.x=iceBoss.x;blueStaffPickup.y=iceBoss.y;
+ }
+ if((vineBoss.hp<=0||vineBoss.dead)&&!vineBossDefeated){
+   vineBoss.hp=0;vineBoss.dead=true;vineBoss.active=false;vineBossDefeated=true;cloudRaceUnlocked=true;fireBossDefeated=true;
+   say('ツタの主を倒した！ レース場への道が開いた！');saveProgress();
+ }
+ if((vegBoss.hp<=0||vegBoss.dead)&&!vegBossDefeated){
+   vegBoss.hp=0;vegBoss.dead=true;vegBoss.active=false;vegBossDefeated=true;
+   chargeShieldPickup.active=!chargeShieldPickup.taken;chargeShieldPickup.x=vegBoss.x;chargeShieldPickup.y=vegBoss.y;
+   saveProgress();
+ }
+}
 function startCloudRaceIntro(){cloudRace.started=false;cloudRace.intro=true;cloudRace.introPage=0;cloudRace.introT=0;cloudRace.lastIntroPage=-1;cloudRace.time=0;cloudRace.cp=0;player.skillT=0;player.skillKind='';player.shield=false;player.charging=false}
 function cloudRaceIntroText(p){if(p===0)return ['雲ライダー','「ここまで来たか！ この雲上サーキットで勝負だ！」'];if(p===1)return ['コース説明','大きく歪んだ楕円コースを1周。1/3地点と2/3地点の太いチェックラインを順番に通ろう。'];if(p===2)return ['勝利条件','相手はかなり速い。普通に走るだけでは追いつけないぞ。'];return ['攻略のコツ','赤杖の炎輪／青杖のアイスサーフで加速を繋げ！']}
 function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,Math.floor(cloudRace.introT/2.25));cloudRace.introPage=p;if(p!==cloudRace.lastIntroPage){cloudRace.lastIntroPage=p;const t=cloudRaceIntroText(p);say(`${t[0]}：${t[1]}`)}if(cloudRace.introT>=9){cloudRace.intro=false;cloudRace.started=true;cloudRace.countdown=2;cloudRace.time=0;cloudRace.cp=0;particle(cloudRaceGeo.start.x,cloudRaceGeo.start.y-55,'READY!','#fff',.65,21);say('READY… 杖スキルを準備！')}return;}
@@ -2456,6 +2534,7 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
   }
  }
  if(areaMapOpen||!equipPanel.classList.contains('hidden'))return;
+ resolveProgressionDeaths();
  player.fallGrace=Math.max(0,(player.fallGrace||0)-dt);
  // P17: 敵のよろけ時間はゲーム更新側で減らす。
  for(const e of enemies){
@@ -3162,14 +3241,18 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    pr.hit=true;return true;
  }
  function iceHitAnything(pr){
-   const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,bossWalnuts,vegArmy,vegFireFlowers,flyingVeg,lavaThrowers];
+   // 青杖通常弾の対象漏れをなくす。氷エリアのペンギン/投擲敵もここで直接判定する。
+   const lists=[enemies,stage2Enemies,stage3Enemies,stage4Enemies,stage6Enemies,stage8Enemies,stage10Enemies,
+     bossWalnuts,iceEnemies,iceThrowers,vineSeedFlowers,whipVines,vegArmy,vegFireFlowers,flyingVeg,
+     roadVegSoldiers,roadFlowers,fruitMiniBosses,waterRaiders,lavaThrowers,crystalPlants,crystalThrowers,
+     rapidFlowers,walkingGrass,rushFlowers,rushMiniBosses];
    for(const list of lists){
      for(const e of list){
        // 回転花も氷は有効。少し凍って動きを止める。
        if(iceHitTarget(pr,e))return true;
      }
    }
-   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss,lavaBoss]){
+   for(const b of [boss,seedBoss,grassFinalBoss,rockBoss,islandBoss,fireBoss,hammerGuardian,iceBoss,vineBoss,vegBoss,fruitSpearBoss,waterBoss,lavaBoss,crystalBoss,lightBoss,bananaBoss]){
      if(!b||b.dead||!b.active)continue;
      if(iceHitTarget(pr,b))return true;
    }
@@ -3361,7 +3444,8 @@ function update(dt){if(cloudRace.intro){cloudRace.introT+=dt;const p=Math.min(3,
    for(const e of iceEnemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r+10){let dmg=pr.damage||3;if(pr.kind==='fire')dmg++;e.hp-=dmg;e.flash=.16;particle(e.x,e.y-24,`-${dmg}`,'#b31313',.35,15);pr.hit=true;if(e.hp<=0)e.dead=true;break}}if(pr.hit)continue;
    for(const e of enemies){if(e.dead)continue;if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.r){e.hp-=pr.damage;enemyHitReact(e,14);particle(e.x,e.y-22,`-${pr.damage}`,pr.kind==='fire'?'#b31313':'#176d9a',.45,16);if(pr.kind==='ice')e.attackCd+=.45;if(e.hp<=0){e.dead=true;particle(e.x,e.y,'ボン！','#111',.55,18)}pr.hit=true;break}}
  }
- for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
+ resolveProgressionDeaths();
+  for(let i=projectiles.length-1;i>=0;i--)if(projectiles[i].hit)projectiles.splice(i,1);
 
  for(const e of enemies){
    if(e.dead||e.waitForGround||e.enemyFalling)continue;
